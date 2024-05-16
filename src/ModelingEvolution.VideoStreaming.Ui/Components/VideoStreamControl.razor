@@ -1,0 +1,52 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using StreamServer.Services
+
+@inject VideoStreamingServer _server
+
+<MudDialog>
+    <DialogContent>
+        <MudStack >
+        
+            <MudTextField @bind-Value="@_url" Label="Url" Required="true" 
+                          RequiredError="Url is required, <Schema>://<Host>:<Port>/[StreamName],[Tag1],[Tag2]"/>
+        
+
+        @if (errors.Length > 0)
+        {
+            <MudText Typo="Typo.subtitle2">@($"Errors ({errors.Length})")</MudText>
+            @foreach (var error in errors)
+            {
+                <MudText Color="@Color.Error">@error</MudText>
+            }
+        }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" ButtonType="ButtonType.Submit" Color="Color.Primary" DisableElevation="true" OnClick="@OnConnect">Connect</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    string _url;
+    
+    bool success;
+    string[] errors = { };
+
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    private async Task OnConnect()
+    {
+        try
+        {
+            errors = Array.Empty<string>();
+            await _server.ConnectVideoSource(VideoStreamingServer.VideoSource.CreateFrom(new Uri(_url)));
+            MudDialog.Close();
+        }
+        catch (Exception ex)
+        {
+            errors = new[] { ex.Message };
+            await this.InvokeAsync(this.StateHasChanged);
+        }
+    }
+
+}

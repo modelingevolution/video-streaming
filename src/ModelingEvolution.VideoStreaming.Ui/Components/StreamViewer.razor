@@ -1,0 +1,84 @@
+﻿@using ModelingEvolution.Controls.Blazor
+@using ModelingEvolution.Controls.Blazor.AnchorPanelControl
+
+@inject VideoStreamingServer _srv
+
+@inject IJSRuntime JSRuntime
+@inject StreamPersister _persister
+
+
+@if(_protocol == "tcp")
+{
+    <BroadwayPlayer Src="@WsUrl()" Width="1920" Height="1080" Style="float: left; position: relative;"></BroadwayPlayer>
+} 
+else 
+{ 
+    <AnchorPanel Id="player-1">
+        <Dock>
+            <img src="@MjpegUrl()" alt="MJPEG LIVE STREAM" class="anchor-dock" style="width:100%"/> 
+            @* <img src="_content/ModelingEvolution.VideoStreaming.Ui/CameraPreviewImg.png" 
+                 class="anchor-dock" /> *@
+        </Dock>
+        <Anchors>
+            <AnchorUpperRight>
+                <Observable Source="_persister">
+                    <MudStack Row="true">
+                        @UpperRightButtons
+                        <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
+                                       Disabled="@(_address == null)"
+                                       OnClick="ToggleRecording" IconStyle="@_recordIconBtnStyle()"></IconButton_v7>
+
+                    </MudStack>
+                </Observable>
+            </AnchorUpperRight>
+            <AnchorLowerRight>
+                <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.Fullscreen" Size="Size.Large" OnClick="@ToggleFullScreen"></IconButton_v7>
+            </AnchorLowerRight>
+        </Anchors>
+    </AnchorPanel>
+}
+@code {
+    [Parameter]
+    public string? Stream { get; set; }
+
+    [Parameter]
+    public RenderFragment UpperRightButtons { get; set; }
+
+    private string _recordIconBtnStyle()
+    {
+        if (!_address.HasValue) return "fill:gray";
+        
+        return _persister.IsRecording(_address.Value) ? "fill:red" : "fill:gray";
+    }
+
+
+    private async Task ToggleRecording()
+    {
+        if (!_address.HasValue) return;
+
+        if (_persister.IsRecording(_address.Value))
+            await Task.Factory.StartNew(() => _persister.Stop(_address.Value), TaskCreationOptions.LongRunning);
+        else
+            await Task.Factory.StartNew(() => _persister.Save2(_address.Value, _tags), TaskCreationOptions.LongRunning);
+
+    }
+
+    private string _protocol;
+    private VideoAddress? _address;
+    private HashSet<string>? _tags;
+    private string WsUrl() => $"/ws/{Stream}";
+    private string MjpegUrl() => !string.IsNullOrWhiteSpace(Stream) ? $"/stream/{Stream}" : "_content/ModelingEvolution.VideoStreaming.Ui/CameraPreviewImg.png";
+
+    private async Task ToggleFullScreen()
+    {
+        await JSRuntime.ToggleFullScreen("player-1");
+    }
+    protected override void OnParametersSet()
+    {
+       
+        var rpl =  _srv.GetReplicator(Stream);
+        _protocol = rpl?.Protocol;
+        _address = rpl?.VideoAddress;
+        _tags = rpl?.Tags;
+    }
+}

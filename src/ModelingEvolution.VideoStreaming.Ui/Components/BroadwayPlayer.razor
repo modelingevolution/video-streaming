@@ -1,0 +1,44 @@
+﻿
+@inject IJSRuntime _js
+
+@* <div id="@Id" class="broadway" src="@Src" width="@Width" height="@Height" style="@Style" workers="@Workers" render="true" webgl="@Webgl"></div> *@
+
+<div id="@Id" width="@Width" height="@Height" class="broadway"></div>
+
+
+@code {
+    private static int _counter = 0;
+    private string Id = $"player-{_counter++}";
+    private string _webgl = "auto";
+
+    [Parameter]
+    public string Src { get; set; }
+
+    [Parameter]
+    public int Width { get; set; }
+
+    [Parameter]
+    public int Height { get; set; }
+
+    [Parameter] public bool Workers { get; set; } = true;
+
+    [Parameter]
+    public string Webgl
+    {
+        get => _webgl;
+        set => _webgl = value;
+    }
+
+    [Parameter]
+    public string Style { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            //await _js.InvokeVoidAsync("loadBroadway", Id);
+            await _js.InvokeVoidAsync("loadBroadwayStream", Id,Src.TrimStart('/'), Width, Height);
+        }
+    }
+
+}

@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.5" />
+    <PackageReference Include="ModelingEvolution.Controls.Blazor.AnchorPanelControl" Version="0.0.3.13" />
+    <PackageReference Include="ModelingEvolution.Controls.Blazor.HistogramControl" Version="0.0.3.13" />
+    <PackageReference Include="ModelingEvolution.Observable" Version="0.0.5.4" />
+    <PackageReference Include="ModelingEvolution.Observable.Blazor" Version="0.0.5.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageReference Include="MudBlazor" Version="6.19.1" />
+    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.69.119" />
+    <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
+    <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
+    <PackageReference Include="xFFmpeg.NET" Version="7.2.0" />
+    <PackageReference Include="Zeroconf" Version="3.6.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming\ModelingEvolution.VideoStreaming.csproj" />
+  </ItemGroup>
+
+</Project>

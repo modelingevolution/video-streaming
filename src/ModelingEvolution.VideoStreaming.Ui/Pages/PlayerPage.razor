@@ -1,0 +1,47 @@
+﻿@page "/play/{FileName}"
+@using Microsoft.Extensions.Configuration
+@using StreamServer.Services
+
+@inject IConfiguration _configuration
+@inject VideoStreamingServer _srv
+@if (_file != null)
+{
+    <video width="1024" controls style="width:100%">
+        <source src="@_file" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    @* <p>
+        <a href="@_file" download="@_file">Download Video</a>
+    </p> *@
+}
+
+
+@code {
+
+    private string? _file;
+    
+   
+
+    [Parameter]
+    public string? FileName { get; set; }
+
+    [Parameter]
+    public string? Stream { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (FileName != null)
+        {
+            var dir = _configuration.GetValue<string>("VideoStorageDir");
+            var fullFile = Path.Combine(dir, FileName);
+            if (File.Exists(fullFile))
+            {
+                var index = fullFile.IndexOf("wwwroot");
+                var url = fullFile.Substring(index + 8).Replace("\\", "/");
+                _file = url;
+            }
+        }
+
+    }
+
+}
