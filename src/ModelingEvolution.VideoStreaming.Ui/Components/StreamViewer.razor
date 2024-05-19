@@ -15,7 +15,7 @@ else
 {
     <AnchorPanel Id="player-1" Style="@Style">
         <Dock>
-            <img src="@MjpegUrl()" alt="MJPEG LIVE STREAM" class="anchor-dock" style="width:100%"/> 
+            <img src="@MjpegUrl()" alt="MJPEG LIVE STREAM" class="anchor-dock" style="@_imgStyle"/> 
             @* <img src="_content/ModelingEvolution.VideoStreaming.Ui/CameraPreviewImg.png" 
                  class="anchor-dock" /> *@
         </Dock>
@@ -32,12 +32,16 @@ else
                 </Observable>
             </AnchorUpperRight>
             <AnchorLowerRight>
-                <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.Fullscreen" Size="Size.Large" OnClick="@ToggleFullScreen"></IconButton_v7>
+                <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.Fullscreen" 
+                               IconStyle="fill:white"
+                               Size="Size.Large" OnClick="@ToggleFullScreen"></IconButton_v7>
             </AnchorLowerRight>
         </Anchors>
     </AnchorPanel>
 }
 @code {
+    private string _imgStyle= "width:100%;";
+
     [Parameter]
     public string? Stream { get; set; }
 
@@ -45,7 +49,10 @@ else
     public RenderFragment UpperRightButtons { get; set; }
 
     [Parameter]
-    public string Style { get; set; }
+    public string? Style { get; set; }
+
+    [Parameter]
+    public string? ImgStyle { get; set; }
 
     private string _recordIconBtnStyle()
     {
@@ -83,5 +90,6 @@ else
         _protocol = rpl?.Protocol;
         _address = rpl?.VideoAddress;
         _tags = rpl?.Tags;
+        _imgStyle += ImgStyle;
     }
 }
