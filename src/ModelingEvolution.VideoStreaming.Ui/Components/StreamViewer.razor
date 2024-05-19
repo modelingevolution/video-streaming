@@ -12,8 +12,8 @@
     <BroadwayPlayer Src="@WsUrl()" Width="1920" Height="1080" Style="float: left; position: relative;"></BroadwayPlayer>
 } 
 else 
-{ 
-    <AnchorPanel Id="player-1">
+{
+    <AnchorPanel Id="player-1" Style="@Style">
         <Dock>
             <img src="@MjpegUrl()" alt="MJPEG LIVE STREAM" class="anchor-dock" style="width:100%"/> 
             @* <img src="_content/ModelingEvolution.VideoStreaming.Ui/CameraPreviewImg.png" 
@@ -44,6 +44,9 @@ else
     [Parameter]
     public RenderFragment UpperRightButtons { get; set; }
 
+    [Parameter]
+    public string Style { get; set; }
+
     private string _recordIconBtnStyle()
     {
         if (!_address.HasValue) return "fill:gray";
@@ -67,7 +70,7 @@ else
     private VideoAddress? _address;
     private HashSet<string>? _tags;
     private string WsUrl() => $"/ws/{Stream}";
-    private string MjpegUrl() => !string.IsNullOrWhiteSpace(Stream) ? $"/stream/{Stream}" : "_content/ModelingEvolution.VideoStreaming.Ui/CameraPreviewImg.png";
+    private string MjpegUrl() => StreamUrls.GetStreamUrlPath(Stream);
 
     private async Task ToggleFullScreen()
     {

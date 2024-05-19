@@ -163,7 +163,7 @@ namespace ModelingEvolution.VideoStreaming
         }
         private readonly int _localPort;
         private readonly string _dataDir;
-        private readonly string ffmpegExec;
+        private readonly string _ffmpegExec;
         private readonly Dictionary<VideoAddress, PersisterStream> _streams = new();
        
         public bool IsStartDisabled(VideoAddress address) => _streams.ContainsKey(address);
@@ -178,14 +178,13 @@ namespace ModelingEvolution.VideoStreaming
         static readonly Regex regex = new Regex(pattern, RegexOptions.Compiled);
         private readonly ILogger<StreamPersister> _logger;
 
+       
         public StreamPersister(VideoStreamingServer srv, IConfiguration configuration, ILogger<StreamPersister> logger)
         {
             _logger = logger;
             _localPort = srv.Port;
-            _dataDir = configuration.GetValue<string>("VideoStorageDir");
-            ffmpegExec = configuration.GetValue<string>("FFMpeg");
-            logger.LogInformation("Blob Storage: " + _dataDir);
-            logger.LogInformation("ffmpeg is taken from " + ffmpegExec);
+            _dataDir = configuration.VideoStorageDir();
+            _ffmpegExec = configuration.FfmpegPath();
         }
 
         private static Recording Parse(string fullName)
@@ -242,7 +241,7 @@ namespace ModelingEvolution.VideoStreaming
 
                 Debug.WriteLine($"About to save: {outputFilePath}");
 
-                var result = await Cli.Wrap(ffmpegExec)
+                var result = await Cli.Wrap(_ffmpegExec)
                     //.WithArgumentsIf(address.Protocol == "mjpeg", $"-i - -c:v libx264 -f mp4 -an -y \"{outputFilePath}\"")
                     .WithArgumentsIf(address.Protocol == "mjpeg", $"-i - -c:v h264 -preset:v ultrafast -f mp4 -an -y \"{outputFilePath}\"")
                     .WithArgumentsIf(address.Protocol != "mjpeg", $"-f h264")
@@ -273,7 +272,7 @@ namespace ModelingEvolution.VideoStreaming
 
         private async Task CompleteSave(string outputFilePath)
         {
-            var ffmpeg = new Engine(ffmpegExec);
+            var ffmpeg = new Engine(_ffmpegExec);
             if (!Path.IsPathRooted(outputFilePath))
                 outputFilePath = Path.Combine(Directory.GetCurrentDirectory(), outputFilePath);
             if (!File.Exists(outputFilePath)) return;
@@ -342,6 +341,7 @@ namespace ModelingEvolution.VideoStreaming
 
     static class CommandExtension
     {
+
         public static Command WithArgumentsIf(this Command cmd, bool condition, string command) => condition ? cmd.WithArguments(command) : cmd;
     }
     public class VideoStreamReplicator : IDisposable

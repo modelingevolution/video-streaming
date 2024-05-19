@@ -13,8 +13,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.5" />
-    <PackageReference Include="ModelingEvolution.Controls.Blazor.AnchorPanelControl" Version="0.0.3.13" />
-    <PackageReference Include="ModelingEvolution.Controls.Blazor.HistogramControl" Version="0.0.3.13" />
+    <PackageReference Include="ModelingEvolution.Controls.Blazor.AnchorPanelControl" Version="0.0.4.15" />
+    <PackageReference Include="ModelingEvolution.Controls.Blazor.HistogramControl" Version="0.0.4.15" />
     <PackageReference Include="ModelingEvolution.Observable" Version="0.0.5.4" />
     <PackageReference Include="ModelingEvolution.Observable.Blazor" Version="0.0.5.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />

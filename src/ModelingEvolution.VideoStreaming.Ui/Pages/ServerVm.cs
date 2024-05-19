@@ -1,9 +1,6 @@
 ﻿using ModelingEvolution.Observable;
-using ModelingEvolution.VideoStreaming;
-using ModelingEvolution.VideoStreaming.Ui.Pages;
-using StreamServer.Services;
 
-namespace StreamServer.Pages
+namespace ModelingEvolution.VideoStreaming.Ui.Pages
 {
     public class ServerVm
     {

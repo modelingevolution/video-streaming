@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace ModelingEvolution.VideoStreaming;
 
+
 public class ServerConfigProvider(IConfiguration conf, IPlumber plumber)
 {
     private ServerConfig? _config;
@@ -13,7 +14,7 @@ public class ServerConfigProvider(IConfiguration conf, IPlumber plumber)
     {
         if (_config != null) return _config;
 
-        var urlToMerge = (conf.GetValue<string>("Connections") ?? String.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var urlToMerge = conf.GetConnections();
         _config = await plumber.GetState<ServerConfig>(Id) ?? new ServerConfig() { Id=Id};
         
         if (urlToMerge == null) return _config;
@@ -29,7 +30,7 @@ public class ServerConfigProvider(IConfiguration conf, IPlumber plumber)
     {
         if (_config == null) _config = new();
         _config.Sources.Clear();
-        var urlToMerge = (conf.GetValue<string>("Connections") ?? String.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var urlToMerge = conf.GetConnections();
 
         foreach (var i in urlToMerge.Select(x => new Uri(x)))
             if (!_config.Sources.Contains(i))

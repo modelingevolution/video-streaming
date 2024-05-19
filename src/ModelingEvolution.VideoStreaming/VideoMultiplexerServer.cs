@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Makaretu.Dns;
 using MicroPlumberd;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming.Events;
