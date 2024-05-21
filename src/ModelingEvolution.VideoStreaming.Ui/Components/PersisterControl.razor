@@ -1,0 +1,67 @@
+﻿
+@using System.ComponentModel
+@using System.Diagnostics
+@using System.Globalization
+@using System.Net.Sockets
+@using System.Text
+@using Microsoft.CodeAnalysis.Differencing
+@inject ServerVm _vm
+@inject NavigationManager _nm
+@inject StreamPersister _persisterVm
+
+<MudText Typo="Typo.h6" Class="pa-4">
+    Current connections:
+</MudText>
+<MudSimpleTable Dense="true">
+    <thead>
+    <tr>
+        <th>Source</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <ObservableForEach ItemSource="_vm.Items">
+        <tr>
+            <td>@context.Address</td>
+            <td>
+                <MudButtonGroup Variant="Variant.Outlined">
+                    <MudIconButton Disabled="@(_persisterVm.IsStartDisabled(context.Source.VideoAddress))"
+                                   Icon="@Icons.Material.Filled.FiberManualRecord"
+                                   OnClick="@(async ()=> { await Task.Factory.StartNew(async () => await _persisterVm.Save2(context.Source.VideoAddress, context.Source.Tags), TaskCreationOptions.LongRunning); })">Record</MudIconButton>
+                    <MudIconButton Disabled="@(_persisterVm.IsStopDisabled(context.Source.VideoAddress))"
+                                   Icon="@Icons.Material.Filled.Stop"
+                                   OnClick="@(async ()=>await _persisterVm.Stop(context.Source.VideoAddress))">Stop</MudIconButton>
+                </MudButtonGroup>
+            </td>
+        </tr>
+    </ObservableForEach>
+    </tbody>
+</MudSimpleTable>
+<MudText Typo="Typo.h6" Class="pa-4">
+    Recordings:
+</MudText>
+<Observable Source="_persisterVm" Context="obs">
+    <MudDataGrid Items="@_persisterVm.Files" ReadOnly="false"
+                 Dense="true" EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual">
+        <Columns>
+            <PropertyColumn Property="x => x.DisplayName" Title="Source" />
+            <PropertyColumn Property="x => x.Started" Title="Created" IsEditable="false" />
+            <PropertyColumn Property="x => x.Duration" Title="Duration" IsEditable="false" />
+            <PropertyColumn Property="x => x.Size" Title="Size" IsEditable="false" />
+            <TemplateColumn CellClass="d-flex justify-end" IsEditable="false">
+                <CellTemplate>
+                    <MudStack Row>
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" Title="Play" OnClick="@(x=> _nm.NavigateTo($"/play/{context.Item.FileName}"))"></MudIconButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Style="padding:0" Title="Edit" OnClick="@(async () => await context.Actions.StartEditingItemAsync())"></MudIconButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Style="padding:0" Title="Delete" OnClick="@context.Item.Delete"></MudIconButton>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</Observable>
+@code {
+    
+    
+
+}

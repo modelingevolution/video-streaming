@@ -54,6 +54,9 @@ else
     [Parameter]
     public string? ImgStyle { get; set; }
 
+    [Parameter]
+    public EventCallback OverrideFullScreen { get; set; }
+
     private string _recordIconBtnStyle()
     {
         if (!_address.HasValue) return "fill:gray";
@@ -78,9 +81,14 @@ else
     private HashSet<string>? _tags;
     private string WsUrl() => $"/ws/{Stream}";
     private string MjpegUrl() => StreamUrls.GetStreamUrlPath(Stream);
-
+    
     private async Task ToggleFullScreen()
     {
+        if (OverrideFullScreen.HasDelegate)
+        {
+            await OverrideFullScreen.InvokeAsync();
+            return;
+        }
         await JSRuntime.ToggleFullScreen("player-1");
     }
     protected override void OnParametersSet()
