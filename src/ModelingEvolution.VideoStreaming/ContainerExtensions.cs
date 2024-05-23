@@ -48,8 +48,8 @@ namespace ModelingEvolution.VideoStreaming
         {
             if (config.IsStreamingAutostarted())
             {
+                await Task.Delay(2000, stoppingToken);
                 await srv.LoadConfig();
-                await Task.Delay(5000, stoppingToken);
                 srv.Start();
             }
         }
