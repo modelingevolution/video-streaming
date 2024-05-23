@@ -15,16 +15,17 @@ namespace ModelingEvolution.VideoStreaming
     public static class ContainerExtensions
     {
         public static Uri StreamingBindUrl(this IConfiguration configuration) =>
-            configuration.GetValue<Uri>("StreamingBindUrl") ?? new Uri("tcp://0.0.0.0:6000");
+            configuration.GetValue<Uri>("StreamingBindUrl") ?? new Uri("tcp://0.0.0.0:7000");
         public static bool IsSingleVideoStreaming(this IConfiguration configuration) =>
             configuration.GetValue<bool>("IsSingleVideoStreaming");
 
         public static bool IsStreamingAutostarted(this IConfiguration configuration) =>
             configuration.GetValue<bool>("IsStreamingAutoStarted");
-        public static IServiceCollection AddVideoStreaming(this IServiceCollection services)
+        public static IServiceCollection AddVideoStreaming(this IServiceCollection services, string rootDir)
         {
             services.AddBackgroundServiceIfMissing<VideoStreamingServerStarter>();
             services.AddSingleton<StreamPersister>();
+
             services.AddSingleton<VideoStreamingServer>((sp) =>
             {
                 var configuration = sp.GetRequiredService<IConfiguration>();
@@ -48,7 +49,8 @@ namespace ModelingEvolution.VideoStreaming
             if (config.IsStreamingAutostarted())
             {
                 await srv.LoadConfig();
-                srv.Start(true);
+                await Task.Delay(5000, stoppingToken);
+                srv.Start();
             }
         }
     }

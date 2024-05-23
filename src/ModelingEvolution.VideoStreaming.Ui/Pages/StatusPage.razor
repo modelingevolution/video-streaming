@@ -11,11 +11,6 @@
 <PageTitle>Index</PageTitle>
 
 <Observable Source="_vm.Server">
-    <MudToggleIconButton Icon="@Icons.Material.Filled.AlarmOff"
-                         Color="@Color.Error" Title="Off" ToggledTitle="On" 
-                         ToggledIcon="@Icons.Material.Filled.AlarmOn" 
-                         ToggledColor="@Color.Success" 
-                         @bind-Toggled="@context.Advertise">Advertise</MudToggleIconButton>
     @if (_vm.IsStartEnabled)
     {
         <MudButton OnClick="_vm.Start">Start</MudButton>

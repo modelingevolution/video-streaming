@@ -82,7 +82,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
     private readonly TcpListener _listener;
     private readonly ServerConfigProvider _configProvider;
     private readonly IPlumber _plumber;
-    private ServiceDiscovery _serviceDiscovery;
+    
     private DateTime _started;
     
     public State State
@@ -188,12 +188,11 @@ public class VideoStreamingServer : INotifyPropertyChanged
 
     public DateTime NxReconnect { get; set; }
 
-    public void Start(bool? advertise = null)
+    public void Start()
     {
         _logger.LogInformation("Video stream replicator is starting...");
         State = State.Starting;
-        if (advertise.HasValue)
-            this.Advertise = true;
+      
         
         try
         {
@@ -207,16 +206,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
             State = State.Running;
             _logger.LogInformation("Video stream replicator is running.");
 
-            if (!Advertise) return;
-
-            var videoSrv = new ServiceProfile(Dns.GetHostName(), "video.tcp", (ushort)Port);
-            var eventStoreSrv = new ServiceProfile(Dns.GetHostName(), "eventStore.tcp", 2113);
-
-            _serviceDiscovery = new ServiceDiscovery();
-            _serviceDiscovery.Advertise(videoSrv);
-            _serviceDiscovery.Advertise(eventStoreSrv);
-
-            _logger.LogInformation("Advertising tcp service");
+            
         }
         catch (Exception ex)
         {
@@ -317,15 +307,11 @@ public class VideoStreamingServer : INotifyPropertyChanged
 
     private CancellationTokenSource _tokenSource;
     private State _state;
-    private bool _advertise;
+    
     public bool IsSingleVideoSource { get; }
     public bool IsReconnecting { get; private set; }
 
-    public bool Advertise
-    {
-        get => _advertise;
-        set => SetField(ref _advertise, value);
-    }
+    
 
     public async Task OnAutoReconnectLoop()
     {

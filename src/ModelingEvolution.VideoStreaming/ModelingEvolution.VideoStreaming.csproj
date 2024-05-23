@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\EventPi\src\EventPi.Abstractions\EventPi.Abstractions.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Events\ModelingEvolution.VideoStreaming.Events.csproj" />
   </ItemGroup>
 

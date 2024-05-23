@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using CliWrap;
+using EventPi.Abstractions;
 using FFmpeg.NET;
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
@@ -178,13 +179,19 @@ namespace ModelingEvolution.VideoStreaming
         static readonly Regex regex = new Regex(pattern, RegexOptions.Compiled);
         private readonly ILogger<StreamPersister> _logger;
 
-       
-        public StreamPersister(VideoStreamingServer srv, IConfiguration configuration, ILogger<StreamPersister> logger)
+        
+        public StreamPersister(VideoStreamingServer srv, IConfiguration configuration, 
+            ILogger<StreamPersister> logger, IWebHostingEnv he)
         {
             _logger = logger;
             _localPort = srv.Port;
-            _dataDir = configuration.VideoStorageDir();
+            _dataDir = configuration.VideoStorageDir(he.WwwRoot);
+            if(Directory.Exists(_dataDir))
+                Directory.CreateDirectory(_dataDir);
+
             _ffmpegExec = configuration.FfmpegPath();
+            if(!File.Exists(_ffmpegExec))
+                logger.LogWarning("FFMPEG executable not found at: {ffmpeg}", _ffmpegExec);
         }
 
         private static Recording Parse(string fullName)

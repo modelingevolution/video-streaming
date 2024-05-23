@@ -9,12 +9,12 @@ public static class ConfigurationExtensions
     {
         return (conf.GetValue<string>("Connections") ?? String.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries);
     }
-    public static string VideoStorageDir(this IConfiguration configuration)
+    public static string VideoStorageDir(this IConfiguration configuration, string root)
     {
-        return configuration.GetValue<string>("VideoStorageDir");
+        return Path.Combine(root, configuration.GetValue<string>("VideoStorageDir") ?? "videos");
     }
     public static string FfmpegPath(this IConfiguration configuration)
     {
-        return configuration.GetValue<string>("FFMpeg");
+        return configuration.GetValue<string>("FFMpeg") ?? "/usr/bin/ffmpeg";
     }
 }

@@ -1,14 +1,18 @@
 ﻿@page "/play/{FileName}"
+@using EventPi.Abstractions
 @using Microsoft.Extensions.Configuration
 
 @inject IConfiguration _configuration
 @inject VideoStreamingServer _srv
+@inject IWebHostingEnv _env
 @if (_file != null)
 {
-    <video width="1024" controls style="width:100%">
-        <source src="@_file" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
+    <div style="position: relative; margin:auto">
+        <video controls style="object-fit: contains;width:100%">
+            <source src="@_file" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
     @* <p>
         <a href="@_file" download="@_file">Download Video</a>
     </p> *@
@@ -29,17 +33,15 @@
 
     protected override void OnParametersSet()
     {
-        if (FileName != null)
-        {
-            var dir = _configuration.GetValue<string>("VideoStorageDir");
-            var fullFile = Path.Combine(dir, FileName);
-            if (File.Exists(fullFile))
-            {
-                var index = fullFile.IndexOf("wwwroot");
-                var url = fullFile.Substring(index + 8).Replace("\\", "/");
-                _file = url;
-            }
-        }
+        if (FileName == null) return;
+        
+        var dir = _configuration.VideoStorageDir(_env.WwwRoot);
+        var fullFile = Path.Combine(dir, FileName);
+        if (!File.Exists(fullFile)) return;
+
+        var index = fullFile.IndexOf("wwwroot");
+        var url = fullFile.Substring(index + 8).Replace("\\", "/");
+        _file = url;
 
     }
 
