@@ -178,7 +178,7 @@ namespace ModelingEvolution.VideoStreaming
         const string pattern = @"^(.+?)\.(\d{4})(\d{2})(\d{2})\.((?:\d{1,2}\.)?)(\d{2})(\d{2})(\d{2})-(\d+)\.mp4$";
         static readonly Regex regex = new Regex(pattern, RegexOptions.Compiled);
         private readonly ILogger<StreamPersister> _logger;
-
+        public string DataDir => _dataDir;
         
         public StreamPersister(VideoStreamingServer srv, IConfiguration configuration, 
             ILogger<StreamPersister> logger, IWebHostingEnv he)

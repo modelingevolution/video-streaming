@@ -1,0 +1,16 @@
+﻿@inject FreeSpaceVmProvider _provider
+<Observable Source="@_vm">
+    @_vm?.FreeSpace
+</Observable>
+@code {
+
+    private FreeSpaceVmProvider.Vm? _vm;
+
+    [Parameter]
+    public string Path { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _vm = _provider.Get(Path);
+    }
+}
