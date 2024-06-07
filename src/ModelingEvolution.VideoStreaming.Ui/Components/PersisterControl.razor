@@ -42,7 +42,7 @@
 </MudText>
 <Observable Source="_persisterVm" Context="obs">
     <MudDataGrid Items="@_persisterVm.Files" ReadOnly="false"
-                 Dense="true" EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual">
+                 Dense="false" EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual">
         <Columns>
             <PropertyColumn Property="x => x.DisplayName" Title="Source" />
             <PropertyColumn Property="x => x.Started" Title="Created" IsEditable="false" />
