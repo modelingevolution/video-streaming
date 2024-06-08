@@ -24,8 +24,8 @@ namespace ModelingEvolution.VideoStreaming.Ui.Components
         {
             foreach (var i in _index.Values)
             {
-                DirectoryInfo info = new DirectoryInfo(i.Path);
-                var driveInfo = new DriveInfo(info.Root.FullName);
+                //DirectoryInfo info = new DirectoryInfo(i.Path);
+                var driveInfo = new DriveInfo(i.Path);
                 Bytes freeSpace = driveInfo.AvailableFreeSpace;
                 i.FreeSpace = freeSpace.ToString();
             }
