@@ -59,7 +59,9 @@
             <TemplateColumn CellClass="d-flex justify-end" IsEditable="false">
                 <CellTemplate>
                     <MudStack Row>
-                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" Title="Play" OnClick="@(x=> _nm.NavigateTo($"/play/{context.Item.FileName}"))"></MudIconButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" Title="Play" Disabled="@(context.Item.FileName.EndsWith("mjpeg"))"
+                                       OnClick="@(x=> _nm.NavigateTo($"/play/{context.Item.FileName}"))"></MudIconButton>
+
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Style="padding:0" Title="Edit" OnClick="@(async () => await context.Actions.StartEditingItemAsync())"></MudIconButton>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Style="padding:0" Title="Delete" OnClick="@context.Item.Delete"></MudIconButton>
                     </MudStack>
