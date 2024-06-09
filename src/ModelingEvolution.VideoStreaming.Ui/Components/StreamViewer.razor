@@ -72,7 +72,7 @@ else
         if (_persister.IsRecording(_address.Value))
             await Task.Factory.StartNew(() => _persister.Stop(_address.Value), TaskCreationOptions.LongRunning);
         else
-            await Task.Factory.StartNew(() => _persister.Save2(_address.Value, _tags), TaskCreationOptions.LongRunning);
+            await Task.Factory.StartNew(() => _persister.Save(_address.Value, _tags), TaskCreationOptions.LongRunning);
 
     }
 

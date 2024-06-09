@@ -24,14 +24,22 @@
         <tr>
             <td>@context.Address</td>
             <td>
-                <MudButtonGroup Variant="Variant.Outlined">
-                    <MudIconButton Disabled="@(_persisterVm.IsStartDisabled(context.Source.VideoAddress))"
-                                   Icon="@Icons.Material.Filled.FiberManualRecord"
-                                   OnClick="@(async ()=> { await Task.Factory.StartNew(async () => await _persisterVm.Save2(context.Source.VideoAddress, context.Source.Tags), TaskCreationOptions.LongRunning); })">Record</MudIconButton>
-                    <MudIconButton Disabled="@(_persisterVm.IsStopDisabled(context.Source.VideoAddress))"
-                                   Icon="@Icons.Material.Filled.Stop"
-                                   OnClick="@(async ()=>await _persisterVm.Stop(context.Source.VideoAddress))">Stop</MudIconButton>
-                </MudButtonGroup>
+                <MudStack Row="true">
+                  
+                    <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary">
+                        <MudIconButton Disabled="@(_persisterVm.IsStartDisabled(context.Source.VideoAddress))"
+                                       Icon="@Icons.Material.Filled.FiberManualRecord"
+                                       OnClick="@(async () => { await Task.Factory.StartNew(async () => await _persisterVm.Save(context.Source.VideoAddress, context.Source.Tags), TaskCreationOptions.LongRunning); })">Record</MudIconButton>
+                        <MudIconButton Disabled="@(_persisterVm.IsStopDisabled(context.Source.VideoAddress))"
+                                       Icon="@Icons.Material.Filled.Stop"
+                                       OnClick="@(async () => await _persisterVm.Stop(context.Source.VideoAddress))">Stop</MudIconButton>
+                    </MudButtonGroup>
+                    <MudToggleGroup Delimiters="true" Outline="true" Dense="true" Color="Color.Primary" @bind-Value="@_persisterVm.Format">
+                        <MudToggleItem Value="@("mp4")"/>
+                        <MudToggleItem Value="@("mjpeg")"/>
+                    </MudToggleGroup>
+
+                </MudStack>
             </td>
         </tr>
     </ObservableForEach>

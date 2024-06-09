@@ -142,6 +142,12 @@ namespace ModelingEvolution.VideoStreaming
 
     public class StreamPersister : INotifyPropertyChanged
     {
+        public string Format
+        {
+            get => _format;
+            set => SetField(ref _format, value);
+        }
+
         record PersisterStream(Stream Stream, ILogger<StreamPersister> logger)
         {
             public CancellationTokenSource GracefullCencellationTokenSource = new();
@@ -171,13 +177,18 @@ namespace ModelingEvolution.VideoStreaming
         public bool IsStopDisabled(VideoAddress address) => !IsStartDisabled(address);
         public bool IsRecording(VideoAddress address) => _streams.ContainsKey(address);
         public IEnumerable<Recording> Files => Directory.Exists(_dataDir) ? Directory.EnumerateFiles(_dataDir,"*.mp4")
-            .Select(Parse)
+            .Select(x => Parse(x,mp3_regex))
+            .Union(Directory.EnumerateFiles(_dataDir, "*.mjpeg").Select(x => Parse(x,mjpeg_regex)))
             .Where(x=>x!=null)
             .OrderByDescending(x=>x.Started) : Array.Empty<Recording>();
 
-        const string pattern = @"^(.+?)\.(\d{4})(\d{2})(\d{2})\.((?:\d{1,2}\.)?)(\d{2})(\d{2})(\d{2})-(\d+)\.mp4$";
-        static readonly Regex regex = new Regex(pattern, RegexOptions.Compiled);
+        const string mp3_pattern = @"^(.+?)\.(\d{4})(\d{2})(\d{2})\.((?:\d{1,2}\.)?)(\d{2})(\d{2})(\d{2})-(\d+)\.mp4$";
+        const string mjpeg_pattern = @"^(.+?)\.(\d{4})(\d{2})(\d{2})\.((?:\d{1,2}\.)?)(\d{2})(\d{2})(\d{2})-(\d+)\.mjpeg";
+
+        static readonly Regex mp3_regex = new Regex(mp3_pattern, RegexOptions.Compiled);
+        static readonly Regex mjpeg_regex = new Regex(mjpeg_pattern, RegexOptions.Compiled);
         private readonly ILogger<StreamPersister> _logger;
+        private string _format = "mp4";
         public string DataDir => _dataDir;
         
         public StreamPersister(VideoStreamingServer srv, IConfiguration configuration, 
@@ -194,7 +205,7 @@ namespace ModelingEvolution.VideoStreaming
                 logger.LogWarning("FFMPEG executable not found at: {ffmpeg}", _ffmpegExec);
         }
 
-        private static Recording Parse(string fullName)
+        private static Recording Parse(string fullName, Regex regex)
         {
             var fileName = Path.GetFileName(fullName);
             Match match = regex.Match(fileName);
@@ -228,7 +239,54 @@ namespace ModelingEvolution.VideoStreaming
             _streams[address].Close();
             _streams.Remove(address);
         }
-        public async Task Save2(VideoAddress address, HashSet<string> tags)
+        public async Task Save(VideoAddress address, HashSet<string> tags)
+        {
+            if(Format == "mp4")
+                await SaveMp4(address, tags);
+            else 
+                await SaveMjpeg(address, tags);
+        }
+        private async Task SaveMjpeg(VideoAddress address, HashSet<string> tags)
+        {
+            var stdOutBuffer = new StringBuilder();
+            var stdErrBuffer = new StringBuilder();
+
+            string outputFilePath = null;
+            try
+            {
+                using TcpClient tcpClient = new TcpClient("localhost", _localPort);
+                await using NetworkStream inStream = tcpClient.GetStream();
+                await using BufferedStream bufferedStream = new BufferedStream(inStream);
+
+                var persisterStream = new PersisterStream(bufferedStream, _logger);
+                _streams.Add(address, persisterStream);
+                OnPropertyChanged();
+
+                outputFilePath = await Handshake(address, tags, bufferedStream);
+
+                Debug.WriteLine($"About to save: {outputFilePath}");
+
+                await using var fs = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
+                await bufferedStream.CopyToAsync(fs, persisterStream.GracefullCencellationTokenSource.Token);
+                
+                Debug.WriteLine(stdOutBuffer);
+                Debug.WriteLine(stdErrBuffer);
+
+                await CompleteSave(outputFilePath,"mjpeg");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(stdOutBuffer);
+                Debug.WriteLine(stdErrBuffer);
+
+                if (outputFilePath != null) await CompleteSave(outputFilePath, "mjpeg");
+                Debug.WriteLine("Save failed!");
+                Debug.WriteLine(ex.Message);
+            }
+            _streams.Remove(address);
+            OnPropertyChanged("Files");
+        }
+        private async Task SaveMp4(VideoAddress address, HashSet<string> tags)
         {
             var stdOutBuffer = new StringBuilder();
             var stdErrBuffer = new StringBuilder();
@@ -262,14 +320,14 @@ namespace ModelingEvolution.VideoStreaming
                 Debug.WriteLine(stdOutBuffer);
                 Debug.WriteLine(stdErrBuffer);
 
-                await CompleteSave(outputFilePath);
+                await CompleteSave(outputFilePath, "mp4");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine(stdOutBuffer);
                 Debug.WriteLine(stdErrBuffer);
 
-                if (outputFilePath != null) await CompleteSave(outputFilePath);
+                if (outputFilePath != null) await CompleteSave(outputFilePath,"mp4");
                 Debug.WriteLine("Save failed!");
                 Debug.WriteLine(ex.Message);
             }
@@ -277,39 +335,62 @@ namespace ModelingEvolution.VideoStreaming
             OnPropertyChanged("Files");
         }
 
-        private async Task CompleteSave(string outputFilePath)
+        private async Task CompleteSave(string outputFilePath, string format)
         {
-            var ffmpeg = new Engine(_ffmpegExec);
-            if (!Path.IsPathRooted(outputFilePath))
-                outputFilePath = Path.Combine(Directory.GetCurrentDirectory(), outputFilePath);
-            if (!File.Exists(outputFilePath)) return;
+            if (format == "mp4")
+            {
+                var ffmpeg = new Engine(_ffmpegExec);
+                if (!Path.IsPathRooted(outputFilePath))
+                    outputFilePath = Path.Combine(Directory.GetCurrentDirectory(), outputFilePath);
+                if (!File.Exists(outputFilePath)) return;
 
-            var metadata = await ffmpeg.GetMetaDataAsync(new InputFile(outputFilePath), CancellationToken.None);
-            if (metadata == null) return;
+                var metadata = await ffmpeg.GetMetaDataAsync(new InputFile(outputFilePath), CancellationToken.None);
+                if (metadata == null) return;
 
-            var dst = outputFilePath.Replace(".mp4", $"-{(int)metadata.Duration.TotalSeconds}.mp4");
-            File.Move(outputFilePath, dst);
+                var dst = outputFilePath.Replace($".{format}", $"-{(int)metadata.Duration.TotalSeconds}.{format}");
+                File.Move(outputFilePath, dst);
+            }
+            else
+            {
+                MjpegDecoder d = new MjpegDecoder();
+                int frames = 0;
+                using (var fs = File.Open(outputFilePath, FileMode.Open))
+                {
+                    int r = fs.ReadByte();
+                    do
+                    {
+                        if (d.Decode((byte)r) == JpegMarker.Start)
+                            frames += 1;
+                        r = fs.ReadByte();
+                    } while (r != -1);
+                }
+
+                var sec = frames / 25;
+                var dst = outputFilePath.Replace($".{format}", $"-{(int)sec}.{format}");
+                File.Move(outputFilePath, dst);
+            }
         }
 
-        private async Task<string> Handshake(VideoAddress address, HashSet<string> tags, Stream h264Stream)
+        private async Task<string> Handshake(VideoAddress address, HashSet<string> tags, Stream inStream)
         {
             StringBuilder outFile = new StringBuilder();
+            string extension = Format == "mp4" ? "mp4" : "mjpeg";
             if (tags.Any())
             {
                 var first = tags.First();
-                await h264Stream.WritePrefixedAsciiString(first);
+                await inStream.WritePrefixedAsciiString(first);
                 outFile.Append(first);
             }
             else
             {
                 if (!string.IsNullOrWhiteSpace(address.StreamName))
                 {
-                    await h264Stream.WritePrefixedAsciiString(address.StreamName);
+                    await inStream.WritePrefixedAsciiString(address.StreamName);
                     outFile.Append(address.StreamName);
                 }
                 else
                 {
-                    await h264Stream.WritePrefixedAsciiString(address.Host);
+                    await inStream.WritePrefixedAsciiString(address.Host);
                     outFile.Append(address.Host);
                 }
             }
@@ -319,9 +400,9 @@ namespace ModelingEvolution.VideoStreaming
             var timeSpan = n.TimeOfDay;
 
             if (timeSpan.Days > 0)
-                outFile.Append($".{dateSegment}.{timeSpan.Days}.{timeSpan.Hours:D2}{timeSpan.Minutes:D2}{timeSpan.Seconds:D2}.mp4");
+                outFile.Append($".{dateSegment}.{timeSpan.Days}.{timeSpan.Hours:D2}{timeSpan.Minutes:D2}{timeSpan.Seconds:D2}.{extension}");
             else
-                outFile.Append($".{dateSegment}.{timeSpan.Hours:D2}{timeSpan.Minutes:D2}{timeSpan.Seconds:D2}.mp4");
+                outFile.Append($".{dateSegment}.{timeSpan.Hours:D2}{timeSpan.Minutes:D2}{timeSpan.Seconds:D2}.{extension}");
 
             if (!Directory.Exists(_dataDir))
                 Directory.CreateDirectory(_dataDir);
