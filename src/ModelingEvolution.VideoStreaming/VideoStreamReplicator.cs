@@ -1,437 +1,128 @@
-﻿using System.ComponentModel;
-using System.Diagnostics;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Net.WebSockets;
-using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
-using CliWrap;
-using EventPi.Abstractions;
-using FFmpeg.NET;
+using EventPi.SharedMemory;
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ModelingEvolution.VideoStreaming.Chasers;
 using ModelingEvolution.VideoStreaming.Events;
 using ModelingEvolution.VideoStreaming.Nal;
+using OpenCvSharp;
+using static OpenCvSharp.LineIterator;
 
 #pragma warning disable CS4014
 
 
 namespace ModelingEvolution.VideoStreaming
 {
-    public readonly struct Bytes
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
+    public unsafe struct FullHDFrame 
     {
-        private readonly string _text;
-        private readonly long _value;
-        private readonly sbyte _precision;
-        private Bytes(long value, sbyte precision=1)
-        {
-            _value = value;
-            _text = value.WithSizeSuffix(precision);
-            _precision = precision;
-        }
-        public static implicit operator Bytes(ulong value)
-        {
-            return new Bytes((long)value);
-        }
-        public static implicit operator Bytes(long value)
-        {
-            return new Bytes(value);
-        }
-
-        public override string ToString() => _text;
-    }
-    static class SizeExtensions
-    {
-        static readonly string[] SizeSuffixes =
-            { "bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
-
-        public static string WithSizeSuffix(this int value, int decimalPlaces = 1)
-        {
-            return ((long)value).WithSizeSuffix(decimalPlaces);
-        }
-
-
-        public static string WithSizeSuffix(this ulong value, int decimalPlaces = 1)
-        {
-            if (decimalPlaces < 0) { throw new ArgumentOutOfRangeException("decimalPlaces"); }
-            if (value == 0) { return string.Format("{0:n" + decimalPlaces + "} bytes", 0); }
-
-            // mag is 0 for bytes, 1 for KB, 2, for MB, etc.
-            int mag = (int)Math.Log(value, 1024);
-
-            // 1L << (mag * 10) == 2 ^ (10 * mag) 
-            // [i.e. the number of bytes in the unit corresponding to mag]
-            decimal adjustedSize = (decimal)value / (1L << (mag * 10));
-
-            // make adjustment when the value is large enough that
-            // it would round up to 1000 or more
-            if (Math.Round(adjustedSize, decimalPlaces) >= 1000)
-            {
-                mag += 1;
-                adjustedSize /= 1024;
-            }
-
-            return string.Format("{0:n" + decimalPlaces + "} {1}",
-                adjustedSize,
-                SizeSuffixes[mag]);
-        }
-        public static string WithSizeSuffix(this long value, int decimalPlaces = 1)
-        {
-            if (decimalPlaces < 0) { throw new ArgumentOutOfRangeException("decimalPlaces"); }
-            if (value < 0) { return "-" + WithSizeSuffix(-value, decimalPlaces); }
-            if (value == 0) { return string.Format("{0:n" + decimalPlaces + "} bytes", 0); }
-
-            // mag is 0 for bytes, 1 for KB, 2, for MB, etc.
-            int mag = (int)Math.Log(value, 1024);
-
-            // 1L << (mag * 10) == 2 ^ (10 * mag) 
-            // [i.e. the number of bytes in the unit corresponding to mag]
-            decimal adjustedSize = (decimal)value / (1L << (mag * 10));
-
-            // make adjustment when the value is large enough that
-            // it would round up to 1000 or more
-            if (Math.Round(adjustedSize, decimalPlaces) >= 1000)
-            {
-                mag += 1;
-                adjustedSize /= 1024;
-            }
-
-            return string.Format("{0:n" + decimalPlaces + "} {1}",
-                adjustedSize,
-                SizeSuffixes[mag]);
-        }
-    }
-    public static class Extensions
-    {
-        public static async Task WritePrefixedAsciiString(this Stream stream, string value)
-        {
-            var name = Encoding.ASCII.GetBytes(value);
-            stream.WriteByte((byte)name.Length);
-            await stream.WriteAsync(name);
-        }
-    }
-    public record Recording(string FileName, string FullPath, string Name, DateTime Started, TimeSpan Duration, Bytes Size)
-    {
-        private string? _displayName;
-        private bool _displayNameLoaded;
-        public string DisplayName
-        {
-            get
-            {
-                if (_displayNameLoaded)
-                    return _displayName;
-                string metadata = FullPath + ".name";
-                _displayName = File.Exists(metadata) ? File.ReadAllText(metadata) : Name;
-                _displayNameLoaded = true;
-                return _displayName;
-            }
-            set
-            {
-                string metadata = FullPath + ".name";
-                File.WriteAllText(metadata, value);
-                _displayName = value;
-            }
-        }
-        public void Delete()
-        {
-            File.Delete(FullPath);
-        }
+        public const int PIXELS = 1920 * 1080;
+        public const int PIXELS_YUV_420 = PIXELS + PIXELS >> 1;
+        public fixed byte Data[PIXELS_YUV_420];
+      
     }
 
-    public class StreamPersister : INotifyPropertyChanged
+    public readonly struct FrameInfo
     {
-        public string Format
+        public static readonly FrameInfo FullHD = new FrameInfo(1920, 1080, 1920);
+        public static readonly FrameInfo SubHD = new FrameInfo(1456, 1088, 1456);
+        public FrameInfo(int Width, int Height, int Stride)
         {
-            get => _format;
-            set => SetField(ref _format, value);
+            this.Width = Width;
+            this.Height = Height;
+            this.Stride = Stride;
+            Pixels = Width * Height;
+            Yuv420 = Pixels + Pixels >> 1;
+            Rows = Height + Height >> 1;
         }
 
-        record PersisterStream(Stream Stream, ILogger<StreamPersister> logger)
-        {
-            public CancellationTokenSource GracefullCencellationTokenSource = new();
-            public CancellationTokenSource ForcefullCencellationTokenSource = new();
+        public int Pixels { get; }
+        public int Yuv420 { get; }
+        public int Width { get;  }
+        public int Rows { get; }
+        public int Height { get;  }
+        public int Stride { get;  }
 
-            public async Task Close()
-            {
-                try
-                {
-                    await GracefullCencellationTokenSource.CancelAsync();
-                    ForcefullCencellationTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
-                }
-                catch(Exception ex)
-                {
-                    logger.LogWarning(ex,"Coudn't close nicely ffmpeg.");
-                }
-
-                await Stream.DisposeAsync();
-            }
-        }
-        private readonly int _localPort;
-        private readonly string _dataDir;
-        private readonly string _ffmpegExec;
-        private readonly Dictionary<VideoAddress, PersisterStream> _streams = new();
-       
-        public bool IsStartDisabled(VideoAddress address) => _streams.ContainsKey(address);
-        public bool IsStopDisabled(VideoAddress address) => !IsStartDisabled(address);
-        public bool IsRecording(VideoAddress address) => _streams.ContainsKey(address);
-        public IEnumerable<Recording> Files => Directory.Exists(_dataDir) ? Directory.EnumerateFiles(_dataDir,"*.mp4")
-            .Select(x => Parse(x,mp3_regex))
-            .Union(Directory.EnumerateFiles(_dataDir, "*.mjpeg").Select(x => Parse(x,mjpeg_regex)))
-            .Where(x=>x!=null)
-            .OrderByDescending(x=>x.Started) : Array.Empty<Recording>();
-
-        const string mp3_pattern = @"^(.+?)\.(\d{4})(\d{2})(\d{2})\.((?:\d{1,2}\.)?)(\d{2})(\d{2})(\d{2})-(\d+)\.mp4$";
-        const string mjpeg_pattern = @"^(.+?)\.(\d{4})(\d{2})(\d{2})\.((?:\d{1,2}\.)?)(\d{2})(\d{2})(\d{2})-(\d+)\.mjpeg";
-
-        static readonly Regex mp3_regex = new Regex(mp3_pattern, RegexOptions.Compiled);
-        static readonly Regex mjpeg_regex = new Regex(mjpeg_pattern, RegexOptions.Compiled);
-        private readonly ILogger<StreamPersister> _logger;
-        private string _format = "mp4";
-        public string DataDir => _dataDir;
+      
+    }
+   
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
+    public unsafe struct SubHDFrame 
+    {
+        private const int PIXELS = 1456 * 1088;
+        private const int PIXELS_YUV_420 = PIXELS + PIXELS >> 1;
+        public fixed byte Data[PIXELS_YUV_420];
         
-        public StreamPersister(VideoStreamingServer srv, IConfiguration configuration, 
-            ILogger<StreamPersister> logger, IWebHostingEnv he)
-        {
-            _logger = logger;
-            _localPort = srv.Port;
-            _dataDir = configuration.VideoStorageDir(he.WwwRoot);
-            if(Directory.Exists(_dataDir))
-                Directory.CreateDirectory(_dataDir);
-
-            _ffmpegExec = configuration.FfmpegPath();
-            if(!File.Exists(_ffmpegExec))
-                logger.LogWarning("FFMPEG executable not found at: {ffmpeg}", _ffmpegExec);
-        }
-
-        private static Recording Parse(string fullName, Regex regex)
-        {
-            var fileName = Path.GetFileName(fullName);
-            Match match = regex.Match(fileName);
-
-            if (match.Success)
-            {
-                string videoName = match.Groups[1].Value;
-                string year = match.Groups[2].Value;
-                string month = match.Groups[3].Value;
-                string day = match.Groups[4].Value;
-                string optionalDays = match.Groups[5].Value;
-                string hour = match.Groups[6].Value;
-                string minute = match.Groups[7].Value;
-                string second = match.Groups[8].Value;
-                string duration = match.Groups[9].Value;
-
-                DateTime date = new DateTime(int.Parse(year), int.Parse(month), int.Parse(day));
-                TimeSpan time = new TimeSpan(int.Parse(hour), int.Parse(minute), int.Parse(second));
-
-                if (!string.IsNullOrEmpty(optionalDays)) 
-                    time = time.Add(TimeSpan.FromDays(int.Parse(optionalDays)));
-                date += time;
-                FileInfo finto = new FileInfo(fullName);
-                return new Recording(fileName, fullName,videoName, date, TimeSpan.FromSeconds(int.Parse(duration)), finto.Length);
-            }
-
-            return null;
-        }
-        public async Task Stop(VideoAddress address)
-        { 
-            _streams[address].Close();
-            _streams.Remove(address);
-        }
-        public async Task Save(VideoAddress address, HashSet<string> tags)
-        {
-            if(Format == "mp4")
-                await SaveMp4(address, tags);
-            else 
-                await SaveMjpeg(address, tags);
-        }
-        private async Task SaveMjpeg(VideoAddress address, HashSet<string> tags)
-        {
-            var stdOutBuffer = new StringBuilder();
-            var stdErrBuffer = new StringBuilder();
-
-            string outputFilePath = null;
-            try
-            {
-                using TcpClient tcpClient = new TcpClient("localhost", _localPort);
-                await using NetworkStream inStream = tcpClient.GetStream();
-                await using BufferedStream bufferedStream = new BufferedStream(inStream);
-
-                var persisterStream = new PersisterStream(bufferedStream, _logger);
-                _streams.Add(address, persisterStream);
-                OnPropertyChanged();
-
-                outputFilePath = await Handshake(address, tags, bufferedStream);
-
-                Debug.WriteLine($"About to save: {outputFilePath}");
-
-                await using var fs = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
-                await bufferedStream.CopyToAsync(fs, persisterStream.GracefullCencellationTokenSource.Token);
-                
-                Debug.WriteLine(stdOutBuffer);
-                Debug.WriteLine(stdErrBuffer);
-
-                await CompleteSave(outputFilePath,"mjpeg");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(stdOutBuffer);
-                Debug.WriteLine(stdErrBuffer);
-
-                if (outputFilePath != null) await CompleteSave(outputFilePath, "mjpeg");
-                Debug.WriteLine("Save failed!");
-                Debug.WriteLine(ex.Message);
-            }
-            _streams.Remove(address);
-            OnPropertyChanged("Files");
-        }
-        private async Task SaveMp4(VideoAddress address, HashSet<string> tags)
-        {
-            var stdOutBuffer = new StringBuilder();
-            var stdErrBuffer = new StringBuilder();
-
-            string outputFilePath = null;
-            try
-            {
-                using TcpClient tcpClient = new TcpClient("localhost", _localPort);
-                await using NetworkStream h264Stream = tcpClient.GetStream();
-                await using BufferedStream bufferedStream = new BufferedStream(h264Stream);
-
-                var persisterStream = new PersisterStream(bufferedStream, _logger);
-                _streams.Add(address, persisterStream);
-                OnPropertyChanged();
-
-                outputFilePath = await Handshake(address, tags, bufferedStream);
-
-                Debug.WriteLine($"About to save: {outputFilePath}");
-
-                var result = await Cli.Wrap(_ffmpegExec)
-                    //.WithArgumentsIf(address.Protocol == "mjpeg", $"-i - -c:v libx264 -f mp4 -an -y \"{outputFilePath}\"")
-                    .WithArgumentsIf(address.Protocol == "mjpeg", $"-i - -c:v h264 -preset:v ultrafast -f mp4 -an -y \"{outputFilePath}\"")
-                    .WithArgumentsIf(address.Protocol != "mjpeg", $"-f h264")
-                    .WithStandardInputPipe(PipeSource.FromStream(bufferedStream))
-                    .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
-                    .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))
-                    .ExecuteAsync(persisterStream .ForcefullCencellationTokenSource.Token,
-                        persisterStream .GracefullCencellationTokenSource.Token);
-               
-                Debug.WriteLine(result.ExitCode);
-                Debug.WriteLine(stdOutBuffer);
-                Debug.WriteLine(stdErrBuffer);
-
-                await CompleteSave(outputFilePath, "mp4");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(stdOutBuffer);
-                Debug.WriteLine(stdErrBuffer);
-
-                if (outputFilePath != null) await CompleteSave(outputFilePath,"mp4");
-                Debug.WriteLine("Save failed!");
-                Debug.WriteLine(ex.Message);
-            }
-            _streams.Remove(address);
-            OnPropertyChanged("Files");
-        }
-
-        private async Task CompleteSave(string outputFilePath, string format)
-        {
-            if (format == "mp4")
-            {
-                var ffmpeg = new Engine(_ffmpegExec);
-                if (!Path.IsPathRooted(outputFilePath))
-                    outputFilePath = Path.Combine(Directory.GetCurrentDirectory(), outputFilePath);
-                if (!File.Exists(outputFilePath)) return;
-
-                var metadata = await ffmpeg.GetMetaDataAsync(new InputFile(outputFilePath), CancellationToken.None);
-                if (metadata == null) return;
-
-                var dst = outputFilePath.Replace($".{format}", $"-{(int)metadata.Duration.TotalSeconds}.{format}");
-                File.Move(outputFilePath, dst);
-            }
-            else
-            {
-                MjpegDecoder d = new MjpegDecoder();
-                int frames = 0;
-                using (var fs = File.Open(outputFilePath, FileMode.Open))
-                {
-                    int r = fs.ReadByte();
-                    do
-                    {
-                        if (d.Decode((byte)r) == JpegMarker.Start)
-                            frames += 1;
-                        r = fs.ReadByte();
-                    } while (r != -1);
-                }
-
-                var sec = frames / 25;
-                var dst = outputFilePath.Replace($".{format}", $"-{(int)sec}.{format}");
-                File.Move(outputFilePath, dst);
-            }
-        }
-
-        private async Task<string> Handshake(VideoAddress address, HashSet<string> tags, Stream inStream)
-        {
-            StringBuilder outFile = new StringBuilder();
-            string extension = Format == "mp4" ? "mp4" : "mjpeg";
-            if (tags.Any())
-            {
-                var first = tags.First();
-                await inStream.WritePrefixedAsciiString(first);
-                outFile.Append(first);
-            }
-            else
-            {
-                if (!string.IsNullOrWhiteSpace(address.StreamName))
-                {
-                    await inStream.WritePrefixedAsciiString(address.StreamName);
-                    outFile.Append(address.StreamName);
-                }
-                else
-                {
-                    await inStream.WritePrefixedAsciiString(address.Host);
-                    outFile.Append(address.Host);
-                }
-            }
-
-            var n = DateTime.Now;
-            var dateSegment = n.ToString("yyyyMMdd");
-            var timeSpan = n.TimeOfDay;
-
-            if (timeSpan.Days > 0)
-                outFile.Append($".{dateSegment}.{timeSpan.Days}.{timeSpan.Hours:D2}{timeSpan.Minutes:D2}{timeSpan.Seconds:D2}.{extension}");
-            else
-                outFile.Append($".{dateSegment}.{timeSpan.Hours:D2}{timeSpan.Minutes:D2}{timeSpan.Seconds:D2}.{extension}");
-
-            if (!Directory.Exists(_dataDir))
-                Directory.CreateDirectory(_dataDir);
-            string outputFilePath = Path.Combine(_dataDir, outFile.ToString());
-            _logger.LogInformation("ffmpeg is configured to save file at: " + outputFilePath);
-            return outputFilePath;
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
-        }
     }
-
-    static class CommandExtension
+    public class VideoSharedBufferReplicator
     {
+        private SharedCyclicBuffer? _buffer;
+        private SharedBufferMultiplexer? _multiplexer;
+        private FrameInfo _info;
+        public string SharedMemoryName { get; private set; }
 
-        public static Command WithArgumentsIf(this Command cmd, bool condition, string command) => condition ? cmd.WithArguments(command) : cmd;
+        public VideoSharedBufferReplicator(string sharedMemoryName, FrameInfo info)
+        {
+            SharedMemoryName = sharedMemoryName;
+            _info = info;
+        }
+
+        public VideoSharedBufferReplicator Connect()
+        {
+            _buffer = new SharedCyclicBuffer(60, _info.Yuv420,  SharedMemoryName); // ~180MB
+            _multiplexer = new SharedBufferMultiplexer(_buffer, _info);
+            _multiplexer.Start();
+            return this;
+        }
     }
+
+    public class SharedBufferMultiplexer : IMultiplexer
+    {
+        private Thread _worker;
+        private readonly SharedCyclicBuffer _buffer;
+        private readonly FrameInfo _info;
+
+        public SharedBufferMultiplexer(SharedCyclicBuffer buffer, FrameInfo info)
+        {
+            _buffer = buffer;
+            _info = info;
+        }
+
+        public void Start()
+        {
+            // Let's do it the old way, there's a semaphore. 
+            _worker = new Thread(OnRun);
+            _worker.IsBackground = true;
+            _worker.Start();
+        }
+
+        private void OnRun()
+        {
+            while (true)
+            {
+                var ptr = _buffer.PopPtr();
+                Mat m = new Mat(_info.Rows, _info.Width, MatType.CV_8U,ptr, _info.Stride);
+                m.WriteToStream();
+            }
+        }
+
+        public Memory<byte> Buffer()
+        {
+            
+        }
+
+        public int ReadOffset { get; }
+        public ulong TotalReadBytes { get; }
+        public void Disconnect(IChaser chaser)
+        {
+            
+        }
+    }
+
     public class VideoStreamReplicator : IDisposable
     {
         public event EventHandler Stopped;

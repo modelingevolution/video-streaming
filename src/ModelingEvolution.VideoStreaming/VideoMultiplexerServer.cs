@@ -13,41 +13,6 @@ using ModelingEvolution.VideoStreaming.Events;
 
 namespace ModelingEvolution.VideoStreaming;
 
-public readonly struct VideoAddress
-{
-    public string? StreamName { get; init; }
-    public string Host { get; init; }
-    public int Port { get; init; }
-    public string Protocol { get; init; }
-    public VideoAddress(string protocol, string host, int port, string? streamName = null)
-    {
-        Host = host;
-        Port = port;
-        StreamName = streamName;
-        Protocol = protocol;
-    }
-   
-}
-static class CollectionExtensions
-{
-    public static void SafeAddUnique<T>(this IList<T> collection, T item)
-    {
-        lock (collection)
-        {
-            if (!collection.Contains(item))
-                collection.Add(item);
-        }
-    }
-
-    public static bool SafeRemove<T>(this IList<T> collection, T item)
-    {
-        lock (collection)
-        {
-            return collection.Remove(item);
-        }
-    }
-}
-
 public class VideoStreamingServer : INotifyPropertyChanged
 {
     public record VideoSource(string Protocol, string Host, int Port, string StreamName, params string[] Tags) 

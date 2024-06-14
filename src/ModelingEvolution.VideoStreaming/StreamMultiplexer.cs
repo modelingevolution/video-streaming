@@ -117,6 +117,7 @@ public class StreamMultiplexer : IMultiplexer
         {
             while (true)
             {
+                
                 var left = _buffer.Length - _readOffset;
                 var count = Math.Min(left, CHUNK);
 
