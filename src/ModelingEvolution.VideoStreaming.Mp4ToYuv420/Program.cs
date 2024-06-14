@@ -8,7 +8,13 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToYuv420
         static void Main(string[] args)
         {
             string src = args[0];
+            if(!File.Exists(src)) 
+            {
+                Console.WriteLine("File not found: " + src);
+                return;
+            }
             string dst = args.Length == 1 ? src+".yuv" : args[1];
+            //SaveYuvToJpeg(dst);
             ExtractFramesToYUV420(src, dst);
         }
         private static void ExtractFramesToYUV420(string src, string dst)
@@ -36,7 +42,16 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToYuv420
             }
         }
 
-        private static void SaveYUV420Frame(Mat yuvFrame, int width, int height, string outputPath)
+        private static void SaveYuvToJpeg(string file)
+        {
+            byte[] data = File.ReadAllBytes(file);
+            int h = 1080;
+            int w = 1920;
+            Mat m = new Mat(h, w, MatType.CV_8U, data, 0);
+            m.SaveImage($"{file}.jpg");
+        }
+
+        private static void SaveYUV420Frame(Mat frame, int width, int height, string outputPath)
         {
             // Calculate the size of the YUV 420 frame
             int ySize = width * height;
@@ -53,7 +68,8 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToYuv420
             // Write the raw YUV data to a file
             using FileStream fs = new FileStream(outputPath, FileMode.Append);
             byte[] data = new byte[frameSize];
-            Marshal.Copy(yuvFrame.Data, data, 0, frameSize);
+            var size = frame.Total() * frame.ElemSize();
+            Marshal.Copy(frame.Data, data, 0, frameSize);
             fs.Write(data, 0, data.Length);
         }
     }

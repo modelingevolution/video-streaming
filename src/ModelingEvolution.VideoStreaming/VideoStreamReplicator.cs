@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿using System.Buffers;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -83,13 +84,19 @@ namespace ModelingEvolution.VideoStreaming
     public class SharedBufferMultiplexer : IMultiplexer
     {
         private Thread _worker;
-        private readonly SharedCyclicBuffer _buffer;
+        private readonly SharedCyclicBuffer _ipBuffer;
         private readonly FrameInfo _info;
-
-        public SharedBufferMultiplexer(SharedCyclicBuffer buffer, FrameInfo info)
+        private readonly byte[] _sharedBuffer;
+        private readonly Memory<byte> _buffer;
+        private int _readOffset;
+        public const int BUFFER_SIZE = 20 * 1024 * 1024;
+       
+        public SharedBufferMultiplexer(SharedCyclicBuffer ipBuffer, FrameInfo info)
         {
-            _buffer = buffer;
+            _ipBuffer = ipBuffer;
             _info = info;
+            _sharedBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE);
+            _buffer = _sharedBuffer.AsMemory(0, BUFFER_SIZE);
         }
 
         public void Start()
@@ -104,18 +111,30 @@ namespace ModelingEvolution.VideoStreaming
         {
             while (true)
             {
-                var ptr = _buffer.PopPtr();
+                var ptr = _ipBuffer.PopPtr();
                 Mat m = new Mat(_info.Rows, _info.Width, MatType.CV_8U,ptr, _info.Stride);
-                m.WriteToStream();
+                var data = m.ToBytes(".jpeg");
+                var left = _buffer.Length - _readOffset;
+                if (data.Length > left)
+                {
+                    var startingOffset = data.Length - left;
+                    
+                    data.AsSpan(0,left).CopyTo(_buffer.Span.Slice(_readOffset));
+                    data.AsSpan(left).CopyTo(_buffer.Span.Slice(0,startingOffset));
+                    _readOffset = startingOffset;
+                }
+                else
+                {
+                    data.CopyTo(_buffer.Span.Slice(_readOffset));
+                    _readOffset += data.Length;
+                }
             }
         }
 
-        public Memory<byte> Buffer()
-        {
-            
-        }
+        public Memory<byte> Buffer() => _buffer;
 
-        public int ReadOffset { get; }
+        public int ReadOffset => _readOffset;
+
         public ulong TotalReadBytes { get; }
         public void Disconnect(IChaser chaser)
         {

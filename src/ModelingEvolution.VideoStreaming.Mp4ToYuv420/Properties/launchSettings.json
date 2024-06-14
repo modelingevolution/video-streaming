@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ModelingEvolution.VideoStreaming.Mp4ToYuv420": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Users\\rafal\\ModelingEvolution\\ModelingEvolution - Rocket-Welder\\Media\\Videos\\localhost.20240611.143211-80.mp4\""
+    }
+  }
+}
