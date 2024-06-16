@@ -136,10 +136,11 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
+            var ic = 0;
             while (true)
             {
                 bool isSuccess = capture.Read(frame);
-                if (!isSuccess) break;
+                if (!isSuccess || ic++ >= 120) break;
                 var yuvFrame = new Mat();
                 yuvFrames.Add(yuvFrame);
 

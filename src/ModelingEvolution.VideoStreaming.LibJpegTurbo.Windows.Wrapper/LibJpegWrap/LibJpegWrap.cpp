@@ -86,6 +86,7 @@ public:
         cinfo.comp_info[1].v_samp_factor = 1;
         cinfo.comp_info[2].h_samp_factor = 1;
         cinfo.comp_info[2].v_samp_factor = 1;
+        //cinfo.dct_method = JDCT_FASTEST;
         auto mg = jpeg_memory_dest(&cinfo, nullptr, bufferSize);
         
         
