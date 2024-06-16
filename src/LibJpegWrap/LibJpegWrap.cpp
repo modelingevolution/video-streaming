@@ -87,9 +87,7 @@ public:
         cinfo.comp_info[2].h_samp_factor = 1;
         cinfo.comp_info[2].v_samp_factor = 1;
         //cinfo.dct_method = JDCT_FASTEST;
-        auto mg = jpeg_memory_dest(&cinfo, nullptr, bufferSize);
-        
-        
+        jpeg_memory_dest(&cinfo, nullptr, bufferSize);
     }
     void SetQuality(int quality)
 	{
@@ -100,7 +98,7 @@ public:
     void SetMode(int mode)
     {
         if(mode == 0)
-            cinfo.dct_method = JDCT_FASTEST;
+            cinfo.dct_method = JDCT_ISLOW;
         else 
             cinfo.dct_method = JDCT_FASTEST;
     }
