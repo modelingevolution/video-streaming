@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\..\EventPi\src\EventPi.Abstractions\EventPi.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\EventPi\src\EventPi.SharedMemory\EventPi.SharedMemory.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Events\ModelingEvolution.VideoStreaming.Events.csproj" />
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming.LibJpegTurbo\ModelingEvolution.VideoStreaming.LibJpegTurbo.csproj" />
   </ItemGroup>
 
 </Project>

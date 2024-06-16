@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -7,7 +6,6 @@ using EventPi.SharedMemory;
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using ModelingEvolution.VideoStreaming.Chasers;
 using ModelingEvolution.VideoStreaming.Events;
 using ModelingEvolution.VideoStreaming.Nal;
 using OpenCvSharp;
@@ -81,65 +79,11 @@ namespace ModelingEvolution.VideoStreaming
         }
     }
 
-    public class SharedBufferMultiplexer : IMultiplexer
+    public interface IFrameBasedMultiplexer
     {
-        private Thread _worker;
-        private readonly SharedCyclicBuffer _ipBuffer;
-        private readonly FrameInfo _info;
-        private readonly byte[] _sharedBuffer;
-        private readonly Memory<byte> _buffer;
-        private int _readOffset;
-        public const int BUFFER_SIZE = 20 * 1024 * 1024;
-       
-        public SharedBufferMultiplexer(SharedCyclicBuffer ipBuffer, FrameInfo info)
-        {
-            _ipBuffer = ipBuffer;
-            _info = info;
-            _sharedBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE);
-            _buffer = _sharedBuffer.AsMemory(0, BUFFER_SIZE);
-        }
-
-        public void Start()
-        {
-            // Let's do it the old way, there's a semaphore. 
-            _worker = new Thread(OnRun);
-            _worker.IsBackground = true;
-            _worker.Start();
-        }
-
-        private void OnRun()
-        {
-            while (true)
-            {
-                var ptr = _ipBuffer.PopPtr();
-                Mat m = new Mat(_info.Rows, _info.Width, MatType.CV_8U,ptr, _info.Stride);
-                var data = m.ToBytes(".jpeg");
-                var left = _buffer.Length - _readOffset;
-                if (data.Length > left)
-                {
-                    var startingOffset = data.Length - left;
-                    
-                    data.AsSpan(0,left).CopyTo(_buffer.Span.Slice(_readOffset));
-                    data.AsSpan(left).CopyTo(_buffer.Span.Slice(0,startingOffset));
-                    _readOffset = startingOffset;
-                }
-                else
-                {
-                    data.CopyTo(_buffer.Span.Slice(_readOffset));
-                    _readOffset += data.Length;
-                }
-            }
-        }
-
-        public Memory<byte> Buffer() => _buffer;
-
-        public int ReadOffset => _readOffset;
-
-        public ulong TotalReadBytes { get; }
-        public void Disconnect(IChaser chaser)
-        {
-            
-        }
+        int Padding { get; }
+        int ReadOffset { get; }
+        Memory<byte> Buffer();
     }
 
     public class VideoStreamReplicator : IDisposable

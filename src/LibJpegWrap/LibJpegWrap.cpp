@@ -9,9 +9,9 @@
 #endif
 
 #include <iostream>
-#include <stdio.h>
+#include <cstdio>
 #include <jpeglib.h>
-#include <stdlib.h>
+#include <cstdlib>
 
 typedef unsigned char byte;
 typedef unsigned long ulong;
@@ -34,7 +34,8 @@ boolean empty_output_buffer(j_compress_ptr cinfo) {
     // Handle buffer overflow. This could involve reallocating the buffer
     // and updating the relevant fields in the destination manager.
     // For simplicity, this example just prints an error and stops.
-    fprintf(stderr, "Buffer overflow in custom destination manager\n");
+    
+    std::cerr << "Buffer overflow in custom destination manager\n";
     return FALSE; // Causes the library to terminate with an error.
 }
 
