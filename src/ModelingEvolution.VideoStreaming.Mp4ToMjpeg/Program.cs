@@ -30,9 +30,10 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
                 if(Directory.Exists(srcDir))
                 foreach (var i in Directory.GetFiles(srcDir))
                 {
-                    var dst = Path.Combine(currentDir, Path.GetFileName(i));
+                    var dst = Path.Combine(currentDir, Path.GetFileName(i))
+                        .Replace(".so", ".dll");
                     if (!File.Exists(dst))
-                        File.Copy(i, dst.Replace(".so",".dll"));
+                        File.Copy(i, dst);
                 }
 
                 _initialized = true;
