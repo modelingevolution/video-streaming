@@ -2,7 +2,7 @@
 
 # Compiler settings
 CXX = g++
-CXXFLAGS = -fPIC -Wall -I/opt/libjpeg-turbo/include
+CXXFLAGS = -fPIC -Wall -I/opt/libjpeg-turbo/include -O3
 LDFLAGS = -shared
 LIBS = 
 
@@ -10,6 +10,7 @@ LIBS =
 SRC = LibJpegWrap.cpp
 OBJ = $(SRC:.cpp=.o)
 TARGET = LibJpegWrap.so
+INSTALL_LIB_DIR = /usr/local/lib
 
 # Default target
 all: $(TARGET)

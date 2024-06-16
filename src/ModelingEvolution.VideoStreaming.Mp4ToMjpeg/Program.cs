@@ -1,105 +1,13 @@
-﻿using System.Runtime.InteropServices;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Numerics;
-using System.Reflection;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
+using ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
 
 namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
 {
-
-    public static class JpegEncoderFactory
-    {
-        private static bool _initialized = false;
-        public static JpegEncoder Create(int width, int height, int quality, ulong minimumBufferSize)
-        {
-            if (!_initialized)
-            {
-                var currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                string? srcDir = null;
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                    srcDir = Path.Combine(currentDir, "libs", "win");
-                else if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    var arch = RuntimeInformation.OSArchitecture.ToString().ToLower();
-                    srcDir = Path.Combine(currentDir, "libs", $"linux-{arch}");
-                } 
-                else throw new PlatformNotSupportedException();
-                if(Directory.Exists(srcDir))
-                foreach (var i in Directory.GetFiles(srcDir))
-                {
-                    var dst = Path.Combine(currentDir, Path.GetFileName(i))
-                        .Replace(".so", ".dll");
-                    if (!File.Exists(dst))
-                        File.Copy(i, dst);
-                }
-
-                _initialized = true;
-            }
-            return new JpegEncoder(width, height, quality, minimumBufferSize);
-        }
-    }
-    public class JpegEncoder : IDisposable
-    {
-
-        private readonly IntPtr _encoderPtr;
-        private bool _disposed;
-        [DllImport("LibJpegWrap.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern IntPtr Create(int width, int height, int quality, ulong bufSize);
-
-        [DllImport("LibJpegWrap.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "Encode")]
-        private static extern ulong OnEncode(IntPtr encoder, nint data, nint dstBuffer, ulong dstBufferSize);
-
-        [DllImport("LibJpegWrap.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Close(IntPtr encoder);
-
-        public JpegEncoder(int width, int height, int quality, ulong minimumBufferSize)
-        {
-            _encoderPtr = Create(width, height, quality, minimumBufferSize);
-        }
-
-       
-        public ulong Encode(nint data, nint dst, ulong dstBufferSize)
-        {
-            return OnEncode(_encoderPtr, data,dst, dstBufferSize);
-        }
-       
-        public unsafe ulong Encode(nint data, byte[] dst)
-        {
-            if (_encoderPtr != IntPtr.Zero)
-                fixed (byte* dstPtr = dst)
-                {
-                    return OnEncode(_encoderPtr, data, (nint)dstPtr, (ulong)dst.LongLength);
-                }
-            return 0;
-        }
-        public unsafe ulong Encode(byte[] data, byte[] dst)
-        {
-            if (_encoderPtr != IntPtr.Zero)
-                // Pin the byte[] array
-                fixed (byte* p = data)
-                fixed (byte* dstPtr = dst)
-                {
-                    return OnEncode(_encoderPtr, (nint)p, (nint)dstPtr, (ulong)dst.LongLength);
-                }
-
-            return 0;
-        }
-        ~JpegEncoder()
-        {
-            Dispose();
-        }
-        public void Dispose()
-        {
-            if (_encoderPtr == IntPtr.Zero || _disposed) return;
-            Close(_encoderPtr);
-            _disposed = true;
-            GC.SuppressFinalize(this);
-        }
-    }
-
     internal class Program
     {
         static void Main(string[] args)
@@ -117,7 +25,6 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
         }
         private static void ExtractFramesToJpegInMem(string src, string dst)
         {
-            
             using var capture = new VideoCapture(src);
             if (!capture.IsOpened)
             {
@@ -133,15 +40,14 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             double count = capture.Get(CapProp.FrameCount);
             ulong bufferSize = (ulong)(frameWidth * frameHeight * 1.5);
 
-            using JpegEncoder encoder = JpegEncoderFactory.Create(frameWidth, frameHeight, 90, bufferSize);
-
+            
             Stopwatch sw = new Stopwatch();
             sw.Start();
             var ic = 0;
             while (true)
             {
                 bool isSuccess = capture.Read(frame);
-                if (!isSuccess || ic++ >= 120) break;
+                if (!isSuccess || ic++ >= 2*120) break;
                 var yuvFrame = new Mat();
                 yuvFrames.Add(yuvFrame);
 
@@ -157,6 +63,26 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             Console.WriteLine("Load from disk:");
             Console.WriteLine($"Elapsed: {sw.Elapsed}");
             Console.WriteLine($"Fps: {c / sw.Elapsed.TotalSeconds}");
+            Console.WriteLine();
+            Encode(sw, bufferSize, yuvFrames, frameWidth, frameHeight, 75, DiscreteCosineTransform.Integer);
+            Encode(sw, bufferSize, yuvFrames, frameWidth, frameHeight, 90, DiscreteCosineTransform.Integer);
+            Encode(sw, bufferSize, yuvFrames, frameWidth, frameHeight, 95, DiscreteCosineTransform.Integer);
+
+            Encode(sw, bufferSize, yuvFrames, frameWidth, frameHeight, 75, DiscreteCosineTransform.Float);
+            Encode(sw, bufferSize, yuvFrames, frameWidth, frameHeight, 90, DiscreteCosineTransform.Float);
+            Encode(sw, bufferSize, yuvFrames, frameWidth, frameHeight, 95, DiscreteCosineTransform.Float);
+        }
+
+        private static void Encode(Stopwatch sw, ulong bufferSize, List<Mat> yuvFrames,
+            int frameWidth,
+            int frameHeight, 
+            int quality, 
+            DiscreteCosineTransform mode)
+        {
+            using JpegEncoder encoder = JpegEncoderFactory.Create(frameWidth, frameHeight, 90, bufferSize);
+            encoder.Quality = quality;
+            encoder.Mode = mode;
+            int c;
             sw.Restart();
             c = 0;
             byte[] dstBuffer = new byte[bufferSize];
@@ -176,18 +102,27 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             }
             sw.Stop();
             var megapixels = (BigInteger)frameWidth * (BigInteger)frameHeight * (BigInteger)c;
+            const ulong subHD = 1456 * 1088;
+            int hd = frameWidth * frameHeight;
+            double ratio = (double)hd / subHD;
+
             const ulong mb = 1024 * 1024;
             Console.WriteLine("Jpeg convert:");
+            Console.WriteLine($"Quality      : {encoder.Quality}");
+            Console.WriteLine($"Mode         : {encoder.Mode}");
             Console.WriteLine($"Elapsed      : {sw.Elapsed}");
             Console.WriteLine($"Frames       : {c}");
             Console.WriteLine($"Frame avg    : {sw.Elapsed.TotalMilliseconds / c} ms");
             Console.WriteLine($"In total     : {megapixels/ mb} MB");
             Console.WriteLine($"Out total    : {totalSize/ mb} MB");
-            Console.WriteLine($"Frames / sec : {c / sw.Elapsed.TotalSeconds}");
+            Console.WriteLine($"HD_F / sec   : {c / sw.Elapsed.TotalSeconds}");
+            Console.WriteLine($"SubHD_F / sec: {c* ratio / sw.Elapsed.TotalSeconds}");
             Console.WriteLine($"MegaPixels /s: {megapixels / (BigInteger)sw.Elapsed.TotalSeconds / 1000000}");
             Console.WriteLine($"Jpeg MB/sec  : {totalSize / (BigInteger)sw.Elapsed.TotalSeconds / mb}");
-            Console.ReadLine();
+            Console.WriteLine("=====================================");
+            Console.WriteLine();
         }
+
         private static void ExtractFramesToJpeg(string src, string dst)
         {
             using var capture = new VideoCapture(src);

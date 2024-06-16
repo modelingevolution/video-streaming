@@ -77,8 +77,8 @@ public:
 
         
         jpeg_set_defaults(&cinfo);
-        jpeg_set_quality(&cinfo, quality, TRUE);
-
+        jpeg_set_quality(&cinfo, quality, FALSE);
+        
         cinfo.raw_data_in = TRUE; // Supply downsampled data
         cinfo.comp_info[0].h_samp_factor = 2;
         cinfo.comp_info[0].v_samp_factor = 2;
@@ -91,6 +91,19 @@ public:
         
         
     }
+    void SetQuality(int quality)
+	{
+		jpeg_set_quality(&cinfo, quality, FALSE);
+	}
+    // 0 - int
+    // 1 - fast
+    void SetMode(int mode)
+    {
+        if(mode == 0)
+            cinfo.dct_method = JDCT_FASTEST;
+        else 
+            cinfo.dct_method = JDCT_FASTEST;
+    }
     ulong Encode(byte* data, byte* dstBuffer, ulong dstBufferSize)
     {
         jpeg_memory_dest(&cinfo, dstBuffer, dstBufferSize);
@@ -102,7 +115,7 @@ public:
         // Calculate the sizes of the Y, U, and V planes
         size_t sizeY = width * height;
         size_t sizeU = sizeY / 4;
-        size_t sizeV = sizeU; // Same as sizeU
+        //size_t sizeV = sizeU; // Same as sizeU
 
         // Split yuv420Data into Y, U, and V components
         byte* Y = data;
@@ -141,6 +154,13 @@ extern "C" {
     EXPORT ulong Encode(YuvEncoder* encoder, byte* data, byte* dstBuffer, ulong dstBufferSize) {
         return encoder->Encode(data, dstBuffer, dstBufferSize);
     }
+    EXPORT void SetQuality(YuvEncoder* encoder, int quality) {
+        encoder->SetQuality(quality);
+    }
+    EXPORT void SetMode(YuvEncoder* encoder, int mode) {
+        encoder->SetMode(mode);
+    }
+
     EXPORT void Close(YuvEncoder* encoder)
 	{
         delete encoder;
