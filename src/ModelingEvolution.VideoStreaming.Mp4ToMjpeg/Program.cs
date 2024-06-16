@@ -180,6 +180,7 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             Console.WriteLine("Jpeg convert:");
             Console.WriteLine($"Elapsed      : {sw.Elapsed}");
             Console.WriteLine($"Frames       : {c}");
+            Console.WriteLine($"Frame avg    : {sw.Elapsed.TotalMicroseconds / c} ms");
             Console.WriteLine($"In total     : {megapixels/ mb} MB");
             Console.WriteLine($"Out total    : {totalSize/ mb} MB");
             Console.WriteLine($"Frames / sec : {c / sw.Elapsed.TotalSeconds}");
