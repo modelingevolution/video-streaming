@@ -1,8 +1,13 @@
 // LibJpegWrap.cpp : Defines the functions for the static library.
 //
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#endif
 
-#include "pch.h"
-#include "framework.h"
+#ifndef _WIN32
+#define EXPORT // Linux doesn't require a special export keyword
+#endif
+
 #include <iostream>
 #include <stdio.h>
 #include <jpeglib.h>
@@ -128,14 +133,14 @@ typedef struct YuvEncoder YuvEncoder;
 
 
 extern "C" {
-    __declspec(dllexport) YuvEncoder* Create(int width, int height, int quality, ulong size) {
+    EXPORT YuvEncoder* Create(int width, int height, int quality, ulong size) {
         YuvEncoder* enc = new YuvEncoder(width, height, quality, size);
 		return enc;
     }
-    __declspec(dllexport) ulong Encode(YuvEncoder* encoder, byte* data, byte* dstBuffer, ulong dstBufferSize) {
+    EXPORT ulong Encode(YuvEncoder* encoder, byte* data, byte* dstBuffer, ulong dstBufferSize) {
         return encoder->Encode(data, dstBuffer, dstBufferSize);
     }
-    __declspec(dllexport) void Close(YuvEncoder* encoder)
+    EXPORT void Close(YuvEncoder* encoder)
 	{
         delete encoder;
     }

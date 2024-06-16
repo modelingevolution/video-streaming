@@ -1,66 +1,80 @@
 ﻿using System.Runtime.InteropServices;
 using System;
 using System.Diagnostics;
+using System.Numerics;
+using System.Reflection;
 using OpenCvSharp;
 
 namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
 {
-    [StructLayout(LayoutKind.Sequential)]
-    unsafe struct YuvEncoder
+
+    public static class JpegEncoderFactory
     {
-        public byte* input_buffer;
-        //public byte* output_buffer;
-        public ulong* output_buffer_size;
-        public ulong* output_frame_size;
+        private static bool _initialized = false;
+        public static JpegEncoder Create(int width, int height, int quality, ulong minimumBufferSize)
+        {
+            if (!_initialized)
+            {
+                var currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                string? srcDir = null;
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    srcDir = Path.Combine(currentDir, "libs", "win");
+                else if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    var arch = RuntimeInformation.OSArchitecture.ToString().ToLower();
+                    srcDir = Path.Combine(currentDir, "libs", $"linux-{arch}");
+                } 
+                else throw new PlatformNotSupportedException();
+                if(Directory.Exists(srcDir))
+                foreach (var i in Directory.GetFiles(srcDir))
+                {
+                    var dst = Path.Combine(currentDir, Path.GetFileName(i));
+                    if (!File.Exists(dst))
+                        File.Copy(i, dst.Replace(".so",".dll"));
+                }
+
+                _initialized = true;
+            }
+            return new JpegEncoder(width, height, quality, minimumBufferSize);
+        }
     }
-    public unsafe class JpegEncoder : IDisposable
+    public class JpegEncoder : IDisposable
     {
-        private readonly YuvEncoder* _encoderPtr;
+
+        private readonly IntPtr _encoderPtr;
         private bool _disposed;
         [DllImport("LibJpegWrap.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern YuvEncoder* Create(int width, int height, int quality, ulong bufSize);
+        private static extern IntPtr Create(int width, int height, int quality, ulong bufSize);
 
         [DllImport("LibJpegWrap.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "Encode")]
-        private static extern ulong OnEncode(YuvEncoder* encoder, nint data, nint dstBuffer, ulong dstBufferSize);
+        private static extern ulong OnEncode(IntPtr encoder, nint data, nint dstBuffer, ulong dstBufferSize);
 
         [DllImport("LibJpegWrap.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Close(YuvEncoder* encoder);
+        private static extern void Close(IntPtr encoder);
 
         public JpegEncoder(int width, int height, int quality, ulong minimumBufferSize)
         {
             _encoderPtr = Create(width, height, quality, minimumBufferSize);
         }
 
-        public byte[] GetOutputBuffer()
-        {
-            byte[] buffer = new byte[*_encoderPtr->output_buffer_size];
-            //Marshal.Copy((IntPtr)_encoderPtr->output_buffer, buffer, 0, buffer.Length);
-            return buffer;
-        }
+       
         public ulong Encode(nint data, nint dst, ulong dstBufferSize)
         {
             return OnEncode(_encoderPtr, data,dst, dstBufferSize);
         }
-        private ulong OutputBufferSize => *(_encoderPtr->output_buffer_size);
-        public ulong Encode(nint data, byte[] dst)
+       
+        public unsafe ulong Encode(nint data, byte[] dst)
         {
-            //if ((ulong)dst.LongLength < OutputBufferSize)
-            //    throw new ArgumentException("Destination buffer size must be equal or bigger to output buffer size");
-
-            if (_encoderPtr != null)
-                // Pin the byte[] array
+            if (_encoderPtr != IntPtr.Zero)
                 fixed (byte* dstPtr = dst)
                 {
                     return OnEncode(_encoderPtr, data, (nint)dstPtr, (ulong)dst.LongLength);
                 }
             return 0;
         }
-        public ulong Encode(byte[] data, byte[] dst)
+        public unsafe ulong Encode(byte[] data, byte[] dst)
         {
-            if((ulong)dst.LongLength < OutputBufferSize)
-                throw new ArgumentException("Destination buffer size must be equal or bigger to output buffer size");
-
-            if (_encoderPtr != null)
+            if (_encoderPtr != IntPtr.Zero)
                 // Pin the byte[] array
                 fixed (byte* p = data)
                 fixed (byte* dstPtr = dst)
@@ -76,7 +90,7 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
         }
         public void Dispose()
         {
-            if (_encoderPtr == null || _disposed) return;
+            if (_encoderPtr == IntPtr.Zero || _disposed) return;
             Close(_encoderPtr);
             _disposed = true;
             GC.SuppressFinalize(this);
@@ -136,21 +150,30 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             sw.Restart();
             c = 0;
             byte[] dstBuffer = new byte[bufferSize];
+            BigInteger totalSize = 0;
             foreach(var i in yuvFrames)
             {
                 var size = encoder.Encode(i.DataStart, dstBuffer);
-
-                sw.Stop();
-                using var fs = new FileStream($"{c}.jpeg", FileMode.Create);
-                fs.Write(dstBuffer, 0, (int)size);
+                totalSize += size;
                 c++;
-                Console.Write($"\r{c * 100 / count}% ({c})");
-                sw.Start();
+
+                //sw.Stop();
+                //using var fs = new FileStream($"{c}.jpeg", FileMode.Create);
+                //fs.Write(dstBuffer, 0, (int)size);
+
+                //Console.Write($"\r{c * 100 / count}% ({c})");
+                //sw.Start();
             }
             sw.Stop();
+            var megapixels = (BigInteger)frameWidth * (BigInteger)frameHeight * (BigInteger)c;
+            const ulong mb = 1024 * 1024;
             Console.WriteLine("Jpeg convert:");
-            Console.WriteLine($"Elapsed: {sw.Elapsed}");
-            Console.WriteLine($"Fps: {c / sw.Elapsed.TotalSeconds}");
+            Console.WriteLine($"Elapsed      : {sw.Elapsed}");
+            Console.WriteLine($"In total     : {megapixels/ mb} MB");
+            Console.WriteLine($"Out total    : {totalSize/ mb} MB");
+            Console.WriteLine($"Frames / sec : {c / sw.Elapsed.TotalSeconds}");
+            Console.WriteLine($"MegaPixels /s: {megapixels / (BigInteger)sw.Elapsed.TotalSeconds / 1000000}");
+            Console.WriteLine($"Jpeg MB/sec  : {totalSize / (BigInteger)sw.Elapsed.TotalSeconds / mb}");
             Console.ReadLine();
         }
         private static void ExtractFramesToJpeg(string src, string dst)

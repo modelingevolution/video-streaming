@@ -9,16 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\..\..\x64\Release\LibJpegWrap.dll" Link="LibJpegWrap.dll">
+    <None Include="..\..\..\..\x64\Release\LibJpegWrap.dll" Link="libs\win\LibJpegWrap.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\..\..\..\x64\Release\LibJpegWrap.exp" Link="LibJpegWrap.exp">
+    <None Include="..\..\..\..\x64\Release\LibJpegWrap.exp" Link="libs\win\LibJpegWrap.exp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\..\..\..\x64\Release\LibJpegWrap.lib" Link="LibJpegWrap.lib">
+    <None Include="..\..\..\..\x64\Release\LibJpegWrap.lib" Link="libs\win\LibJpegWrap.lib">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\..\..\..\x64\Release\LibJpegWrap.pdb" Link="LibJpegWrap.pdb">
+    <None Include="..\..\..\..\x64\Release\LibJpegWrap.pdb" Link="libs\win\LibJpegWrap.pdb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -27,6 +27,19 @@
     <PackageReference Include="OpenCvSharp4" Version="4.9.0.20240103" />
     <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.9.0.20240103" />
     <PackageReference Include="OpenCvSharp4.Windows" Version="4.9.0.20240103" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="libs\win\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="libs\linux-arm64\LibJpegWrap.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="libs\linux-x64\LibJpegWrap.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
