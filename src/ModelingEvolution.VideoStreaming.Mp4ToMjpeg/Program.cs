@@ -114,6 +114,7 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
         }
         private static void ExtractFramesToJpegInMem(string src, string dst)
         {
+            
             using var capture = new VideoCapture(src);
             if (!capture.IsOpened())
             {
@@ -127,7 +128,8 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             List<Mat> yuvFrames = new();
             int c = 0;
             ulong bufferSize = (ulong)(frameWidth * frameHeight * 1.5);
-            using JpegEncoder encoder = new JpegEncoder(frameWidth, frameHeight, 90, bufferSize);
+
+            using JpegEncoder encoder = JpegEncoderFactory.Create(frameWidth, frameHeight, 90, bufferSize);
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
