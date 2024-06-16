@@ -3,7 +3,9 @@ using System;
 using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
-using OpenCvSharp;
+using Emgu.CV;
+using Emgu.CV.CvEnum;
+
 
 namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
 {
@@ -116,17 +118,18 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
         {
             
             using var capture = new VideoCapture(src);
-            if (!capture.IsOpened())
+            if (!capture.IsOpened)
             {
                 throw new InvalidOperationException("Failed to open video file.");
             }
 
-            int frameWidth = (int)capture.FrameWidth;
-            int frameHeight = (int)capture.FrameHeight;
-            int count = capture.FrameCount;
+            int frameWidth = (int)capture.Width;
+            int frameHeight = (int)capture.Height;
+            ;
             using Mat frame = new Mat();
             List<Mat> yuvFrames = new();
             int c = 0;
+            double count = capture.Get(CapProp.FrameCount);
             ulong bufferSize = (ulong)(frameWidth * frameHeight * 1.5);
 
             using JpegEncoder encoder = JpegEncoderFactory.Create(frameWidth, frameHeight, 90, bufferSize);
@@ -136,10 +139,13 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             while (true)
             {
                 bool isSuccess = capture.Read(frame);
-                if (!isSuccess || frame.Empty()) break;
+                if (!isSuccess) break;
                 var yuvFrame = new Mat();
                 yuvFrames.Add(yuvFrame);
-                Cv2.CvtColor(frame, yuvFrame, ColorConversionCodes.BGR2YUV_I420);
+
+                CvInvoke.CvtColor(frame, yuvFrame, Emgu.CV.CvEnum.ColorConversion.Bgr2YCrCb);
+                //Cv2.CvtColor(frame, yuvFrame, ColorConversionCodes.BGR2YUV_I420);
+
                 //SaveYUV420Frame(yuvFrame, frameWidth, frameHeight, dst);
                 //File.WriteAllBytes($"{c}.jpeg",encoder.GetOutputBuffer());
                 //Console.Write($"\r{c * 100 / count}% ({c++})");
@@ -155,7 +161,7 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             BigInteger totalSize = 0;
             foreach(var i in yuvFrames)
             {
-                var size = encoder.Encode(i.DataStart, dstBuffer);
+                var size = encoder.Encode(i.DataPointer, dstBuffer);
                 totalSize += size;
                 c++;
 
@@ -181,19 +187,19 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
         private static void ExtractFramesToJpeg(string src, string dst)
         {
             using var capture = new VideoCapture(src);
-            if (!capture.IsOpened())
+            if (!capture.IsOpened)
             {
                 throw new InvalidOperationException("Failed to open video file.");
             }
 
-            int frameWidth = (int)capture.FrameWidth;
-            int frameHeight = (int)capture.FrameHeight;
+            int frameWidth = (int)capture.Width;
+            int frameHeight = (int)capture.Height;
             ulong bufferSize = (ulong)(frameWidth * frameHeight * 1.5);
-            int count = capture.FrameCount;
+            
             using Mat frame = new Mat();
             using Mat yuvFrame = new Mat();
             int c = 0;
-
+            double count = capture.Get(CapProp.FrameCount);
             using JpegEncoder encoder = new JpegEncoder(frameWidth, frameHeight, 90, bufferSize);
 
             Stopwatch sw = new Stopwatch();
@@ -202,11 +208,15 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             while (true)
             {
                 bool isSuccess = capture.Read(frame);
-                if (!isSuccess || frame.Empty()) break;
+                if (!isSuccess) break;
 
-                Cv2.CvtColor(frame, yuvFrame, ColorConversionCodes.BGR2YUV_I420);
+                //Cv2.CvtColor(frame, yuvFrame, ColorConversionCodes.BGR2YUV_I420);
+                CvInvoke.CvtColor(frame, yuvFrame, Emgu.CV.CvEnum.ColorConversion.Bgr2YCrCb);
+
+
                 //SaveYUV420Frame(yuvFrame, frameWidth, frameHeight, dst);
-                encoder.Encode(yuvFrame.DataStart, dstBuffer);
+                encoder.Encode(yuvFrame.DataPointer, dstBuffer);
+
                 //File.WriteAllBytes($"{c}.jpeg",encoder.GetOutputBuffer());
                 Console.Write($"\r{c * 100 / count}% ({c++})");
             }
@@ -234,9 +244,9 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             // Write the raw YUV data to a file
             using FileStream fs = new FileStream(outputPath, FileMode.Append);
             byte[] data = new byte[frameSize];
-            var size = frame.Total() * frame.ElemSize();
-            Marshal.Copy(frame.Data, data, 0, frameSize);
-            fs.Write(data, 0, data.Length);
+            //var size = frame.Total() * frame.ElemSize();
+            //Marshal.Copy(frame.Data, data, 0, frameSize);
+            //fs.Write(data, 0, data.Length);
         }
     }
 }
