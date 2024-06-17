@@ -23,7 +23,7 @@ public readonly struct VideoAddress
     {
         var proto = uri.Scheme;
         var host = uri.Host;
-        var port = uri.Port;
+        var port = uri.Port == -1 ? 0 : uri.Port;
         var path = uri.PathAndQuery.TrimStart('/').Split(',');
         var streamName = path.Any() ? path[0] : string.Empty;
 

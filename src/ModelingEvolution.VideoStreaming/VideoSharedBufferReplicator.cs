@@ -1,6 +1,7 @@
 ﻿using System.Net.WebSockets;
 using EventPi.SharedMemory;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming.Nal;
 
 namespace ModelingEvolution.VideoStreaming;
@@ -11,15 +12,17 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
     private SharedCyclicBuffer? _buffer;
     private SharedBufferMultiplexer? _multiplexer;
     private readonly VideoStreamEventSink _evtSink;
+    private readonly ILogger<VideoSharedBufferReplicator> _logger;
     private readonly FrameInfo _info;
     public string SharedMemoryName { get; private set; }
 
     public VideoSharedBufferReplicator(string sharedMemoryName, FrameInfo info, 
-        VideoStreamEventSink evtSink)
+        VideoStreamEventSink evtSink, ILogger<VideoSharedBufferReplicator> logger)
     {
         SharedMemoryName = sharedMemoryName;
         _info = info;
         _evtSink = evtSink;
+        _logger = logger;
         VideoAddress = new VideoAddress(VideoProtocol.Mjpeg, streamName: sharedMemoryName);
     }
 
@@ -31,7 +34,9 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
 
     public IVideoStreamReplicator Connect()
     {
-        _buffer = new SharedCyclicBuffer(60, _info.Yuv420,  SharedMemoryName); // ~180MB
+        _logger.LogInformation($"Shared memory: {SharedMemoryName}, total size: {_info.Yuv420*120} bytes, frame: {_info.Yuv420} bytes");
+        _buffer = new SharedCyclicBuffer(120, _info.Yuv420,  SharedMemoryName); // ~180MB
+        
         _multiplexer = new SharedBufferMultiplexer(_buffer, _info);
         _multiplexer.Start();
         Started = DateTime.Now;

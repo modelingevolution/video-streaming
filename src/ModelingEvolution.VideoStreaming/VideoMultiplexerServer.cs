@@ -99,7 +99,10 @@ public class VideoStreamingServer : INotifyPropertyChanged
     {
         IVideoStreamReplicator streamReplicator = va.Transport == Transport.Tcp ?
             new VideoStreamReplicator(va, _loggerFactory, _sink):
-            new VideoSharedBufferReplicator(va.StreamName,va.Resolution == VideoResolution.FullHd ? FrameInfo.FullHD : FrameInfo.SubHD, _sink);
+            new VideoSharedBufferReplicator(va.StreamName,
+                va.Resolution == VideoResolution.FullHd ? FrameInfo.FullHD : FrameInfo.SubHD,
+                _sink,
+                _loggerFactory.CreateLogger<VideoSharedBufferReplicator>());
         try
         {
             _streams.Add(streamReplicator.Connect());
@@ -280,10 +283,10 @@ public class VideoStreamingServer : INotifyPropertyChanged
             {
                 var videoSource = _disconnected[i];
                 _logger.LogInformation(
-                    $"Trying to reconnect video source: {videoSource.Host}:{videoSource.Port}");
+                    $"Trying to reconnect video source: {videoSource}");
                 if (!TryConnectVideoSource(videoSource)) continue;
 
-                _logger.LogInformation($"Connected: {videoSource.Host}:{videoSource.Port}");
+                _logger.LogInformation($"Connected: {videoSource}");
                 i -= 1;
             }
         }

@@ -16,7 +16,7 @@ public class ChaserTests
         buffer.WriteRandomData(0, 2);
         buffer.WriteVideoKeyFrame(1024);
 
-        IMultiplexer m = Substitute.For<IMultiplexer>();
+        var m = Substitute.For<IStreamMultiplexer>();
         m.Buffer().Returns(buffer);
         m.ReadOffset.Returns(2); // we are at the beginning.
         m.TotalReadBytes.Returns((ulong)(buffer.Length + 2));
@@ -47,7 +47,7 @@ public class ChaserTests
         offset += buffer.WriteVideoKeyFrame(1024);
         offset += buffer.WriteRandomData(offset, 1024);
 
-        IMultiplexer m = Substitute.For<IMultiplexer>();
+        var m = Substitute.For<IStreamMultiplexer>();
         m.Buffer().Returns(buffer);
         m.ReadOffset.Returns(offset);
         m.TotalReadBytes.Returns((ulong)offset);
@@ -73,7 +73,7 @@ public class ChaserTests
         var offset = buffer.WriteVideoKeyFrame();
         offset += buffer.WriteRandomData(offset, 1024);
 
-        IMultiplexer m = Substitute.For<IMultiplexer>();
+        var m = Substitute.For<IStreamMultiplexer>();
         m.Buffer().Returns(buffer);
         m.ReadOffset.Returns(offset);
         m.TotalReadBytes.Returns((ulong)offset);

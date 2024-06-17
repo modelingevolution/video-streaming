@@ -20,7 +20,7 @@ namespace ModelingEvolution.VideoStreaming
     public unsafe struct FullHDFrame 
     {
         public const int PIXELS = 1920 * 1080;
-        public const int PIXELS_YUV_420 = PIXELS + PIXELS >> 1;
+        public const int PIXELS_YUV_420 = PIXELS + (PIXELS >> 1);
         public fixed byte Data[PIXELS_YUV_420];
       
     }
@@ -32,11 +32,12 @@ namespace ModelingEvolution.VideoStreaming
         public FrameInfo(int Width, int Height, int Stride)
         {
             this.Width = Width;
-            this.Height = Height;
+            this.Rows = this.Height = Height;
+            this.Rows += Height >> 1;
             this.Stride = Stride;
-            Pixels = Width * Height;
-            Yuv420 = Pixels + Pixels >> 1;
-            Rows = Height + Height >> 1;
+            this.Yuv420 = Pixels = Width * Height;
+            this.Yuv420 += Pixels >> 1;
+            
         }
 
         public int Pixels { get; }
@@ -53,7 +54,7 @@ namespace ModelingEvolution.VideoStreaming
     public unsafe struct SubHDFrame 
     {
         private const int PIXELS = 1456 * 1088;
-        private const int PIXELS_YUV_420 = PIXELS + PIXELS >> 1;
+        private const int PIXELS_YUV_420 = PIXELS + (PIXELS >> 1);
         public fixed byte Data[PIXELS_YUV_420];
         
     }

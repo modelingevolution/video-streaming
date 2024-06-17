@@ -42,6 +42,7 @@ namespace ModelingEvolution.VideoStreaming.CameraSimulator
             sw.Start();
             int loop = 0;
             var dt = TimeSpan.FromSeconds(1.0 / fps);
+            Console.WriteLine($"Shared memory: {streamName}, total size: {frameSize * 120} bytes, frame: {frameSize} bytes");
             SharedCyclicBuffer buffer = new SharedCyclicBuffer(120, frameSize, streamName);
             while (true)
             {

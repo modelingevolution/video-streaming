@@ -10,7 +10,7 @@ public static class JpegEncoderFactory
     {
         if (_initialized) return new JpegEncoder(width, height, quality, minimumBufferSize);
 
-        var currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        var currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? AppContext.BaseDirectory;
         string? srcDir = null;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             srcDir = Path.Combine(currentDir, "libs", "win");
