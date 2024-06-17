@@ -10,13 +10,16 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
 {
     private SharedCyclicBuffer? _buffer;
     private SharedBufferMultiplexer? _multiplexer;
+    private readonly VideoStreamEventSink _evtSink;
     private readonly FrameInfo _info;
     public string SharedMemoryName { get; private set; }
 
-    public VideoSharedBufferReplicator(string sharedMemoryName, FrameInfo info)
+    public VideoSharedBufferReplicator(string sharedMemoryName, FrameInfo info, 
+        VideoStreamEventSink evtSink)
     {
         SharedMemoryName = sharedMemoryName;
         _info = info;
+        _evtSink = evtSink;
         VideoAddress = new VideoAddress(VideoProtocol.Mjpeg, streamName: sharedMemoryName);
     }
 
@@ -32,7 +35,7 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         _multiplexer = new SharedBufferMultiplexer(_buffer, _info);
         _multiplexer.Start();
         Started = DateTime.Now;
-        
+        _evtSink.OnStreamingStarted(VideoAddress);
         return this;
     }
 
@@ -57,6 +60,8 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
 
     public void Dispose()
     {
+        _evtSink.OnStreamingDisconnected(VideoAddress);
         _buffer?.Dispose();
+
     }
 }

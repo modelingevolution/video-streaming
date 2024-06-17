@@ -6,6 +6,7 @@ namespace ModelingEvolution.VideoStreaming.Events;
 [OutputStream(Streams.StreamServer)]
 public class StreamingStopped 
 {
+
     public StreamingStopped()
     {
         Id = Guid.NewGuid();

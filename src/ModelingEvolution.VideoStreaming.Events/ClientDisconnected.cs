@@ -8,6 +8,11 @@ namespace ModelingEvolution.VideoStreaming.Events;
 
 public class ClientDisconnected 
 {
+    public static string StreamId(string host)
+    {
+        if (host == "localhost") return Environment.MachineName;
+        return host;
+    }
     public ClientDisconnected()
     {
         Id = Guid.NewGuid();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EventPi.Abstractions;
 using MicroPlumberd;
 using MicroPlumberd.Services;
 using Microsoft.Extensions.Configuration;
@@ -25,7 +26,7 @@ namespace ModelingEvolution.VideoStreaming
         {
             services.AddBackgroundServiceIfMissing<VideoStreamingServerStarter>();
             services.AddSingleton<StreamPersister>();
-
+            services.AddSingleton<VideoStreamEventSink>();
             services.AddSingleton<VideoStreamingServer>((sp) =>
             {
                 var configuration = sp.GetRequiredService<IConfiguration>();
@@ -36,6 +37,8 @@ namespace ModelingEvolution.VideoStreaming
                     sp.GetRequiredService<ILogger<VideoStreamingServer>>(),
                     sp.GetRequiredService<IPlumber>(),
                     configuration.IsSingleVideoStreaming(),
+                    sp.GetRequiredService<VideoStreamEventSink>(),
+                    sp.GetRequiredService<IEnvironment>(),
                     sp.GetRequiredService<IConfiguration>(), 
                     sp.GetRequiredService<ILoggerFactory>());
             });

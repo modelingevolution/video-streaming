@@ -12,6 +12,11 @@ public enum VideoProtocol
 {
     Mjpeg,H264
 }
+
+public enum VideoResolution
+{
+    FullHd, SubHd
+}
 public readonly struct VideoAddress
 {
     public static VideoAddress CreateFrom(Uri uri)
@@ -29,11 +34,17 @@ public readonly struct VideoAddress
         var tags = Array.Empty<string>();
         if (!string.IsNullOrEmpty(tagsString)) 
             tags=tagsString.Split(',');
-        
-        return new VideoAddress(Enum.Parse<VideoProtocol>(proto), host, port, streamName, tags);
-    }
-    private readonly string _str;
 
+        string? resolution = queryParameters["resolution"];
+        VideoResolution rv = VideoResolution.FullHd;
+        if (!string.IsNullOrEmpty(resolution))
+            rv = Enum.Parse<VideoResolution>(resolution, true);
+        var videoProtocol = Enum.Parse<VideoProtocol>(proto,true);
+        return new VideoAddress(videoProtocol, host, port, streamName,rv, tags);
+    }
+
+    private readonly string _str;
+    public VideoResolution Resolution { get; }
     public string FriendlyName
     {
         get
@@ -53,14 +64,15 @@ public readonly struct VideoAddress
     public Uri Uri => new Uri(_str);
 
     public VideoAddress(VideoProtocol protocol, string host="localhost", 
-        int port=0, string? streamName = null, params string[] tags)
+        int port=0, string? streamName = null, VideoResolution resolution = VideoResolution.FullHd, params string[] tags)
     {
+        Resolution = resolution;
         Host = host;
         Port = port;
         StreamName = streamName;
         Protocol = protocol;
         Tags = tags.ToHashSet();
-        StringBuilder sb = new(protocol.ToString());
+        StringBuilder sb = new(protocol.ToString().ToLower());
         sb.Append($"://{Host}");
         if(port > 0)
             sb.Append($":{Port}");

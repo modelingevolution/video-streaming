@@ -2,6 +2,7 @@
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
+using EventPi.Abstractions;
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -72,35 +73,51 @@ namespace ModelingEvolution.VideoStreaming
         bool Is(string name);
     }
 
+    public class VideoStreamEventSink(IPlumber plumberd, IEnvironment e)
+    {
+        public async Task OnStreamingStarted(VideoAddress va)
+        {
+            var streamingStarted = new StreamingStarted { Source = va.ToString() };
+
+            await plumberd.AppendEvent(streamingStarted, StreamingStarted.StreamId(e.HostName));
+        }
+        public async Task OnStreamingDisconnected(VideoAddress va)
+        {
+            var clientDisconnected = new ClientDisconnected
+            {
+                Source = va.ToString()
+            };
+
+            await plumberd.AppendEvent(clientDisconnected, ClientDisconnected.StreamId(e.HostName));
+        }
+    }
     public class VideoStreamReplicator : IVideoStreamReplicator
     {
         public event EventHandler Stopped;
         private NetworkStream _source;
         private StreamMultiplexer? _multiplexer;
-        private readonly string _host;
+        
         private readonly string _protocol;
-        private readonly HashSet<string> _tags = new();
-        private readonly int _port;
+        
+        
         private readonly string _streamName;
         private readonly ILoggerFactory _loggerFactory;
         private readonly DateTime _started;
-        private readonly IPlumber _plumber;
+        private readonly VideoStreamEventSink _evtSink;
         private TcpClient _client;
         public IMultiplexingStats MultiplexingStats => _multiplexer;
         public DateTime Started => _started;
         
         public VideoAddress VideoAddress { get; private set; }
-        public HashSet<string> Tags => _tags;
-        public VideoStreamReplicator(VideoProtocol protocol, string host, int port, string streamName, string[] tags,
-            ILoggerFactory loggerFactory, IPlumber plumber)
+        
+        public VideoStreamReplicator(VideoAddress va,
+            ILoggerFactory loggerFactory, VideoStreamEventSink sink)
         {
-            VideoAddress = new VideoAddress(protocol, host, port, streamName);
+            VideoAddress = va;
             _loggerFactory = loggerFactory;
-            _plumber = plumber;
+            _evtSink = sink;
             
             _started = DateTime.Now;
-            foreach (var tag in tags)
-                _tags.Add(tag);
             
         }
 
@@ -108,7 +125,7 @@ namespace ModelingEvolution.VideoStreaming
         {
             if (_client != null) throw new InvalidOperationException("Cannot reuse Replicator.");
 
-            _client = new TcpClient(_host, _port);
+            _client = new TcpClient(VideoAddress.Host, VideoAddress.Port);
             try
             {
                 _source = _client.GetStream();
@@ -118,9 +135,7 @@ namespace ModelingEvolution.VideoStreaming
                     _source.WriteByte((byte)bytes.Length);
                     _source.WriteAsync(bytes);
                 }
-                var streamingStarted = new StreamingStarted { Source = _host };
-                
-                _plumber.AppendEvent(streamingStarted, _host);
+                _evtSink.OnStreamingStarted(VideoAddress);
             }
             catch
             { 
@@ -137,12 +152,7 @@ namespace ModelingEvolution.VideoStreaming
 
         private void OnClientDisconnected(object? sender, EventArgs e)
         {
-            var clientDisconnected = new ClientDisconnected
-            {
-                Source = _host
-            };
-
-            _plumber.AppendEvent(clientDisconnected, _host);
+            _evtSink.OnStreamingDisconnected(VideoAddress);
         }
 
         private void OnStreamingStopped(object? sender, EventArgs e)
@@ -180,7 +190,7 @@ namespace ModelingEvolution.VideoStreaming
         {
             return VideoAddress.Host.Equals(name, StringComparison.CurrentCultureIgnoreCase) ||
                    string.Equals(VideoAddress.StreamName, name, StringComparison.CurrentCultureIgnoreCase) ||
-                   Tags.Contains(name);
+                   VideoAddress.Tags.Contains(name);
         }
 
         public void Dispose()
