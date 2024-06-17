@@ -32,7 +32,7 @@ namespace ModelingEvolution.VideoStreaming.Ui.Pages
         {
             _server = server;
             
-            Items = new ObservableCollectionView<ReplicatorVm, VideoStreamReplicator>(x=>new ReplicatorVm(x), this._server.Streams);
+            Items = new ObservableCollectionView<ReplicatorVm, IVideoStreamReplicator>(x=>new ReplicatorVm(x), this._server.Streams);
         }
         public async Task Start()
         {
@@ -55,7 +55,7 @@ namespace ModelingEvolution.VideoStreaming.Ui.Pages
         {
             _server.Stop();
         }
-        public IObservableCollectionView<ReplicatorVm, VideoStreamReplicator> Items { get; private set; }
+        public IObservableCollectionView<ReplicatorVm, IVideoStreamReplicator> Items { get; private set; }
         public string BindAddress => $"{_server.Host}:{_server.Port}";
 
         public Bytes AllocatedBuffersBytes
@@ -68,7 +68,7 @@ namespace ModelingEvolution.VideoStreaming.Ui.Pages
                     for (int i = 0; i < _server.Streams.Count; i++)
                     {
                         var stream = _server.Streams[i];
-                        size += stream.StreamMultiplexer.BufferLength;
+                        size += (long)stream.MultiplexingStats.BufferLength;
                     }
                 }
                 catch (IndexOutOfRangeException)

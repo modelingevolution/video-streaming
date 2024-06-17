@@ -1,14 +1,18 @@
 ﻿using System.Buffers;
+using System.Runtime.InteropServices;
 using EventPi.SharedMemory;
+using Microsoft.AspNetCore.Http;
 using ModelingEvolution.VideoStreaming.Chasers;
 using ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
 namespace ModelingEvolution.VideoStreaming;
 
 #pragma warning disable CS4014
-public class SharedBufferMultiplexer : IMultiplexer, IFrameBasedMultiplexer
+public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
 {
+    public event EventHandler Disconnected;
     private Thread _worker;
+    private readonly List<IChaser> _chasers = new();
     private readonly SharedCyclicBuffer _ipBuffer;
     private readonly FrameInfo _info;
     private readonly byte[] _sharedBuffer;
@@ -19,6 +23,8 @@ public class SharedBufferMultiplexer : IMultiplexer, IFrameBasedMultiplexer
     private int _padding;
     private bool _isCanceled;
     private ulong _totalBytesRead;
+    public ulong ReadFrameCount { get; private set; }
+    public IReadOnlyList<IChaser> Chasers => _chasers.AsReadOnly();
     public int Padding
     {
         get => _padding;
@@ -60,6 +66,8 @@ public class SharedBufferMultiplexer : IMultiplexer, IFrameBasedMultiplexer
     {
         IsRunning = true;
         var dstMemHandle = _buffer.Pin();
+        var METADATA_SIZE = Marshal.SizeOf<FrameMetadata>();
+
         using var encoder = JpegEncoderFactory.Create(_info.Width, _info.Height, 80, 0);
         while (!IsCanceled)
         {
@@ -73,11 +81,16 @@ public class SharedBufferMultiplexer : IMultiplexer, IFrameBasedMultiplexer
                 // We need to goto to begin of the buffer. There no more space left.
             }
             nint dstBuffer = (nint)dstMemHandle.Pointer;
-            nint dstSlot = dstBuffer + _readOffset;
+            nint dstSlot = dstBuffer + _readOffset + METADATA_SIZE;
 
             var len = encoder.Encode(ptr, dstSlot, (ulong)_maxFrameSize);
+            var m = new FrameMetadata(ReadFrameCount, len, _totalBytesRead);
+            MemoryMarshal.Write(_buffer.Span.Slice(_readOffset), in m);
+
             _readOffset += (int)len;
             _totalBytesRead += len;
+            ReadFrameCount += 1;
+
         }
 
         IsRunning = false;
@@ -85,11 +98,21 @@ public class SharedBufferMultiplexer : IMultiplexer, IFrameBasedMultiplexer
 
     public Memory<byte> Buffer() => _buffer;
 
-    public int ReadOffset => _readOffset;
+    public int LastFrameOffset => _readOffset;
 
     public ulong TotalReadBytes => _totalBytesRead;
+    public ulong BufferLength => _ipBuffer.Capacity + (ulong)_sharedBuffer.Length;
+
     public void Disconnect(IChaser chaser)
     {
-            
+        _chasers.Remove(chaser);
+        Disconnected?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task Chase(HttpContext context, string identifier, CancellationToken token)
+    {
+        var chaser = new HttpMjpegBufferedFrameChaser(this, context, identifier, token: token);
+        _chasers.Add(chaser);
+        await chaser.Write();
     }
 }

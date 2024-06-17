@@ -2,7 +2,6 @@
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
-using EventPi.SharedMemory;
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -57,36 +56,23 @@ namespace ModelingEvolution.VideoStreaming
         public fixed byte Data[PIXELS_YUV_420];
         
     }
-    public class VideoSharedBufferReplicator
+
+   
+
+    public interface IVideoStreamReplicator : IDisposable
     {
-        private SharedCyclicBuffer? _buffer;
-        private SharedBufferMultiplexer? _multiplexer;
-        private FrameInfo _info;
-        public string SharedMemoryName { get; private set; }
-
-        public VideoSharedBufferReplicator(string sharedMemoryName, FrameInfo info)
-        {
-            SharedMemoryName = sharedMemoryName;
-            _info = info;
-        }
-
-        public VideoSharedBufferReplicator Connect()
-        {
-            _buffer = new SharedCyclicBuffer(60, _info.Yuv420,  SharedMemoryName); // ~180MB
-            _multiplexer = new SharedBufferMultiplexer(_buffer, _info);
-            _multiplexer.Start();
-            return this;
-        }
+        event EventHandler Stopped;
+        IMultiplexingStats MultiplexingStats { get; }
+        DateTime Started { get; }
+        VideoAddress VideoAddress { get; }
+        IVideoStreamReplicator Connect();
+        Task ReplicateTo(HttpContext ns, string? identifier, CancellationToken token = default);
+        Task ReplicateTo(WebSocket ns, string? identifier);
+        void ReplicateTo(Stream ns, string? identifier);
+        bool Is(string name);
     }
 
-    public interface IFrameBasedMultiplexer
-    {
-        int Padding { get; }
-        int ReadOffset { get; }
-        Memory<byte> Buffer();
-    }
-
-    public class VideoStreamReplicator : IDisposable
+    public class VideoStreamReplicator : IVideoStreamReplicator
     {
         public event EventHandler Stopped;
         private NetworkStream _source;
@@ -100,30 +86,25 @@ namespace ModelingEvolution.VideoStreaming
         private readonly DateTime _started;
         private readonly IPlumber _plumber;
         private TcpClient _client;
-        public StreamMultiplexer StreamMultiplexer => _multiplexer;
-        public string Host => _host;
-        public string Protocol => _protocol;
+        public IMultiplexingStats MultiplexingStats => _multiplexer;
         public DateTime Started => _started;
-        public int Port => _port;
-        public string StreamName => _streamName;
-        public VideoAddress VideoAddress => new VideoAddress( this.Protocol,Host, Port, StreamName);
+        
+        public VideoAddress VideoAddress { get; private set; }
         public HashSet<string> Tags => _tags;
-        public VideoStreamReplicator(string protocol, string host, int port, string streamName, string[] tags,
+        public VideoStreamReplicator(VideoProtocol protocol, string host, int port, string streamName, string[] tags,
             ILoggerFactory loggerFactory, IPlumber plumber)
         {
-            _host = host;
-            this._port = port;
-            _streamName = streamName;
+            VideoAddress = new VideoAddress(protocol, host, port, streamName);
             _loggerFactory = loggerFactory;
             _plumber = plumber;
-            _protocol = protocol;
+            
             _started = DateTime.Now;
             foreach (var tag in tags)
                 _tags.Add(tag);
             
         }
 
-        public VideoStreamReplicator Connect()
+        public IVideoStreamReplicator Connect()
         {
             if (_client != null) throw new InvalidOperationException("Cannot reuse Replicator.");
 
@@ -193,6 +174,13 @@ namespace ModelingEvolution.VideoStreaming
                 IDecoder d = new ReverseDecoder();
                 _multiplexer!.Chase(ns, x => d.Decode(x) == NALType.SPS ? 0 : null, identifier);
             }
+        }
+
+        public bool Is(string name)
+        {
+            return VideoAddress.Host.Equals(name, StringComparison.CurrentCultureIgnoreCase) ||
+                   string.Equals(VideoAddress.StreamName, name, StringComparison.CurrentCultureIgnoreCase) ||
+                   Tags.Contains(name);
         }
 
         public void Dispose()

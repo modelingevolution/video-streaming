@@ -4,13 +4,13 @@ using Microsoft.AspNetCore.Http;
 
 namespace ModelingEvolution.VideoStreaming.Chasers;
 
-internal sealed class HttpMjpegChaser : IChaser
+internal sealed class HttpMjpegStreamChaser : IChaser
 {
     private readonly HttpContext _dst;
     private readonly Func<byte, int?> _validStart;
     private readonly CancellationTokenSource _cancellationTokenSource;
 
-    private readonly IMultiplexer _multiplexer;
+    private readonly IStreamMultiplexer _multiplexer;
     private ulong _written;
     private readonly DateTime _started;
     public int PendingBytes => _pendingWrite;
@@ -77,7 +77,7 @@ internal sealed class HttpMjpegChaser : IChaser
 
         return true;
     }
-    public HttpMjpegChaser(IMultiplexer multiplexer, HttpContext dst, Func<byte, int?> validStart,
+    public HttpMjpegStreamChaser(IStreamMultiplexer multiplexer, HttpContext dst, Func<byte, int?> validStart,
         string identifier = null, long? maxFrames = null, CancellationToken token = default)
     {
         _dst = dst;

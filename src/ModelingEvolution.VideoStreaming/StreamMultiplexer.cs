@@ -6,7 +6,7 @@ using ModelingEvolution.VideoStreaming.Chasers;
 
 namespace ModelingEvolution.VideoStreaming;
 
-public class StreamMultiplexer : IMultiplexer
+public class StreamMultiplexer : IStreamMultiplexer
 {
     public event EventHandler Stopped;
     public event EventHandler Disconnected;
@@ -20,12 +20,12 @@ public class StreamMultiplexer : IMultiplexer
     private int _readOffset;
     private bool _stopped;
 
-    Memory<byte> IMultiplexer.Buffer()
+    Memory<byte> IStreamMultiplexer.Buffer()
     {
         return _buffer;
     }
 
-    int IMultiplexer.ReadOffset => _readOffset;
+    int IStreamMultiplexer.ReadOffset => _readOffset;
 
     /// <summary>
     /// Contains number of bytes read in _buffer. This is if we written 2 times buffer size, than it will be 2x size of the buffer.
@@ -36,6 +36,8 @@ public class StreamMultiplexer : IMultiplexer
     
     public IReadOnlyList<IChaser> Chasers => _chasers.AsReadOnly();
     private readonly byte[] _sharedBuffer;
+    private IList<IChaser> _chasers1;
+
     public StreamMultiplexer(StreamBase source, ILogger<StreamMultiplexer> logger)
     {
         _sharedBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE);
@@ -45,31 +47,8 @@ public class StreamMultiplexer : IMultiplexer
         _logger = logger;
     }
 
-    public int ClientCount => _chasers.Count;
-
-    public ulong TotalTransferred
-    {
-        get
-        {
-            ulong u = 0;
-            for (int i = 0; i < _chasers.Count; i++)
-            {
-                try
-                {
-                    var chaser = _chasers[i];
-                    if (chaser != null)
-                        u += chaser.WrittenBytes;
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    return u;
-                }
-            }
-
-            return u;
-        }
-    }
-    public long BufferLength  => _buffer.Length;
+    
+    public ulong BufferLength  => (ulong)_buffer.Length;
 
     public void Start()
     {
@@ -78,7 +57,7 @@ public class StreamMultiplexer : IMultiplexer
 
    
 
-    void IMultiplexer.Disconnect(IChaser chaser)
+    void IStreamMultiplexer.Disconnect(IChaser chaser)
     {
         _chasers.Remove(chaser);
         Disconnected?.Invoke(this, EventArgs.Empty);
@@ -98,7 +77,7 @@ public class StreamMultiplexer : IMultiplexer
     {
         validStart ??= x => 0;
 
-        var chaser = new HttpMjpegChaser(this, context, validStart, identifier, token:token);
+        var chaser = new HttpMjpegStreamChaser(this, context, validStart, identifier, token:token);
         _chasers.Add(chaser);
         await chaser.Write();
     }

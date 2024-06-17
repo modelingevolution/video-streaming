@@ -38,7 +38,7 @@
         try
         {
             errors = Array.Empty<string>();
-            await _server.ConnectVideoSource(VideoStreamingServer.VideoSource.CreateFrom(new Uri(_url)));
+            await _server.ConnectVideoSource(VideoAddress.CreateFrom(new Uri(_url)));
             MudDialog.Close();
         }
         catch (Exception ex)

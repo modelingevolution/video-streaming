@@ -112,6 +112,11 @@ public class StreamPersister : INotifyPropertyChanged
         _streams[address].Close();
         _streams.Remove(address);
     }
+
+    public async Task Save(VideoAddress address)
+    {
+        await Save(address, new HashSet<string>());
+    }
     public async Task Save(VideoAddress address, HashSet<string> tags)
     {
         if(Format == "mp4")
@@ -181,8 +186,8 @@ public class StreamPersister : INotifyPropertyChanged
 
             var result = await Cli.Wrap(_ffmpegExec)
                 //.WithArgumentsIf(address.Protocol == "mjpeg", $"-i - -c:v libx264 -f mp4 -an -y \"{outputFilePath}\"")
-                .WithArgumentsIf(address.Protocol == "mjpeg", $"-i - -c:v h264 -preset:v ultrafast -f mp4 -an -y \"{outputFilePath}\"")
-                .WithArgumentsIf(address.Protocol != "mjpeg", $"-f h264")
+                .WithArgumentsIf(address.Protocol == VideoProtocol.Mjpeg, $"-i - -c:v h264 -preset:v ultrafast -f mp4 -an -y \"{outputFilePath}\"")
+                .WithArgumentsIf(address.Protocol == VideoProtocol.H264, $"-f h264")
                 .WithStandardInputPipe(PipeSource.FromStream(bufferedStream))
                 .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
                 .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))

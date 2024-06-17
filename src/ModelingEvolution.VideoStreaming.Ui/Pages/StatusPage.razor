@@ -97,15 +97,15 @@
             <tr>
                 <td><MudLink Href="@context.ViewerUrl">@(context.Address)</MudLink></td>
                 <td>@(context.Started)</td>
-                <td>@(context.StreamMultiplexer.ClientCount)</td>
+                <td>@(context.MultiplexingStats.ClientCount)</td>
                 <td>@context.TotalReadBytes</td>
                 <td>@context.InTransferSpeed</td>
-                <td>@context.OutTransferSpeed(context.StreamMultiplexer.TotalTransferred)</td>
+                <td>@context.OutTransferSpeed(context.MultiplexingStats.TotalTransferred)</td>
                 <td></td>
                 <td></td>
                 <td></td>
             </tr>
-            @foreach (var i in context.StreamMultiplexer.Chasers.For())
+            @foreach (var i in context.MultiplexingStats.Chasers.For())
             {
                 <tr>
                     <td></td>

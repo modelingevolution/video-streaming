@@ -95,9 +95,9 @@ else
     {
        
         var rpl =  _srv.GetReplicator(Stream);
-        _protocol = rpl?.Protocol;
+        _protocol = rpl?.VideoAddress.Protocol.ToString();
         _address = rpl?.VideoAddress;
-        _tags = rpl?.Tags;
+        _tags = rpl?.VideoAddress.Tags;
         _imgStyle += ImgStyle;
     }
 }

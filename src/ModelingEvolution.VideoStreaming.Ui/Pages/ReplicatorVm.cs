@@ -2,41 +2,37 @@
 
 namespace ModelingEvolution.VideoStreaming.Ui.Pages;
 
-public class ReplicatorVm : IViewFor<VideoStreamReplicator>, IEquatable<ReplicatorVm>
+public class ReplicatorVm : IViewFor<IVideoStreamReplicator>, IEquatable<ReplicatorVm>
 {
         
     private readonly SpeedVm _inTransferSpeed;
     private readonly SpeedVm _outTransferSpeed;
-    private readonly VideoStreamReplicator _source;
-    public StreamMultiplexer StreamMultiplexer => _source.StreamMultiplexer;
-    public Bytes TotalBytes => StreamMultiplexer.TotalReadBytes;
-    public string Host => _source.Host;
+    private readonly IVideoStreamReplicator _source;
+    public IMultiplexingStats MultiplexingStats => _source.MultiplexingStats;
+    public Bytes TotalBytes => MultiplexingStats.TotalReadBytes;
+    public string Host => _source.VideoAddress.Host;
 
-    public int Port => _source.Port;
-    public string Address =>
-        !string.IsNullOrWhiteSpace(_source.StreamName) ? 
-            $"{_source.Protocol}://{Host}:{Port}/{_source.StreamName}" : 
-            $"{_source.Protocol}://{Host}:{Port}";
+    public string Address => _source.VideoAddress.ToString();
 
     public string ViewerUrl
     {
-        get { return $"/viewer/{_source?.StreamName ?? Host}"; }
+        get { return $"/viewer/{_source?.VideoAddress.StreamName ?? Host}"; }
     }
 
     public string WebSocketUrl
     {
-        get { return $"/ws/{_source.StreamName}"; }
+        get { return $"/ws/{_source.VideoAddress.StreamName}"; }
     }
-    public ReplicatorVm(VideoStreamReplicator source)
+    public ReplicatorVm(IVideoStreamReplicator source)
     {
         _source = source;
         _inTransferSpeed = new SpeedVm();
         _outTransferSpeed = new SpeedVm();
     }
-    public string InTransferSpeed => _inTransferSpeed.Calculate(Source.StreamMultiplexer.TotalReadBytes);
+    public string InTransferSpeed => _inTransferSpeed.Calculate(Source.MultiplexingStats.TotalReadBytes);
     public string OutTransferSpeed(ulong bytes) => _outTransferSpeed.Calculate(bytes);
 
-    public VideoStreamReplicator Source
+    public IVideoStreamReplicator Source
     {
         get => _source;
     }
@@ -50,13 +46,13 @@ public class ReplicatorVm : IViewFor<VideoStreamReplicator>, IEquatable<Replicat
         }
     }
 
-    public Bytes TotalReadBytes => Source.StreamMultiplexer.TotalReadBytes;
+    public Bytes TotalReadBytes => Source.MultiplexingStats.TotalReadBytes;
 
     public bool Equals(ReplicatorVm? other)
     {
         if(ReferenceEquals(this, other)) return true;
         if (other == null) return false;
 
-        return this.Host == other.Host && this.Port == other.Port;
+        return this.Source.VideoAddress.Equals(other.Source.VideoAddress);
     }
 }

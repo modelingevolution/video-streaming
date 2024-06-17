@@ -11,7 +11,7 @@ internal sealed class Chaser : IChaser
     private readonly Func<byte, int?> _validStart;
     private readonly CancellationTokenSource _cancellationTokenSource;
 
-    private readonly IMultiplexer _multiplexer;
+    private readonly IStreamMultiplexer _multiplexer;
     private ulong _written;
     private readonly DateTime _started;
     public bool IsMultiplexer { get; }
@@ -34,7 +34,7 @@ internal sealed class Chaser : IChaser
         await _dst.DisposeAsync();
     }
 
-    public Chaser(IMultiplexer multiplexer, Stream dst, Func<byte, int?> validStart, string identifier = null)
+    public Chaser(IStreamMultiplexer multiplexer, Stream dst, Func<byte, int?> validStart, string identifier = null)
     {
         _dst = dst;
         _validStart = validStart;

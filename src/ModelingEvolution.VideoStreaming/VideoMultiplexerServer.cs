@@ -15,30 +15,11 @@ namespace ModelingEvolution.VideoStreaming;
 
 public class VideoStreamingServer : INotifyPropertyChanged
 {
-    public record VideoSource(string Protocol, string Host, int Port, string StreamName, params string[] Tags) 
-    {
-        public static VideoSource CreateFrom(Uri i)
-        {
-            var proto = i.Scheme;
-            var host = i.Host;
-            var port = i.Port;
-            var path = i.PathAndQuery.TrimStart('/').Split(',');
-            var streamName = path.Any() ? path[0] : host;
-            var tags = path.Length > 1 ? path.Skip(1).ToArray() : Array.Empty<string>();
-            return new VideoSource(proto, host, port,  streamName, tags);
-        }
-        public override string ToString()
-        {
-            if (!string.IsNullOrWhiteSpace(StreamName))
-                return $"{Protocol}://{Host}:{Port}/{StreamName},{string.Join(',', Tags)}";
-            else
-                return $"{Protocol}://{Host}:{Port}";
-        }
-    }
+   
 
-    public IReadOnlyCollection<VideoSource> DisconnectedSources => _disconnected;
-    private readonly ObservableCollection<VideoSource> _disconnected;
-    private readonly ObservableCollection<VideoStreamReplicator> _streams;
+    public IReadOnlyCollection<VideoAddress> DisconnectedSources => _disconnected;
+    private readonly ObservableCollection<VideoAddress> _disconnected;
+    private readonly ObservableCollection<IVideoStreamReplicator> _streams;
     private readonly string _host;
     private readonly int _port;
     private readonly string _protocol;
@@ -57,9 +38,9 @@ public class VideoStreamingServer : INotifyPropertyChanged
     }
 
     public string Host => _host;
-    public string Protocol => _protocol;
+    
     public int Port => _port;
-    public IList<VideoStreamReplicator> Streams => _streams;
+    public IList<IVideoStreamReplicator> Streams => _streams;
     private readonly ILogger<VideoStreamingServer> _logger;
     public ServerConfigProvider ServerConfigProvider => _configProvider;
     public VideoStreamingServer(string host, int port, ILogger<VideoStreamingServer> logger,
@@ -84,34 +65,37 @@ public class VideoStreamingServer : INotifyPropertyChanged
                 ReceiveTimeout = 30*1000
             }
         };
-        _streams = new ObservableCollection<VideoStreamReplicator>();
+        _streams = new ObservableCollection<IVideoStreamReplicator>();
         _configProvider = new ServerConfigProvider(config, plumber);
         _logger = logger;
-        _disconnected = new ObservableCollection<VideoSource>();
+        _disconnected = new ObservableCollection<VideoAddress>();
         NxReconnect = DateTime.Now;
     }
-    public async Task<VideoStreamReplicator> ConnectVideoSource(VideoSource src)
+    public async Task<VideoStreamReplicator> ConnectVideoSource(VideoAddress src)
     {
-        return await ConnectVideoSource(src.Protocol, src.Host, src.Port, src.StreamName, src.Tags);
+        return await ConnectVideoSource(src.Protocol, src.Host, src.Port, src.StreamName, src.Tags.ToArray());
     }
-    public async Task<VideoStreamReplicator> ConnectVideoSource(string protocol, string host, int port, string streamName, params string[] tags)
+    public async Task<VideoStreamReplicator> ConnectVideoSource(VideoProtocol protocol, string host, int port, string streamName, params string[] tags)
     {
         var streamReplicator = OnConnectVideoSource(protocol,host, port, streamName, tags);
         await SaveConfig(protocol,host, port, streamName, tags);
         return streamReplicator;
     }
 
-    private async Task SaveConfig(string protocol, string host, int port, string streamName, params string[] tags)
+    private async Task SaveConfig(VideoProtocol protocol, string host, int port,
+        string streamName, params string[] tags)
     {
         var config = await _configProvider.Get();
         string tagsSufix = tags.Any() ? $",{string.Join(',', tags)}" : "";
 
-        config.Sources.Add(new Uri($"{protocol}://{host}:{port}/{streamName}{tagsSufix}"));
+        VideoAddress va = new VideoAddress(protocol, host, port, streamName, tagsSufix);
+
+        config.Sources.Add(va.Uri);
         await _configProvider.Save();
     }
 
     
-    private VideoStreamReplicator OnConnectVideoSource(string protocol, string host, int port, string streamName, string[] tags)
+    private VideoStreamReplicator OnConnectVideoSource(VideoProtocol protocol, string host, int port, string streamName, string[] tags)
     {
         var streamReplicator = new VideoStreamReplicator(protocol,host, port, streamName, tags, _loggerFactory, _plumber);
         try
@@ -134,9 +118,8 @@ public class VideoStreamingServer : INotifyPropertyChanged
         VideoStreamReplicator replicator = (VideoStreamReplicator)sender;
         replicator.Stopped -= OnReplicatorStopped;
         _streams.Remove(replicator);
-
-        var videoSource = new VideoSource(replicator.Protocol,replicator.Host, replicator.Port, replicator.StreamName);
-        OnDisconnectVideoSource(videoSource, true);
+        
+        OnDisconnectVideoSource(replicator.VideoAddress, true);
 
         replicator.Dispose();
     }
@@ -180,12 +163,12 @@ public class VideoStreamingServer : INotifyPropertyChanged
         }
     }
 
-    private bool TryConnectVideoSource(VideoSource vs)
+    private bool TryConnectVideoSource(VideoAddress vs)
     {
         try
         {
 
-            this.OnConnectVideoSource( vs.Protocol,vs.Host, vs.Port, vs.StreamName, vs.Tags);
+            this.OnConnectVideoSource( vs.Protocol,vs.Host, vs.Port, vs.StreamName, vs.Tags.ToArray());
             this._disconnected.SafeRemove(vs);
 
             var streamingStarted = new StreamingStarted
@@ -209,22 +192,19 @@ public class VideoStreamingServer : INotifyPropertyChanged
     {
         var serverConfig = await _configProvider.Get();
         foreach (var i in serverConfig.Sources.Distinct()) 
-            TryConnectVideoSource(VideoSource.CreateFrom(i));
+            TryConnectVideoSource(VideoAddress.CreateFrom(i));
     }
 
     const int HANDSHAKE_TIMEOUTS_MS = 10000;
 
-    public VideoStreamReplicator? GetReplicator(string? name)
+    public IVideoStreamReplicator? GetReplicator(string? name)
     {
         if (name == null) return _streams.FirstOrDefault();
 
-        var replicator =
-            _streams.FirstOrDefault(row => row.Host.Equals(name, StringComparison.CurrentCultureIgnoreCase) ||
-                                           string.Equals(row.StreamName, name, StringComparison.CurrentCultureIgnoreCase) ||
-                                           row.Tags.Contains(name));
+        var replicator = _streams.FirstOrDefault(x => x.Is(name));
         return replicator;
     }
-    private async Task<VideoStreamReplicator?> FindReplicator(StreamBase ns)
+    private async Task<IVideoStreamReplicator?> FindReplicator(StreamBase ns)
     {
         var toRead = await ns.ReadByteAsync(HANDSHAKE_TIMEOUTS_MS);
         if (toRead.IsNaN) return null;
@@ -232,18 +212,12 @@ public class VideoStreamingServer : INotifyPropertyChanged
         var host = await ns.ReadAsciiStringAsync(toRead, HANDSHAKE_TIMEOUTS_MS);
         if (host == null) return null;
 
-        var replicator =
-            _streams.FirstOrDefault(row => row.Host.Equals(host, StringComparison.CurrentCultureIgnoreCase) || 
-                                           string.Equals(row.StreamName, host, StringComparison.CurrentCultureIgnoreCase) ||
-                                           row.Tags.Contains(host));
+        var replicator = _streams.FirstOrDefault(x => x.Is(host));
 
         if (replicator != null)
         {
-            _logger.LogInformation("Video stream found that started at {Started} from {HostName} at {Port} ({StreamName}).", 
-                replicator.Started, 
-                replicator.Host, 
-                replicator.Port, 
-                replicator.StreamName ?? "-");
+            _logger.LogInformation("Video stream found that started at {Started} from {Name}", 
+                replicator.Started,replicator.VideoAddress);
             return replicator;
         }
 
@@ -252,14 +226,14 @@ public class VideoStreamingServer : INotifyPropertyChanged
         return null;
     }
 
-    private bool TryFindSource(NetworkStream ns, out VideoStreamReplicator replicator)
+    private bool TryFindSource(NetworkStream ns, out IVideoStreamReplicator replicator)
     {
         var bytes = new byte[1024];
         int read = ns.Read(bytes);
 
         string requestedStream = Encoding.UTF8.GetString(bytes[..read]);
 
-        replicator = _streams.FirstOrDefault(row => row.Host == requestedStream);
+        replicator = _streams.FirstOrDefault(row => row.VideoAddress.Host == requestedStream);
 
         if (replicator is not null)
         {
@@ -371,7 +345,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
                 TcpClient client = await _listener.AcceptTcpClientAsync(_tokenSource.Token);
                 NetworkStream ns = client.GetStream();
 
-                if (TryFindSource(ns, out VideoStreamReplicator source))
+                if (TryFindSource(ns, out IVideoStreamReplicator source))
                 {
                     source.ReplicateTo(ns, client.Client.RemoteEndPoint.ToString());
                 }
@@ -419,7 +393,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
         return true;
     }
 
-    private void OnDisconnectVideoSource(VideoSource videoSource, bool saveEvent = false)
+    private void OnDisconnectVideoSource(VideoAddress videoSource, bool saveEvent = false)
     {
         if (saveEvent)
         {

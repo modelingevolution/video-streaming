@@ -8,7 +8,7 @@ internal sealed class WebChaser : IChaser
     private readonly Func<byte, int?> _validStart;
     private readonly CancellationTokenSource _cancellationTokenSource;
 
-    private readonly IMultiplexer _multiplexer;
+    private readonly IStreamMultiplexer _multiplexer;
     private ulong _written;
     private readonly DateTime _started;
     public int PendingBytes => _pendingWrite;
@@ -30,7 +30,7 @@ internal sealed class WebChaser : IChaser
         await _dst.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Closed", CancellationToken.None);
     }
 
-    public WebChaser(IMultiplexer multiplexer, WebSocket dst, Func<byte, int?> validStart, string identifier = null)
+    public WebChaser(IStreamMultiplexer multiplexer, WebSocket dst, Func<byte, int?> validStart, string identifier = null)
     {
         _dst = dst;
         _validStart = validStart;

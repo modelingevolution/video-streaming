@@ -29,7 +29,7 @@
                     <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary">
                         <MudIconButton Disabled="@(_persisterVm.IsStartDisabled(context.Source.VideoAddress))"
                                        Icon="@Icons.Material.Filled.FiberManualRecord"
-                                       OnClick="@(async () => { await Task.Factory.StartNew(async () => await _persisterVm.Save(context.Source.VideoAddress, context.Source.Tags), TaskCreationOptions.LongRunning); })">Record</MudIconButton>
+                                       OnClick="@(async () => { await Task.Factory.StartNew(async () => await _persisterVm.Save(context.Source.VideoAddress), TaskCreationOptions.LongRunning); })">Record</MudIconButton>
                         <MudIconButton Disabled="@(_persisterVm.IsStopDisabled(context.Source.VideoAddress))"
                                        Icon="@Icons.Material.Filled.Stop"
                                        OnClick="@(async () => await _persisterVm.Stop(context.Source.VideoAddress))">Stop</MudIconButton>
