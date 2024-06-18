@@ -35,7 +35,7 @@ public interface IMultiplexingStats
 }
 public interface IBufferedFrameMultiplexer : IMultiplexingStats
 {
-    int Padding { get; }
+    bool IsEnd(int offset);
     int LastFrameOffset { get; }
     ulong ReadFrameCount { get; }
     Memory<byte> Buffer();

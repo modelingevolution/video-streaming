@@ -102,7 +102,8 @@ public class VideoStreamingServer : INotifyPropertyChanged
             new VideoSharedBufferReplicator(va.StreamName,
                 va.Resolution == VideoResolution.FullHd ? FrameInfo.FullHD : FrameInfo.SubHD,
                 _sink,
-                _loggerFactory.CreateLogger<VideoSharedBufferReplicator>());
+                _loggerFactory.CreateLogger<VideoSharedBufferReplicator>(), 
+                _loggerFactory);
         try
         {
             _streams.Add(streamReplicator.Connect());

@@ -2,7 +2,7 @@
   "profiles": {
     "ModelingEvolution.VideoStreaming.Mp4ToMjpeg": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\rafal\\ModelingEvolution\\ModelingEvolution - Rocket-Welder\\Media\\Videos\\localhost.20240611.143211-80.mp4\"",
+      "commandLineArgs": "D:\\a.mp4",
       "nativeDebugging": true
     }
   }

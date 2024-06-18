@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ModelingEvolution.VideoStreaming.CameraSimulator": {
+      "commandName": "Project",
+      "commandLineArgs": "d:\\a.mp4 a -wait"
+    }
+  }
+}

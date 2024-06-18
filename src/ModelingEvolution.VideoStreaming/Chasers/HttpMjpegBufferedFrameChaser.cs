@@ -1,12 +1,14 @@
 ﻿using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace ModelingEvolution.VideoStreaming.Chasers;
 
 internal sealed class HttpMjpegBufferedFrameChaser : IChaser
 {
     private readonly HttpContext _dst;
+    private readonly ILogger<HttpMjpegBufferedFrameChaser> _logger;
     private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly IBufferedFrameMultiplexer _multiplexer;
     private ulong _frameCounter = 0;
@@ -47,11 +49,15 @@ internal sealed class HttpMjpegBufferedFrameChaser : IChaser
     
 
     
-    public HttpMjpegBufferedFrameChaser(IBufferedFrameMultiplexer multiplexer, 
-        HttpContext dst, 
-        string identifier = null, long? maxFrames = null, CancellationToken token = default)
+    public HttpMjpegBufferedFrameChaser(IBufferedFrameMultiplexer multiplexer,
+        HttpContext dst,
+        string identifier = null,
+        ILogger<HttpMjpegBufferedFrameChaser> logger = null,
+        long? maxFrames = null,
+        CancellationToken token = default)
     {
         _dst = dst;
+        _logger = logger;
         _multiplexer = multiplexer;
         _written = 0;
         _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -93,14 +99,21 @@ internal sealed class HttpMjpegBufferedFrameChaser : IChaser
         await cx.Response.Body.WriteAsync(StartBoundary, 0, StartBoundary.Length, cancellationToken);
         await cx.Response.Body.FlushAsync(cancellationToken);
         var writer = cx.Response.Body;
-
+        int c = 0;
         while (!cancellationToken.IsCancellationRequested)
         {
-            await foreach(var data in _multiplexer.Read(token: cancellationToken))
+            await foreach(var data in _multiplexer.Read(logger: _logger, token: cancellationToken))
             {
+                
                 await writer.WriteAsync(data.Data, cancellationToken);
+                //using var fs = File.OpenWrite($"{c++}.jpg");
+                //{
+                //    await fs.WriteAsync(data.Data, cancellationToken);
+                //}
+                if (!MjpegDecoder.IsJpeg(data.Data))
+                    throw new InvalidOperationException("Frame is not valid jpeg");
                 await writer.WriteAsync(Boundary, cancellationToken);
-                await writer.FlushAsync(cancellationToken);
+                //await writer.FlushAsync(cancellationToken);
                 _frameCounter += 1;
                 _written += (ulong)data.Data.Length + (ulong)Boundary.Length;
                 _pendingWrite = data.PendingBytes;

@@ -156,8 +156,8 @@ internal sealed class HttpMjpegStreamChaser : IChaser
 
         // this might big number,
         ulong started = currentTotal - (ulong)count;
-        await cx.Response.Body.WriteAsync(StartBoundary, 0, StartBoundary.Length);
-        await cx.Response.Body.FlushAsync();
+        await cx.Response.Body.WriteAsync(StartBoundary, 0, StartBoundary.Length, cancellationToken);
+        await cx.Response.Body.FlushAsync(cancellationToken);
         var writer = cx.Response.Body;
 
         while (!cancellationToken.IsCancellationRequested)
