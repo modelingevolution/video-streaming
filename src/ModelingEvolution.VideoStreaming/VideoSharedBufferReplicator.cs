@@ -38,7 +38,7 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
 
     public IVideoStreamReplicator Connect()
     {
-        _logger.LogInformation($"Shared memory: {SharedMemoryName}, total size: {_info.Yuv420*120} bytes, frame: {_info.Yuv420} bytes");
+        _logger.LogInformation($"Shared memory: {SharedMemoryName}, total size: {_info.Yuv420*120} bytes, frame: {_info.Yuv420} bytes for {_info}");
         _buffer = new SharedCyclicBuffer(120, _info.Yuv420,  SharedMemoryName); // ~180MB
         
         _multiplexer = new SharedBufferMultiplexer(_buffer, _info, _loggerFactory);

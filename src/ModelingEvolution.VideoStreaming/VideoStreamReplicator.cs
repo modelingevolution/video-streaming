@@ -47,7 +47,10 @@ namespace ModelingEvolution.VideoStreaming
         public int Height { get;  }
         public int Stride { get;  }
 
-      
+        public override string ToString()
+        {
+            return $"{Width}x{Height}";
+        }
     }
    
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
