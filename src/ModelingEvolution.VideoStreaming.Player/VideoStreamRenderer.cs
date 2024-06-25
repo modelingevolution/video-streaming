@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using ModelingEvolution.VideoStreaming.Buffers;
 using SkiaSharp;
 
 namespace ModelingEvolution.VideoStreaming.Player
@@ -15,7 +16,7 @@ namespace ModelingEvolution.VideoStreaming.Player
     {
         public bool IsConnected { get; private set; }
         private CancellationTokenSource cts;
-        private readonly ConcurrentQueue<JpegFrame> _queue = new();
+        private readonly ConcurrentQueue<Memory<byte>> _queue = new();
         public void Disconnect()
         {
             if(IsConnected)
@@ -33,7 +34,7 @@ namespace ModelingEvolution.VideoStreaming.Player
                     using TcpClient client = new TcpClient(host, port);
                     var stream = client.GetStream();
                     await stream.WritePrefixedAsciiString(streamName);
-                    await stream.Copy(_queue, token: cts.Token);
+                    await stream.Copy2(_queue, token: cts.Token);
                 }
                 catch
                 {
@@ -47,13 +48,12 @@ namespace ModelingEvolution.VideoStreaming.Player
         {
             while (_queue.TryDequeue(out var frame))
             {
-                using (var image = SKImage.FromEncodedData(frame.Data.AsSpan(0, frame.Length)))
+                using (var image = SKImage.FromEncodedData(frame.Span))
                 {
                     if (image != null)
                         canvas.DrawImage(image, new SKRect(0, 0, image.Width, image.Height));
                     Debug.WriteLine("Null");
                 }
-                ArrayPool<byte>.Shared.Return(frame.Data);
             }
         }
     }

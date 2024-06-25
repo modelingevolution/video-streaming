@@ -70,7 +70,7 @@ namespace ModelingEvolution.VideoStreaming
         IVideoStreamReplicator Connect();
         Task ReplicateTo(HttpContext ns, string? identifier, CancellationToken token = default);
         Task ReplicateTo(WebSocket ns, string? identifier);
-        void ReplicateTo(Stream ns, string? identifier);
+        void ReplicateTo(Stream ns, string? identifier, CancellationToken token = default);
         bool Is(string name);
     }
 
@@ -173,7 +173,7 @@ namespace ModelingEvolution.VideoStreaming
             IDecoder d = new ReverseDecoder();
             await _multiplexer!.Chase(ns, x => d.Decode(x) == NALType.SPS ? 0 : null, identifier);
         }
-        public void ReplicateTo(Stream ns, string? identifier)
+        public void ReplicateTo(Stream ns, string? identifier, CancellationToken token = default)
         {
             if (this._protocol == "mjpeg")
             {

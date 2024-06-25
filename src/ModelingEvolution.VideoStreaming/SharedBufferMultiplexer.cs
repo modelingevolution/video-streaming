@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using EventPi.SharedMemory;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using ModelingEvolution.VideoStreaming.Buffers;
 using ModelingEvolution.VideoStreaming.Chasers;
 using ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
@@ -28,7 +29,7 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
     private bool _isCanceled;
     private ulong _totalBytesRead;
     private ulong _readFrameCount;
-
+    private readonly ILogger<SharedBufferMultiplexer> _logger;
     public ulong ReadFrameCount
     {
         get => _readFrameCount;
@@ -60,6 +61,7 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         _ipBuffer = ipBuffer;
         _info = info;
         _loggerFactory = loggerFactory;
+        _logger = _loggerFactory.CreateLogger<SharedBufferMultiplexer>();
         _maxFrameSize = info.Yuv420;
         _bufferSize = _maxFrameSize * 30; // 1sec
         _sharedBuffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
@@ -84,33 +86,41 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         using var encoder = JpegEncoderFactory.Create(_info.Width, _info.Height, 80, 0);
         while (!IsCanceled)
         {
-            var ptr = _ipBuffer.PopPtr();
-            //Mat m = new Mat(_info.Rows, _info.Width, MatType.CV_8U,ptr, _info.Stride);
-            var left = _buffer.Length - _readOffset;
-            if (left < (_maxFrameSize+ METADATA_SIZE))
+            try
             {
-                _padding = left;
-                _readOffset = 0;
-                Debug.WriteLine($"Buffer is full for writing, resetting. Last frame was: {_readFrameCount-1} ");
-                // We need to goto to begin of the buffer. There no more space left.
+                var ptr = _ipBuffer.PopPtr();
+                //Mat m = new Mat(_info.Rows, _info.Width, MatType.CV_8U,ptr, _info.Stride);
+                var left = _buffer.Length - _readOffset;
+                if (left < (_maxFrameSize + METADATA_SIZE))
+                {
+                    _padding = left;
+                    _readOffset = 0;
+                    Debug.WriteLine($"Buffer is full for writing, resetting. Last frame was: {_readFrameCount - 1} ");
+                    // We need to goto to begin of the buffer. There no more space left.
+                }
+
+                nint dstBuffer = (nint)dstMemHandle.Pointer;
+                nint dstSlot = dstBuffer + _readOffset + METADATA_SIZE;
+
+                var len = encoder.Encode(ptr, dstSlot, (ulong)_maxFrameSize);
+                if (len == 0)
+                    throw new InvalidOperationException("Could not encode to jpeg");
+
+                var m = new FrameMetadata(ReadFrameCount, len, _totalBytesRead);
+                if (!m.IsOk)
+                    throw new InvalidOperationException("Memory is corrupt or was overriden.");
+
+                MemoryMarshal.Write(_buffer.Span.Slice(_readOffset), in m);
+                _lastFrameOffset = _readOffset;
+                _readOffset += (int)len + METADATA_SIZE;
+                _totalBytesRead += len;
+                Interlocked.Increment(ref _readFrameCount);
             }
-            nint dstBuffer = (nint)dstMemHandle.Pointer;
-            nint dstSlot = dstBuffer + _readOffset + METADATA_SIZE;
-
-            var len = encoder.Encode(ptr, dstSlot, (ulong)_maxFrameSize);
-            if (len == 0)
-                throw new InvalidOperationException("Could not encode to jpeg");
-            
-            var m = new FrameMetadata(ReadFrameCount, len, _totalBytesRead);
-            if (!m.IsOk)
-                throw new InvalidOperationException("Memory is corrupt or was overriden.");
-
-            MemoryMarshal.Write(_buffer.Span.Slice(_readOffset), in m);
-            _lastFrameOffset = _readOffset;
-            _readOffset += (int)len + METADATA_SIZE;
-            _totalBytesRead += len;
-            Interlocked.Increment(ref _readFrameCount);
-
+            catch(Exception ex) 
+            {
+                _logger.LogError(ex, "Encoding failed.");
+                break;
+            }
         }
 
         IsRunning = false;
@@ -145,5 +155,21 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
             token: token);
         _chasers.Add(chaser);
         await chaser.Write();
+    }
+
+    public void Chase(Stream dst, string? identifier, CancellationToken token)
+    {
+        Tuple<Stream, string, IBufferedFrameMultiplexer,CancellationToken> args =
+            new Tuple<Stream, string, IBufferedFrameMultiplexer,CancellationToken>(dst, identifier, this,token);
+
+        _ = Task.Factory.StartNew(static async (object state) =>
+        {
+            var (dst, identifier, buffer, ct) = (Tuple<Stream, string, IBufferedFrameMultiplexer, CancellationToken >)state;
+            await foreach (var f in buffer.Read(token:ct))
+            {
+                await dst.WriteAsync(f.Metadata);
+                await dst.WriteAsync(f.Data, ct);
+            }
+        }, args, TaskCreationOptions.LongRunning);
     }
 }

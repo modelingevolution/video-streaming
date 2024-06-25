@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
@@ -22,6 +22,10 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
     <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="2.88.8" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj" />
 	</ItemGroup>
 
 </Project>

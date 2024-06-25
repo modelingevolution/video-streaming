@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using ModelingEvolution.VideoStreaming.Buffers;
 
 namespace ModelingEvolution.VideoStreaming;
 
@@ -67,16 +68,7 @@ public static class FrameBasedMultiplexerExtensions
     }
 }
 
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
-public readonly struct FrameMetadata(ulong frameNumber, ulong frameSize, ulong streamPosition)
-{
-    public readonly ulong FrameNumber = frameNumber;
-    public readonly ulong FrameSize = frameSize;
-    public readonly ulong StreamPosition = streamPosition;
-    private readonly ulong _xor = frameNumber ^ frameSize ^ streamPosition;
 
-    public bool IsOk => FrameSize > 0 && _xor == (FrameNumber ^ FrameSize ^ StreamPosition);
-}
 
 public readonly struct Frame(ref FrameMetadata metadata, Memory<byte> data, 
     int pendingFrames, 

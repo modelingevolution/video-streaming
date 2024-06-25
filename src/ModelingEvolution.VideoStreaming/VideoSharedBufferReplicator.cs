@@ -56,9 +56,9 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
     {
         throw new NotImplementedException();
     }
-    public void ReplicateTo(Stream ns, string? identifier)
+    public void ReplicateTo(Stream ns, string? identifier, CancellationToken token = default)
     {
-        throw new NotImplementedException();
+        _multiplexer!.Chase(ns, identifier, token);
     }
 
     public bool Is(string name)

@@ -12,11 +12,9 @@ using NSubstitute.Core;
 using Decoder = ModelingEvolution.VideoStreaming.Nal.Decoder;
 
 namespace ModelingEvolution.IO.Tests;
+
 public class StreamMultiplexerTests
 {
-
-
-
     [Fact]
     public async Task ReverseDetectionWorks()
     {
