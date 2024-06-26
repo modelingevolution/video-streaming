@@ -16,8 +16,8 @@ namespace ModelingEvolution.VideoStreaming;
 
 public class VideoStreamingServer : INotifyPropertyChanged
 {
-   
 
+    public event EventHandler<VideoAddress> SourceStreamConnected;
     public IReadOnlyCollection<VideoAddress> DisconnectedSources => _disconnected;
     private readonly ObservableCollection<VideoAddress> _disconnected;
     private readonly ObservableCollection<IVideoStreamReplicator> _streams;
@@ -73,7 +73,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
             }
         };
         _streams = new ObservableCollection<IVideoStreamReplicator>();
-        _configProvider = new ServerConfigProvider(config, plumber);
+        _configProvider = new ServerConfigProvider(config, plumber, env);
         _logger = logger;
         _disconnected = new ObservableCollection<VideoAddress>();
         NxReconnect = DateTime.Now;
@@ -94,10 +94,10 @@ public class VideoStreamingServer : INotifyPropertyChanged
         await _configProvider.Save();
     }
 
-    
+     
     private IVideoStreamReplicator OnConnectVideoSource(VideoAddress va)
     {
-        IVideoStreamReplicator streamReplicator = va.Transport == Transport.Tcp ?
+        IVideoStreamReplicator streamReplicator = va.VideoTransport == VideoTransport.Tcp ?
             new VideoStreamReplicator(va, _loggerFactory, _sink):
             new VideoSharedBufferReplicator(va.StreamName,
                 va.Resolution == VideoResolution.FullHd ? FrameInfo.FullHD : FrameInfo.SubHD,
@@ -107,6 +107,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
         try
         {
             _streams.Add(streamReplicator.Connect());
+            SourceStreamConnected?.Invoke(this,va);
             streamReplicator.Stopped += OnReplicatorStopped;
         }
         catch (Exception e)

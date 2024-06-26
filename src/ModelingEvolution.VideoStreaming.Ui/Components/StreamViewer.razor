@@ -95,7 +95,7 @@ else
     {
        
         var rpl =  _srv.GetReplicator(Stream);
-        _protocol = rpl?.VideoAddress.Protocol.ToString();
+        _protocol = rpl?.VideoAddress.Codec.ToString();
         _address = rpl?.VideoAddress;
         _tags = rpl?.VideoAddress.Tags;
         _imgStyle += ImgStyle;

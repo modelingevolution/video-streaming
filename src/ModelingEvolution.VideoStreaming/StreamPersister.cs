@@ -186,8 +186,8 @@ public class StreamPersister : INotifyPropertyChanged
 
             var result = await Cli.Wrap(_ffmpegExec)
                 //.WithArgumentsIf(address.Protocol == "mjpeg", $"-i - -c:v libx264 -f mp4 -an -y \"{outputFilePath}\"")
-                .WithArgumentsIf(address.Protocol == VideoProtocol.Mjpeg, $"-i - -c:v h264 -preset:v ultrafast -f mp4 -an -y \"{outputFilePath}\"")
-                .WithArgumentsIf(address.Protocol == VideoProtocol.H264, $"-f h264")
+                .WithArgumentsIf(address.Codec == VideoCodec.Mjpeg, $"-i - -c:v h264 -preset:v ultrafast -f mp4 -an -y \"{outputFilePath}\"")
+                .WithArgumentsIf(address.Codec == VideoCodec.H264, $"-f h264")
                 .WithStandardInputPipe(PipeSource.FromStream(bufferedStream))
                 .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
                 .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))

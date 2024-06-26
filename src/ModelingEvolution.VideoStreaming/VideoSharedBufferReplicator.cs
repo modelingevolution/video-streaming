@@ -17,7 +17,8 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
     private readonly FrameInfo _info;
     public string SharedMemoryName { get; private set; }
 
-    public VideoSharedBufferReplicator(string sharedMemoryName, FrameInfo info,
+    public VideoSharedBufferReplicator(string sharedMemoryName, 
+        FrameInfo info,
         VideoStreamEventSink evtSink, 
         ILogger<VideoSharedBufferReplicator> logger,
         ILoggerFactory loggerFactory)
@@ -27,7 +28,7 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         _evtSink = evtSink;
         _logger = logger;
         _loggerFactory = loggerFactory;
-        VideoAddress = new VideoAddress(VideoProtocol.Mjpeg, streamName: sharedMemoryName);
+        VideoAddress = new VideoAddress(VideoCodec.Mjpeg, streamName: sharedMemoryName);
     }
 
     public event EventHandler? Stopped;

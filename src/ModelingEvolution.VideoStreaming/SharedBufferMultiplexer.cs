@@ -66,6 +66,7 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         _bufferSize = _maxFrameSize * 30; // 1sec
         _sharedBuffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
         _buffer = _sharedBuffer.AsMemory(0, _bufferSize);
+        _logger.LogInformation($"Buffered prepared for: {info}");
     }
 
     public void Start()

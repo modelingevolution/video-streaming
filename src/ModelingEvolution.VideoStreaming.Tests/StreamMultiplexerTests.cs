@@ -1,15 +1,8 @@
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Text;
-using Castle.Core.Logging;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using ModelingEvolution.IO.Tests;
 using ModelingEvolution.VideoStreaming;
 using ModelingEvolution.VideoStreaming.Nal;
 using NSubstitute;
-using NSubstitute.Core;
-using Decoder = ModelingEvolution.VideoStreaming.Nal.Decoder;
 
 namespace ModelingEvolution.IO.Tests;
 
@@ -98,4 +91,3 @@ public class StreamMultiplexerTests
 
     }
 }
-
