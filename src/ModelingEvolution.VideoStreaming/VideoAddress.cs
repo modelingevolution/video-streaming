@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Text;
+using System.Text.Encodings.Web;
 
 namespace ModelingEvolution.VideoStreaming;
 
 
 public readonly struct VideoAddress : IParsable<VideoAddress>
 {
-    static bool RecognizeProtocol<T>(IList<string> list, out T e) where T:Enum
+    static bool RecognizeProtocol<T>(IList<string> list, out T e) where T : Enum
     {
         for (int i = 0; i < list.Count; i++)
         {
@@ -21,6 +22,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         e = default;
         return false;
     }
+
     public static VideoAddress CreateFrom(Uri uri)
     {
         var proto = uri.Scheme.Split('+', StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -35,31 +37,35 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         string? tagsString = queryParameters["tags"];
 
         var tags = Array.Empty<string>();
-        if (!string.IsNullOrEmpty(tagsString)) 
-            tags=tagsString.Split(',');
+        if (!string.IsNullOrEmpty(tagsString))
+            tags = tagsString.Split(',');
 
         string? resolution = queryParameters["resolution"];
+        string? file = queryParameters["file"];
+
         VideoResolution rv = VideoResolution.FullHd;
         if (!string.IsNullOrEmpty(resolution))
             rv = Enum.Parse<VideoResolution>(resolution, true);
         RecognizeProtocol<VideoCodec>(proto, out var codec);
         RecognizeProtocol<VideoTransport>(proto, out var transport);
-        
-        return new VideoAddress(codec, host, port, streamName,rv,transport, tags);
+        var vs = file != null ? VideoSource.File : (host == "localhost" ? VideoSource.Camera : VideoSource.Stream);
+        return new VideoAddress(codec, host, port, streamName, rv, transport,vs ,file, tags);
     }
 
     private readonly string _str;
     public VideoResolution Resolution { get; }
+
     public string FriendlyName
     {
         get
         {
             if (String.IsNullOrWhiteSpace(StreamName))
                 return Host;
-            else 
+            else
                 return $"{Host}/{StreamName}";
         }
     }
+
     public string? StreamName { get; init; }
     public string Host { get; init; }
     public int Port { get; init; }
@@ -67,10 +73,20 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
     public VideoCodec Codec { get; init; }
     public HashSet<string>? Tags { get; init; }
     public Uri Uri => new Uri(_str);
+    public string? File { get; init; }
+    public VideoSource VideoSource { get; init; }
 
-    public VideoAddress(VideoCodec codec, string host="localhost", 
-        int port=0, string? streamName = null, VideoResolution resolution = VideoResolution.FullHd, VideoTransport vt = VideoTransport.Tcp, params string[] tags)
+    public VideoAddress(VideoCodec codec, string host = "localhost",
+            int port = 0, string? streamName = null,
+            VideoResolution resolution = VideoResolution.FullHd,
+            VideoTransport vt = VideoTransport.Tcp,
+            VideoSource vs = VideoSource.Camera,
+            string? file = null,
+            params string[] tags)
     {
+        if (string.IsNullOrWhiteSpace(file) && vs == VideoSource.File)
+            throw new ArgumentException("File has to set when video-source is set to file.");
+
         Resolution = resolution;
         Host = host;
         Port = port;
@@ -78,13 +94,15 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         Codec = codec;
         Tags = tags.ToHashSet();
         VideoTransport = vt;
+        File = file;
+        VideoSource = vs;
         StringBuilder sb = new($"{VideoTransport}+{Codec}".ToLower());
         sb.Append($"://{Host}");
-        if(port > 0)
+        if (port > 0)
             sb.Append($":{Port}");
-        if(!string.IsNullOrWhiteSpace(StreamName))
+        if (!string.IsNullOrWhiteSpace(StreamName))
             sb.Append($"/{StreamName}");
-        bool query = false;
+        var query = false;
         if (tags.Any())
         {
             string tagsParam = string.Join(',', tags);
@@ -94,9 +112,14 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
 
         if (resolution != VideoResolution.FullHd)
         {
-            if (!query) sb.Append("?");
-            else sb.Append("&");
+            sb.Append(!query ? "?" : "&");
             sb.Append($"resolution={resolution}");
+            query = true;
+        }
+        if (!string.IsNullOrWhiteSpace(File))
+        {
+            sb.Append(!query ? "?" : "&");
+            sb.Append($"file={UrlEncoder.Default.Encode(File)}");
             query = true;
         }
 

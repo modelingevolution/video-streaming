@@ -11,6 +11,12 @@ namespace ModelingEvolution.VideoStreaming
         Tcp, Udp, Shm
     }
 
+    public enum VideoSource
+    {
+        Camera,
+        File, 
+        Stream
+    }
     public enum VideoCodec : int
     {
         Mjpeg, H264
