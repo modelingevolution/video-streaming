@@ -4,7 +4,8 @@
 CXX = g++
 CXXFLAGS = -fPIC -Wall -I/opt/libjpeg-turbo/include -O3
 LDFLAGS = -shared
-LIBS = 
+LIBDIR = /opt/libjpeg-turbo/lib64/
+LIBS = -lturbojpeg -ljpeg
 
 # Source and target files
 SRC = LibJpegWrap.cpp
@@ -16,7 +17,7 @@ INSTALL_LIB_DIR = /usr/local/lib
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
-	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CXX) $(LDFLAGS) -L$(LIBDIR) -o $@ $^ $(LIBS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
