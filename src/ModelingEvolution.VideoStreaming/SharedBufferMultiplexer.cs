@@ -1,7 +1,9 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using EventPi.SharedMemory;
+using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming.Buffers;
@@ -89,7 +91,9 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         {
             try
             {
-                var ptr = _ipBuffer.PopPtr();
+               // 1) Dispatching work
+               // 2) Merging results
+
                 //Mat m = new Mat(_info.Rows, _info.Width, MatType.CV_8U,ptr, _info.Stride);
                 var left = _buffer.Length - _readOffset;
                 if (left < (_maxFrameSize + METADATA_SIZE))
@@ -103,6 +107,7 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
                 nint dstBuffer = (nint)dstMemHandle.Pointer;
                 nint dstSlot = dstBuffer + _readOffset + METADATA_SIZE;
 
+                var ptr = _ipBuffer.PopPtr();
                 var len = encoder.Encode(ptr, dstSlot, (ulong)_maxFrameSize);
                 if (len == 0)
                     throw new InvalidOperationException("Could not encode to jpeg");
@@ -163,14 +168,53 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         Tuple<Stream, string, IBufferedFrameMultiplexer,CancellationToken> args =
             new Tuple<Stream, string, IBufferedFrameMultiplexer,CancellationToken>(dst, identifier, this,token);
 
-        _ = Task.Factory.StartNew(static async (object state) =>
+        StreamFrameChaser c = new StreamFrameChaser(dst, identifier,this, token);
+        _chasers.Add(c);
+        c.Start();
+    }
+}
+
+public class StreamFrameChaser(Stream stream, string identifier, IBufferedFrameMultiplexer buffer, CancellationToken token) : IChaser
+{
+    private DateTime _started;
+    public int PendingBytes { get; private set; }
+
+    public void Start()
+    {
+        _ = Task.Factory.StartNew(Run, TaskCreationOptions.LongRunning);
+        _started = DateTime.Now;
+    }
+
+    public string Identifier => identifier;
+    public ulong WrittenBytes { get; private set; }
+    public string Started
+    {
+        get
         {
-            var (dst, identifier, buffer, ct) = (Tuple<Stream, string, IBufferedFrameMultiplexer, CancellationToken >)state;
-            await foreach (var f in buffer.Read(token:ct))
+            var dur = DateTime.Now.Subtract(_started);
+            return $"{_started:yyyy.MM.dd HH:mm} ({dur.ToString(@"dd\.hh\:mm\:ss")})";
+        }
+    }
+    public async Task Close()
+    {
+        await stream.DisposeAsync();
+    }
+
+    async Task Run()
+    {
+        try
+        {
+            await foreach (var f in buffer.Read(token: token))
             {
-                await dst.WriteAsync(f.Metadata);
-                await dst.WriteAsync(f.Data, ct);
+                PendingBytes = f.PendingBytes;
+                await stream.WriteAsync(f.Metadata);
+                await stream.WriteAsync(f.Data, token);
+                WrittenBytes += f.Metadata.FrameSize;
             }
-        }, args, TaskCreationOptions.LongRunning);
+        }
+        catch (Exception ex)
+        {
+            buffer.Disconnect(this);
+        }
     }
 }
