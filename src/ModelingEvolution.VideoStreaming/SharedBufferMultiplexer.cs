@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Buffers;
 using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using EventPi.SharedMemory;
 using MicroPlumberd;
@@ -11,8 +13,6 @@ using ModelingEvolution.VideoStreaming.Chasers;
 using ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
 namespace ModelingEvolution.VideoStreaming;
-
-#pragma warning disable CS4014
 public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
 {
     public event EventHandler Disconnected;
@@ -37,7 +37,57 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         get => _readFrameCount;
         private set => _readFrameCount = value;
     }
+    public async IAsyncEnumerable<Frame> Read(int fps = 30, 
+       [EnumeratorCancellation] CancellationToken token = default)
+    {
+        TimeSpan w = TimeSpan.FromSeconds(1d / (fps + fps));
+        int offset = this.LastFrameOffset;
+        var buffer = this.Buffer();
+        while (this.ReadFrameCount == 0)
+            await Task.Delay(w + w, token);
 
+        ulong lastFrame = 0;
+        while (!token.IsCancellationRequested)
+        {
+            if (this.IsEnd(offset))// buffer.Length - offset <= b.Padding)
+            {
+                offset = 0;
+                Debug.WriteLine($"Buffer is full for reading, resetting.");
+            }
+            var metadata = buffer.ReadMetadata(offset);
+            if (lastFrame == 0) lastFrame = metadata.FrameNumber;
+            if (metadata.FrameNumber != lastFrame++)
+            {
+                // Frame is not in order. Resetting.
+                var expecting = lastFrame - 1;
+                var read = metadata.FrameNumber;
+                var prvOffset = offset;
+                offset = this.LastFrameOffset;
+                metadata = buffer.ReadMetadata(offset);
+                lastFrame = metadata.FrameNumber + 1;
+                _logger?.LogWarning($"Frame not in order, resetting stream. Expecting: {expecting} " +
+                                   $"received {read} from {prvOffset}, resetting to {metadata.FrameNumber} at {offset}");
+            }
+
+            if (!metadata.IsOk)
+                throw new InvalidOperationException("Memory is corrupt or was overriden.");
+
+            var pendingFrames = (int)(this.ReadFrameCount - metadata.FrameNumber);
+            var pendingBytes = (int)(this.TotalReadBytes - metadata.StreamPosition);
+            Frame f = new Frame(metadata,
+                buffer.Slice(offset + METADATA_SIZE, (int)metadata.FrameSize),
+                pendingFrames,
+                pendingBytes);
+
+            yield return f;
+
+            offset += (int)metadata.FrameSize + METADATA_SIZE;
+            while (metadata.FrameNumber == this.ReadFrameCount - 1)
+                await Task.Delay(w, token); // might be spinwait?
+        }
+    }
+    private static readonly int METADATA_SIZE = Marshal.SizeOf<FrameMetadata>();
+   
     public IReadOnlyList<IChaser> Chasers => _chasers.AsReadOnly();
     public int Padding
     {

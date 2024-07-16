@@ -102,18 +102,14 @@ internal sealed class HttpMjpegBufferedFrameChaser : IChaser
         int c = 0;
         while (!cancellationToken.IsCancellationRequested)
         {
-            await foreach(var data in _multiplexer.Read(logger: _logger, token: cancellationToken))
+            await foreach(var data in _multiplexer.Read(token: cancellationToken))
             {
                 
                 await writer.WriteAsync(data.Data, cancellationToken);
-                //using var fs = File.OpenWrite($"{c++}.jpg");
-                //{
-                //    await fs.WriteAsync(data.Data, cancellationToken);
-                //}
                 if (!MjpegDecoder.IsJpeg(data.Data))
                     throw new InvalidOperationException("Frame is not valid jpeg");
                 await writer.WriteAsync(Boundary, cancellationToken);
-                //await writer.FlushAsync(cancellationToken);
+                
                 _frameCounter += 1;
                 _written += (ulong)data.Data.Length + (ulong)Boundary.Length;
                 _pendingWrite = data.PendingBytes;

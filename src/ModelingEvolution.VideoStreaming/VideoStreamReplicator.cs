@@ -8,8 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming.Events;
 using ModelingEvolution.VideoStreaming.Nal;
-using OpenCvSharp;
-using static OpenCvSharp.LineIterator;
+
 
 #pragma warning disable CS4014
 

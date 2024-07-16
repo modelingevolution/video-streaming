@@ -82,7 +82,15 @@ namespace ModelingEvolution.VideoStreaming.CameraSimulator
                     {
                         var d = dt - (DateTime.Now - s);
                         if (d.TotalMilliseconds > 0)
-                            Thread.SpinWait(100);
+                        {
+                            if (d.TotalMilliseconds > 10)
+                            {
+                                Thread.Sleep(d);
+                                break;
+                            }
+                            else
+                                Thread.SpinWait(100);
+                        }
                         else break;
                     }
 

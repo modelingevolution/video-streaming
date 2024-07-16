@@ -1,4 +1,6 @@
-﻿using ModelingEvolution.VideoStreaming.Chasers;
+﻿using Microsoft.Extensions.Logging;
+using ModelingEvolution.VideoStreaming.Chasers;
+using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.VideoStreaming;
 
@@ -35,10 +37,7 @@ public interface IMultiplexingStats
 }
 public interface IBufferedFrameMultiplexer : IMultiplexingStats
 {
-    bool IsEnd(int offset);
-    int LastFrameOffset { get; }
-    ulong ReadFrameCount { get; }
-    Memory<byte> Buffer();
+    IAsyncEnumerable<Frame> Read(int fps = 30, [EnumeratorCancellation] CancellationToken token = default);
     void Disconnect(IChaser chaser);
 }
 interface IStreamMultiplexer : IMultiplexingStats
