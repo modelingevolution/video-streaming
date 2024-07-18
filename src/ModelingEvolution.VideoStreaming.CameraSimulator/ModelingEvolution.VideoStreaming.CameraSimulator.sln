@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35017.193
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ModelingEvolution.VideoStreaming.CameraSimulator", "ModelingEvolution.VideoStreaming.CameraSimulator.csproj", "{C2B585BD-BF40-425B-995C-0B16F47452F1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ModelingEvolution.VideoStreaming.Buffers", "..\ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj", "{25E335D6-2FFA-4697-94CE-FA0B81D4238F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C2B585BD-BF40-425B-995C-0B16F47452F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2B585BD-BF40-425B-995C-0B16F47452F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2B585BD-BF40-425B-995C-0B16F47452F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2B585BD-BF40-425B-995C-0B16F47452F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25E335D6-2FFA-4697-94CE-FA0B81D4238F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25E335D6-2FFA-4697-94CE-FA0B81D4238F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25E335D6-2FFA-4697-94CE-FA0B81D4238F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25E335D6-2FFA-4697-94CE-FA0B81D4238F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {243D34D7-4D82-4944-BECA-29AD6B6F7252}
+	EndGlobalSection
+EndGlobal

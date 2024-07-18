@@ -64,7 +64,7 @@ namespace ModelingEvolution.VideoStreaming.CameraSimulator
             int moveByCounter = -1;
             var dt = TimeSpan.FromSeconds(1.0 / fps);
             Console.WriteLine($"Shared memory: {streamName}, total size: {frameSize * 120} bytes, frame: {frameSize} bytes");
-            SharedCyclicBuffer buffer = new SharedCyclicBuffer(120, frameSize, streamName);
+            SharedCyclicBuffer buffer = new SharedCyclicBuffer(120, frameSize, streamName, OpenMode.OpenExistingForWriting);
             buffer.Clear();
             while (true)
             {
@@ -82,7 +82,15 @@ namespace ModelingEvolution.VideoStreaming.CameraSimulator
                     {
                         var d = dt - (DateTime.Now - s);
                         if (d.TotalMilliseconds > 0)
-                            Thread.SpinWait(100);
+                        {
+                            if (d.TotalMilliseconds > 10)
+                            {
+                                Thread.Sleep(d);
+                                break;
+                            }
+                            else
+                                Thread.SpinWait(100);
+                        }
                         else break;
                     }
 

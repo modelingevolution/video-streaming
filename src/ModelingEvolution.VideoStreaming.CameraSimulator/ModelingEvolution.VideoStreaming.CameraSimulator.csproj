@@ -22,4 +22,6 @@
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.LibJpegTurbo\ModelingEvolution.VideoStreaming.LibJpegTurbo.csproj" />
   </ItemGroup>
 
+ 
+
 </Project>
