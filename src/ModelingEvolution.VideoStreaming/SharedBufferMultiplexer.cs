@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Buffers;
 using System.Diagnostics;
+using System.Drawing;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using Emgu.CV;
+using Emgu.CV.CvEnum;
 using EventPi.SharedMemory;
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
@@ -47,6 +51,7 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
             await Task.Delay(w + w, token);
 
         ulong lastFrame = 0;
+        
         while (!token.IsCancellationRequested)
         {
             if (this.IsEnd(offset))// buffer.Length - offset <= b.Padding)
@@ -124,18 +129,92 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
     public void Start()
     {
         // Let's do it the old way, there's a semaphore. 
-        _worker = new Thread(OnRun);
+        _worker = new Thread(OnRunHdr);
         _worker.IsBackground = true;
         _worker.Start();
         IsEnabled = true;
     }
+    private unsafe void OnRunHdr()
+    {
+        IsRunning = true;
+        var dstMemHandle = _buffer.Pin();
+        var METADATA_SIZE = Marshal.SizeOf<FrameMetadata>();
+        
+        using var encoder = JpegEncoderFactory.Create(_info.Width, _info.Height, 80, 0);
 
+        nint prv = IntPtr.Zero;
+        byte[] mergeBuffer = new byte[_info.Width * _info.Height * 3/2];
+        Memory<byte> mem = new Memory<byte>(mergeBuffer);
+        var handle = mem.Pin();
+        byte* mergePtr = (byte*)handle.Pointer;
+        while (!IsCanceled)
+        {
+            try
+            {
+                // 1) Dispatching work
+                // 2) Merging results
+
+                //Mat m = new Mat(_info.Rows, _info.Width, MatType.CV_8U,ptr, _info.Stride);
+                var left = _buffer.Length - _readOffset;
+                if (left < (_maxFrameSize + METADATA_SIZE))
+                {
+                    _padding = left;
+                    _readOffset = 0;
+                    Debug.WriteLine($"Buffer is full for writing, resetting. Last frame was: {_readFrameCount - 1} ");
+                    // We need to goto to begin of the buffer. There no more space left.
+                }
+
+                nint dstBuffer = (nint)dstMemHandle.Pointer;
+                nint dstSlot = dstBuffer + _readOffset + METADATA_SIZE;
+
+                var ptr = _ipBuffer.PopPtr();
+                ulong len = 0;
+                if(prv != IntPtr.Zero)
+                {
+                    byte* src = (byte*)ptr;
+                    byte* src2 = (byte*)prv;
+                    for(int i = 0; i < mergeBuffer.Length; i++)
+                    {                    
+                        mergePtr[i] = (byte)((src[i] + src2[i])>>1);
+                    }
+                    len = encoder.Encode((nint)mergePtr, dstSlot, (ulong)_maxFrameSize);
+                    prv = ptr;                    
+                }
+                else
+                {
+                    prv = ptr;
+                    len = encoder.Encode(ptr, dstSlot, (ulong)_maxFrameSize);
+                }
+
+                
+                if (len == 0)
+                    throw new InvalidOperationException("Could not encode to jpeg");
+
+                var m = new FrameMetadata(ReadFrameCount, len, _totalBytesRead);
+                if (!m.IsOk)
+                    throw new InvalidOperationException("Memory is corrupt or was overriden.");
+
+                MemoryMarshal.Write(_buffer.Span.Slice(_readOffset), in m);
+                _lastFrameOffset = _readOffset;
+                _readOffset += (int)len + METADATA_SIZE;
+                _totalBytesRead += len;
+                Interlocked.Increment(ref _readFrameCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Encoding failed.");
+                break;
+            }
+        }
+
+        IsRunning = false;
+    }
     private unsafe void OnRun()
     {
         IsRunning = true;
         var dstMemHandle = _buffer.Pin();
         var METADATA_SIZE = Marshal.SizeOf<FrameMetadata>();
-
+       
         using var encoder = JpegEncoderFactory.Create(_info.Width, _info.Height, 80, 0);
         while (!IsCanceled)
         {
@@ -158,6 +237,8 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
                 nint dstSlot = dstBuffer + _readOffset + METADATA_SIZE;
 
                 var ptr = _ipBuffer.PopPtr();
+
+
                 var len = encoder.Encode(ptr, dstSlot, (ulong)_maxFrameSize);
                 if (len == 0)
                     throw new InvalidOperationException("Could not encode to jpeg");

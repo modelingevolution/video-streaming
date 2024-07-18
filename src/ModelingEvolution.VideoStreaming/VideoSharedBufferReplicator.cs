@@ -10,7 +10,7 @@ namespace ModelingEvolution.VideoStreaming;
 public class VideoSharedBufferReplicator : IVideoStreamReplicator
 {
     private SharedCyclicBuffer? _buffer;
-    private SharedBufferMultiplexer2? _multiplexer;
+    private SharedBufferMultiplexer? _multiplexer;
     private readonly VideoStreamEventSink _evtSink;
     private readonly ILogger<VideoSharedBufferReplicator> _logger;
     private readonly ILoggerFactory _loggerFactory;
@@ -43,7 +43,7 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         _buffer = new SharedCyclicBuffer(120, _info.Yuv420,  SharedMemoryName, OpenMode.CreateNewForReading); // ~180MB
 
         //_multiplexer = new SharedBufferMultiplexer(_buffer, _info, _loggerFactory);
-        _multiplexer = new SharedBufferMultiplexer2(_buffer,_info, _loggerFactory);
+        _multiplexer = new SharedBufferMultiplexer(_buffer,_info, _loggerFactory);
         _multiplexer.Start();
         Started = DateTime.Now;
         _evtSink.OnStreamingStarted(VideoAddress);

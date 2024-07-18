@@ -162,8 +162,9 @@ public class CyclicMemoryBuffer
 public class PipeProcessingState
 {
     private int _quality = 80;
-
-    public JpegEncoder Encoder { get; }
+    
+public JpegEncoder Encoder { get; }
+    public MergeMertens MergeMertens = new MergeMertens(1, 0, 0);
     public CyclicMemoryBuffer Buffer { get; }
     public int Quality 
     { 
@@ -174,10 +175,12 @@ public class PipeProcessingState
             _quality = value; 
         } 
     }
+    public Mat Dst { get; }
     public PipeProcessingState(int w, int h, uint frameSize, uint count)
     {
         Encoder = JpegEncoderFactory.Create(w,h, Quality, 0);
         Buffer = new CyclicMemoryBuffer(count, frameSize);
+        Dst = new Mat(new Size(w,h), DepthType.Cv8U, 3);
     }
 }
 
@@ -355,13 +358,14 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
     private ulong _dispatched = 0;
     private ulong _processed = 0;
     private ulong _merged = 0;
+    private ulong _processingTimeMs;
     public int MaxParallelItems => maxParallelItems;
     public ulong Dropped => _dropped;
     public ulong OutOfOrder => _outOfOrder;
     public ulong InFlight => _dispatched - _merged;
     public ulong Finished => _merged;
     public bool IsRunning => _isRunning;
-
+    public int AvgPipeProcessingTime => _processed == 0 ? int.MaxValue : (int)(_processingTimeMs / _processed);
     public void Stop()
     {
         if (!_isRunning) return;
@@ -418,6 +422,7 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
         OnProcess(i.Data, i.Prv, i.Token, i.SeqNo, i.Id);
 
     }
+    
     private void OnProcess(TIn data, TIn? prv, CancellationToken token, ulong seqNo, StateData id)
     {
         if (token.IsCancellationRequested)
@@ -428,8 +433,10 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
         }
         try
         {
+            var sw = Stopwatch.StartNew();
             var ret = process(data, prv, seqNo, id.Id, id.State, token);
             Interlocked.Increment(ref _processed);
+            Interlocked.Add(ref _processingTimeMs, (ulong)sw.ElapsedMilliseconds);
 
             _results.Add(new OutData(seqNo, ret));
 
@@ -587,10 +594,15 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         _logger = _loggerFactory.CreateLogger<SharedBufferMultiplexer>();
         _maxFrameSize = info.Yuv420;
         _bufferSize = _maxFrameSize * 30; // 1sec
-        _pipeline = VideoPipelineBuilder.Create(info, OnGetItem, OnProcess, loggerFactory);
+        _pipeline = VideoPipelineBuilder.Create(info, OnGetItem, OnProcessHdrSimple, loggerFactory);
         
         _logger.LogInformation($"Buffered prepared for: {info}");
     }
+    ulong hdrProcessing;
+    ulong encoding;
+    ulong convertion;
+    ulong allocation;
+    ulong processed;
     private unsafe JpegFrame OnProcessHdr(YuvFrame frame,
         YuvFrame? prv,
         ulong secquence,
@@ -598,9 +610,15 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         PipeProcessingState state,
         CancellationToken token)
     {
+        var sw = Stopwatch.StartNew();
+        if(frame.Metadata.StreamPosition % 30 == 0)
+        {
+            _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
+            if(processed != 0)
+                _logger.LogInformation($"Hdr: {hdrProcessing / processed}, allocation: {allocation / processed}, convertion: {convertion / processed}");
+        }
         var ptr = state.Buffer.GetPtr();
-
-        using MergeMertens mergeMertens = new MergeMertens(1, 0, 0);
+                
         var s = new Size(_info.Width, _info.Height);
         using Mat src = new Mat(s, DepthType.Cv8U, 3, (IntPtr)frame.Data, 0);
 
@@ -608,12 +626,19 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         using Mat src2 = new Mat(s, DepthType.Cv8U, 3, prvPtr, 0);
         using Mat hdrFrame = new Mat();
         using Mat dst = new Mat();
+
         using var tmp = new VectorOfMat(src, src2);
-        mergeMertens.Process(tmp, hdrFrame);
+        sw.MeasureReset(ref allocation);
+
+        state.MergeMertens.Process(tmp, hdrFrame);
+        sw.MeasureReset(ref hdrProcessing);
+
         hdrFrame.ConvertTo(dst, DepthType.Cv8U, 255.0);
 
         var len = state.Encoder.Encode(dst.DataPointer, (nint)ptr, state.Buffer.MaxObjectSize);
         var data = state.Buffer.Use((uint)len);
+        sw.MeasureReset(ref convertion);
+        Interlocked.Increment(ref processed);
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
         return new JpegFrame(metadata, data);
     }
@@ -628,6 +653,37 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
 
         var len = state.Encoder.Encode((nint)frame.Data, (nint)ptr, state.Buffer.MaxObjectSize);
         var data = state.Buffer.Use((uint)len);
+        var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
+        return new JpegFrame(metadata, data);
+    }
+    private unsafe JpegFrame OnProcessHdrSimple(YuvFrame frame,
+       YuvFrame? prv,
+       ulong secquence,
+       int pipeId,
+       PipeProcessingState state,
+       CancellationToken token)
+    {
+        var sw = Stopwatch.StartNew();
+        if (frame.Metadata.StreamPosition % 30 == 0)
+        {
+            _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
+            if (processed != 0)
+                _logger.LogInformation($"Hdr: {hdrProcessing / processed}, allocation: {allocation / processed}, convertion: {convertion / processed}");
+        }
+
+        var ptr = state.Buffer.GetPtr();
+
+        var s = new Size(_info.Width, _info.Height);
+        using Mat src = new Mat(s, DepthType.Cv8U, 3, (IntPtr)frame.Data, 0);
+        
+        IntPtr prvPtr = prv.HasValue ? (IntPtr)prv.Value.Data : (IntPtr)frame.Data;
+        using Mat src2 = new Mat(s, DepthType.Cv8U, 3, prvPtr, 0);
+                
+        CvInvoke.AddWeighted(src, 0.5d, src2, 0.5d, 0, state.Dst, DepthType.Cv8U);
+
+        var len = state.Encoder.Encode(state.Dst.DataPointer, (nint)ptr, state.Buffer.MaxObjectSize);
+        var data = state.Buffer.Use((uint)len);
+
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
         return new JpegFrame(metadata, data);
     }
@@ -675,5 +731,14 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         StreamFrameChaser c = new StreamFrameChaser(dst, identifier, this, token);
         _chasers.Add(c);
         c.Start();
+    }
+}
+public static class StopWatchExtensions
+{
+   
+    public static void MeasureReset(this Stopwatch stopwatch, ref ulong counter)
+    {
+        Interlocked.Add(ref counter, (ulong)stopwatch.ElapsedMilliseconds);
+        stopwatch.Restart();
     }
 }
