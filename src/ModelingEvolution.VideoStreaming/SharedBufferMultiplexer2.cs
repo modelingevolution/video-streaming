@@ -17,6 +17,8 @@ using Emgu.CV;
 using Emgu.CV.Shape;
 using Tmds.Linux;
 using System.Drawing;
+using ModelingEvolution.VideoStreaming.Nal;
+using System;
 
 namespace ModelingEvolution.VideoStreaming;
 #pragma warning disable CS4014
@@ -163,7 +165,7 @@ public class PipeProcessingState
 {
     private int _quality = 80;
     
-public JpegEncoder Encoder { get; }
+    public JpegEncoder Encoder { get; }
     public MergeMertens MergeMertens = new MergeMertens(1, 0, 0);
     public CyclicMemoryBuffer Buffer { get; }
     public int Quality 
@@ -176,11 +178,19 @@ public JpegEncoder Encoder { get; }
         } 
     }
     public Mat Dst { get; }
+
+    public readonly byte[] MergeBuffer;
+    public readonly MemoryHandle MergeMemHandle;
+    public unsafe byte* MergeBufferPtr() => (byte*)MergeMemHandle.Pointer;
     public PipeProcessingState(int w, int h, uint frameSize, uint count)
     {
         Encoder = JpegEncoderFactory.Create(w,h, Quality, 0);
         Buffer = new CyclicMemoryBuffer(count, frameSize);
         Dst = new Mat(new Size(w,h), DepthType.Cv8U, 3);
+
+        this.MergeBuffer = new byte[w * h * 3 / 2];
+        Memory<byte> mem = new Memory<byte>(MergeBuffer);
+        MergeMemHandle = mem.Pin();
     }
 }
 
@@ -594,17 +604,15 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         _logger = _loggerFactory.CreateLogger<SharedBufferMultiplexer>();
         _maxFrameSize = info.Yuv420;
         _bufferSize = _maxFrameSize * 30; // 1sec
-        _pipeline = VideoPipelineBuilder.Create(info, OnGetItem, OnProcessHdrSimple, loggerFactory);
+        _pipeline = VideoPipelineBuilder.Create(info, OnGetItem, OnProcessHdr, loggerFactory);
         
         _logger.LogInformation($"Buffered prepared for: {info}");
     }
     ulong hdrProcessing;
     ulong encoding;
-    ulong convertion;
-    ulong allocation;
     ulong processed;
     private unsafe JpegFrame OnProcessHdr(YuvFrame frame,
-        YuvFrame? prv,
+        YuvFrame? prvFrame,
         ulong secquence,
         int pipeId,
         PipeProcessingState state,
@@ -613,31 +621,41 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         var sw = Stopwatch.StartNew();
         if(frame.Metadata.StreamPosition % 30 == 0)
         {
-            _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
+            _logger.LogInformation($"{frame.Metadata.StreamPosition} Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
             if(processed != 0)
-                _logger.LogInformation($"Hdr: {hdrProcessing / processed}, allocation: {allocation / processed}, convertion: {convertion / processed}");
+                _logger.LogInformation($"Hdr: {hdrProcessing / processed}, encoding: {encoding / processed}");
         }
         var ptr = state.Buffer.GetPtr();
-                
-        var s = new Size(_info.Width, _info.Height);
-        using Mat src = new Mat(s, DepthType.Cv8U, 3, (IntPtr)frame.Data, 0);
 
-        IntPtr prvPtr = prv.HasValue ? (IntPtr)prv.Value.Data : (IntPtr)frame.Data;
-        using Mat src2 = new Mat(s, DepthType.Cv8U, 3, prvPtr, 0);
-        using Mat hdrFrame = new Mat();
-        using Mat dst = new Mat();
+        ulong len = 0;
+        var prv = prvFrame.HasValue ? (nint)prvFrame.Value.Data : (nint)IntPtr.Zero;
+        Memory<byte> data = null;
+        if (prv != IntPtr.Zero)
+        {
+            byte* src = frame.Data;
+            byte* src2 = (byte*)prv;
 
-        using var tmp = new VectorOfMat(src, src2);
-        sw.MeasureReset(ref allocation);
+            var mergePtr = state.MergeBufferPtr();
+            for (int i = 0; i < state.MergeBuffer.Length; i++)
+            {
+                mergePtr[i] = (byte)((src[i] + src2[i]) >> 1);
+            }
+            sw.MeasureReset(ref hdrProcessing);
 
-        state.MergeMertens.Process(tmp, hdrFrame);
-        sw.MeasureReset(ref hdrProcessing);
+            len = state.Encoder.Encode((nint)mergePtr, (nint)state.Buffer.GetPtr(), (ulong)_maxFrameSize);
+            data = state.Buffer.Use((uint)len);
+            prv = (nint)src;
+            sw.MeasureReset(ref encoding);
+        }
+        else
+        {
+            byte* src = frame.Data;
+            len = state.Encoder.Encode((nint)src, (nint)state.Buffer.GetPtr(), (ulong)_maxFrameSize);
+            data = state.Buffer.Use((uint)len);
+            sw.MeasureReset(ref encoding);
+        }
 
-        hdrFrame.ConvertTo(dst, DepthType.Cv8U, 255.0);
-
-        var len = state.Encoder.Encode(dst.DataPointer, (nint)ptr, state.Buffer.MaxObjectSize);
-        var data = state.Buffer.Use((uint)len);
-        sw.MeasureReset(ref convertion);
+        
         Interlocked.Increment(ref processed);
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
         return new JpegFrame(metadata, data);
@@ -668,7 +686,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         {
             _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
             if (processed != 0)
-                _logger.LogInformation($"Hdr: {hdrProcessing / processed}, allocation: {allocation / processed}, convertion: {convertion / processed}");
+                _logger.LogInformation($"Hdr: {hdrProcessing / processed}");
         }
 
         var ptr = state.Buffer.GetPtr();
@@ -694,11 +712,13 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         IsEnabled = true;
         IsRunning = true;
     }
+    ulong _fn = 0;
+    ulong _stream = 0;
     private unsafe YuvFrame OnGetItem(CancellationToken token)
     {
         var ptr = _ipBuffer.PopPtr();
         _totalBytesRead += (ulong)_info.Yuv420;
-        return new YuvFrame(new FrameMetadata(), (byte*)ptr);
+        return new YuvFrame(new FrameMetadata(_fn++,(ulong)_info.Yuv420, _stream++), (byte*)ptr);
     }
    
 
