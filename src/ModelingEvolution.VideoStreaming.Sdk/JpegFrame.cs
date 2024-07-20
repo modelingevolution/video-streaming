@@ -4,8 +4,14 @@ namespace ModelingEvolution.VideoStreaming.Player
 {
     public readonly struct JpegFrame
     {
-        public readonly byte[] Data { get; init; }
-        public readonly int Length { get; init; }
+        public readonly Memory<byte> Data { get; init; }
+        public readonly ulong FrameNumber { get; init; }
+
+        public JpegFrame(ulong frameNumber, Memory<byte> data)
+        {
+            Data = data;
+            FrameNumber = frameNumber;
+        }
     }
     public static class Extensions
     {

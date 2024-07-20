@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ModelingEvolution.VideoStreaming.Buffers;
+using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
@@ -27,6 +28,27 @@ public static class Ext{
     {
         return read == 0;
     }
+    private static readonly int HEADER_SIZE = Marshal.SizeOf<FrameMetadata>();
+    public static async IAsyncEnumerable<JpegFrame> GetFrames(this Stream stream, int bufferSize = 120 * 1024 * 1024, bool throwOnEnd = true, CancellationToken token = default)
+    {
+        CyclicArrayBuffer b = new CyclicArrayBuffer(bufferSize);
+
+        while (!token.IsCancellationRequested)
+        {
+            await stream.ReadIfRequired(b, HEADER_SIZE, throwOnEnd, token);
+            // We have enough to read the header
+            var m = MemoryMarshal.AsRef<FrameMetadata>(b.Use(HEADER_SIZE).Span);
+            if (!m.IsOk)
+                throw new InvalidOperationException("Memory is corrupt or was overriden.");
+
+            await stream.ReadIfRequired(b, (int)m.FrameSize, throwOnEnd, token);
+            var frame = b.Use((int)m.FrameSize);
+            if (!MjpegDecoder.IsJpeg(frame))
+                throw new InvalidOperationException("Frame is not valid jpeg");
+
+            yield return new JpegFrame(m.FrameNumber, frame);
+        }
+    }
     public static async Task Copy(this Stream stream, ConcurrentQueue<JpegFrame> queue, int bufferSize = 16 * 1024 * 1024, CancellationToken token = default)
     {
         var decoder = new MjpegDecoder();
@@ -40,6 +62,7 @@ public static class Ext{
             NetworkStream => IsEndNetworkStream,
             _ => IsEndStream
         };
+        ulong nr = 0;
         Memory<byte> tail = Memory<byte>.Empty;
         while (!token.IsCancellationRequested)
         {
@@ -61,7 +84,7 @@ public static class Ext{
                     tail.CopyTo(sharedByteArray);
                     Buffer.BlockCopy(current, startOffset, sharedByteArray, tail.Length, i - startOffset + 1);
 
-                    var lastFrame = new JpegFrame() { Data = sharedByteArray, Length = size };
+                    var lastFrame = new JpegFrame() { Data = sharedByteArray.AsMemory<byte>(0,size), FrameNumber = nr++};
                     queue.Enqueue(lastFrame);
                     startOffset = i + 1;
                     tail = Memory<byte>.Empty;

@@ -619,9 +619,9 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         CancellationToken token)
     {
         var sw = Stopwatch.StartNew();
-        if(frame.Metadata.StreamPosition % 30 == 0)
+        if(frame.Metadata.FrameNumber % 30 == 0)
         {
-            _logger.LogInformation($"{frame.Metadata.StreamPosition} Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
+            _logger.LogInformation($"{frame.Metadata.FrameNumber} Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
             if(processed != 0)
                 _logger.LogInformation($"Hdr: {hdrProcessing / processed}, encoding: {encoding / processed}");
         }
@@ -682,7 +682,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
        CancellationToken token)
     {
         var sw = Stopwatch.StartNew();
-        if (frame.Metadata.StreamPosition % 30 == 0)
+        if (frame.Metadata.FrameNumber % 30 == 0)
         {
             _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
             if (processed != 0)
@@ -717,8 +717,9 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
     private unsafe YuvFrame OnGetItem(CancellationToken token)
     {
         var ptr = _ipBuffer.PopPtr();
+        var position = _totalBytesRead;
         _totalBytesRead += (ulong)_info.Yuv420;
-        return new YuvFrame(new FrameMetadata(_fn++,(ulong)_info.Yuv420, _stream++), (byte*)ptr);
+        return new YuvFrame(new FrameMetadata(_fn++,(ulong)_info.Yuv420, position), (byte*)ptr);
     }
    
 
