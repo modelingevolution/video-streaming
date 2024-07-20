@@ -17,6 +17,7 @@ using System.Windows.Threading;
 
 namespace ModelingEvolution.VideoStreaming.Player.Wpf
 {
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
