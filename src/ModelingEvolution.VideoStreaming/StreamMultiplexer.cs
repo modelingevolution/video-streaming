@@ -54,8 +54,9 @@ public class StreamMultiplexer : IStreamMultiplexer
     {
         Task.Factory.StartNew(OnReadAsync, TaskCreationOptions.LongRunning);
     }
+    public int AvgPipelineExecution { get; } = 0;
 
-   
+
 
     void IStreamMultiplexer.Disconnect(IChaser chaser)
     {

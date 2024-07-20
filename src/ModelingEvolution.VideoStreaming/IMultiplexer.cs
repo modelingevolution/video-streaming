@@ -9,7 +9,7 @@ public interface IMultiplexingStats
     ulong TotalReadBytes { get; }
     ulong BufferLength { get; }
     int ClientCount => Chasers.Count;
-
+    int AvgPipelineExecution { get; }
     ulong TotalTransferred
     {
         get

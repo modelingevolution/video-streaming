@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
+using Emgu.CV.Dai;
 using EventPi.SharedMemory;
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
@@ -92,7 +93,7 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         }
     }
     private static readonly int METADATA_SIZE = Marshal.SizeOf<FrameMetadata>();
-   
+    
     public IReadOnlyList<IChaser> Chasers => _chasers.AsReadOnly();
     public int Padding
     {
@@ -134,6 +135,7 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         _worker.Start();
         IsEnabled = true;
     }
+    
     private unsafe void OnRunHdr()
     {
         IsRunning = true;
@@ -146,6 +148,8 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
         byte[] mergeBuffer = new byte[_info.Width * _info.Height * 3/2];
         Memory<byte> mem = new Memory<byte>(mergeBuffer);
         var handle = mem.Pin();
+        Stopwatch sw = new Stopwatch();
+        ulong processingDurationTotal = 0;
         byte* mergePtr = (byte*)handle.Pointer;
         while (!IsCanceled)
         {
@@ -168,6 +172,8 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
                 nint dstSlot = dstBuffer + _readOffset + METADATA_SIZE;
 
                 var ptr = _ipBuffer.PopPtr();
+                sw.Restart(); 
+
                 ulong len = 0;
                 if(prv != IntPtr.Zero)
                 {
@@ -199,6 +205,8 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
                 _readOffset += (int)len + METADATA_SIZE;
                 _totalBytesRead += len;
                 Interlocked.Increment(ref _readFrameCount);
+                processingDurationTotal += (ulong)sw.ElapsedMilliseconds;
+                AvgPipelineExecution = (int)(processingDurationTotal / _readFrameCount);
             }
             catch (Exception ex)
             {
@@ -209,6 +217,7 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
 
         IsRunning = false;
     }
+    public int AvgPipelineExecution { get; private set; }
     private unsafe void OnRun()
     {
         IsRunning = true;

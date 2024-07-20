@@ -72,6 +72,7 @@
             <th>Source video address</th>
             <th>Started</th>
             <th>Connected clients</th>
+            <th>Avg. frame processing [ms]</th>
             <th>Received</th>
             <th>In-transfer</th>
             <th>Out-transfer</th>
@@ -98,6 +99,7 @@
                 <td><MudLink Href="@context.ViewerUrl">@(context.Address)</MudLink></td>
                 <td>@(context.Started)</td>
                 <td>@(context.MultiplexingStats.ClientCount)</td>
+                <td>@(context.MultiplexingStats.AvgPipelineExecution)</td>
                 <td>@context.TotalReadBytes</td>
                 <td>@context.InTransferSpeed</td>
                 <td>@context.OutTransferSpeed(context.MultiplexingStats.TotalTransferred)</td>

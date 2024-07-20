@@ -375,7 +375,7 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
     public ulong InFlight => _dispatched - _merged;
     public ulong Finished => _merged;
     public bool IsRunning => _isRunning;
-    public int AvgPipeProcessingTime => _processed == 0 ? int.MaxValue : (int)(_processingTimeMs / _processed);
+    public int AvgPipeExecution => _processed == 0 ? int.MaxValue : (int)(_processingTimeMs / _processed);
     public void Stop()
     {
         if (!_isRunning) return;
@@ -621,7 +621,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         var sw = Stopwatch.StartNew();
         if(frame.Metadata.FrameNumber % 30 == 0)
         {
-            _logger.LogInformation($"{frame.Metadata.FrameNumber} Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
+            _logger.LogInformation($"{frame.Metadata.FrameNumber} Avg pipe processing time: {_pipeline.Pipeline.AvgPipeExecution}ms");
             if(processed != 0)
                 _logger.LogInformation($"Hdr: {hdrProcessing / processed}, encoding: {encoding / processed}");
         }
@@ -660,6 +660,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
         return new JpegFrame(metadata, data);
     }
+    public int AvgPipelineExecution => _pipeline.Pipeline.AvgPipeExecution;
     private unsafe JpegFrame OnProcess(YuvFrame frame, 
         YuvFrame? prv, 
         ulong secquence, 
@@ -684,7 +685,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         var sw = Stopwatch.StartNew();
         if (frame.Metadata.FrameNumber % 30 == 0)
         {
-            _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeProcessingTime}ms");
+            _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeExecution}ms");
             if (processed != 0)
                 _logger.LogInformation($"Hdr: {hdrProcessing / processed}");
         }
