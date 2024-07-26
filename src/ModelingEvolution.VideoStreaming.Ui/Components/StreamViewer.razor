@@ -21,8 +21,10 @@ else
         </Dock>
         <Anchors>
             <AnchorUpperRight>
-                <Observable Source="_persister">
-                    <MudStack Row="true">
+                @if (_address!.Value.VideoSource != VideoSource.File)
+                {
+                    <Observable Source="_persister">
+                        <MudStack Row="true">
                         @UpperRightButtons
                         <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
                                        Disabled="@(_address == null)"
@@ -30,6 +32,7 @@ else
 
                     </MudStack>
                 </Observable>
+                }
             </AnchorUpperRight>
             <AnchorLowerRight>
                 <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.Fullscreen" 
