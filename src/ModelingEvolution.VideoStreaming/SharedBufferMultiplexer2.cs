@@ -38,8 +38,8 @@ public unsafe readonly struct YuvFrame
 {
     public readonly byte* Data;
     public readonly FrameMetadata Metadata;
-
-    public YuvFrame(FrameMetadata metadata, byte* data)
+    public readonly FrameInfo Info;
+    public YuvFrame(FrameMetadata metadata, in FrameInfo info, byte* data)
     {
         Data = data;
         Metadata = metadata;
@@ -618,7 +618,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
     }
     ulong hdrProcessing;
     ulong encoding;
-    ulong processed;
+   
     private unsafe JpegFrame OnProcessHdr(YuvFrame frame,
         YuvFrame? prvFrame,
         ulong secquence,
@@ -626,13 +626,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         PipeProcessingState state,
         CancellationToken token)
     {
-        var sw = Stopwatch.StartNew();
-        if(frame.Metadata.FrameNumber % 30 == 0)
-        {
-            _logger.LogInformation($"{frame.Metadata.FrameNumber} Avg pipe processing time: {_pipeline.Pipeline.AvgPipeExecution}ms");
-            if(processed != 0)
-                _logger.LogInformation($"Hdr: {hdrProcessing / processed}, encoding: {encoding / processed}");
-        }
+        
         var ptr = state.Buffer.GetPtr();
 
         ulong len = 0;
@@ -648,23 +642,22 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
             {
                 mergePtr[i] = (byte)((src[i] + src2[i]) >> 1);
             }
-            sw.MeasureReset(ref hdrProcessing);
+            
 
             len = state.Encoder.Encode((nint)mergePtr, (nint)state.Buffer.GetPtr(), (ulong)_maxFrameSize);
             data = state.Buffer.Use((uint)len);
             prv = (nint)src;
-            sw.MeasureReset(ref encoding);
+           
         }
         else
         {
             byte* src = frame.Data;
             len = state.Encoder.Encode((nint)src, (nint)state.Buffer.GetPtr(), (ulong)_maxFrameSize);
             data = state.Buffer.Use((uint)len);
-            sw.MeasureReset(ref encoding);
+            
         }
 
-        
-        Interlocked.Increment(ref processed);
+       
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
         return new JpegFrame(metadata, data);
     }
@@ -694,8 +687,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         if (frame.Metadata.FrameNumber % 30 == 0)
         {
             _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeExecution}ms");
-            if (processed != 0)
-                _logger.LogInformation($"Hdr: {hdrProcessing / processed}");
+            
         }
 
         var ptr = state.Buffer.GetPtr();
@@ -729,7 +721,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         var ptr = _ipBuffer.PopPtr();
         var position = _totalBytesRead;
         _totalBytesRead += (ulong)_info.Yuv420;
-        return new YuvFrame(new FrameMetadata(_fn++,(ulong)_info.Yuv420, position), (byte*)ptr);
+        return new YuvFrame(new FrameMetadata(_fn++,(ulong)_info.Yuv420, position), _info, (byte*)ptr);
     }
    
 
