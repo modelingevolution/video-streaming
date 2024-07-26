@@ -37,7 +37,7 @@ public class StreamMultiplexer : IStreamMultiplexer
     public IReadOnlyList<IChaser> Chasers => _chasers.AsReadOnly();
     private readonly byte[] _sharedBuffer;
     private IList<IChaser> _chasers1;
-
+    private CancellationTokenSource _cts;
     public StreamMultiplexer(StreamBase source, ILogger<StreamMultiplexer> logger)
     {
         _sharedBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE);
@@ -52,6 +52,7 @@ public class StreamMultiplexer : IStreamMultiplexer
 
     public void Start()
     {
+        _cts = new CancellationTokenSource();
         Task.Factory.StartNew(OnReadAsync, TaskCreationOptions.LongRunning);
     }
     public int AvgPipelineExecution { get; } = 0;
@@ -95,7 +96,7 @@ public class StreamMultiplexer : IStreamMultiplexer
     {
         try
         {
-            while (true)
+            while (!_cts.IsCancellationRequested)
             {
                 
                 var left = _buffer.Length - _readOffset;
@@ -140,5 +141,8 @@ public class StreamMultiplexer : IStreamMultiplexer
         Stopped?.Invoke(this, EventArgs.Empty);
     }
 
-
+    internal void Stop()
+    {
+        _cts?.Cancel();
+    }
 }

@@ -17,21 +17,21 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
     private readonly FrameInfo _info;
     public string SharedMemoryName { get; private set; }
 
-    public VideoSharedBufferReplicator(string sharedMemoryName, 
+    public VideoSharedBufferReplicator(VideoAddress va, 
         FrameInfo info,
         VideoStreamEventSink evtSink, 
         ILogger<VideoSharedBufferReplicator> logger,
         ILoggerFactory loggerFactory)
     {
-        SharedMemoryName = sharedMemoryName;
+        SharedMemoryName = va.StreamName;
         _info = info;
         _evtSink = evtSink;
         _logger = logger;
         _loggerFactory = loggerFactory;
-        VideoAddress = new VideoAddress(VideoCodec.Mjpeg, streamName: sharedMemoryName);
+        VideoAddress = va;
     }
 
-    public event EventHandler? Stopped;
+    public event EventHandler<StoppedEventArgs>? Stopped;
     public IMultiplexingStats MultiplexingStats => _multiplexer;
     public string Host { get; } = Environment.MachineName;
     public DateTime Started { get; private set; }
@@ -74,5 +74,11 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         _evtSink.OnStreamingDisconnected(VideoAddress);
         _buffer?.Dispose();
 
+    }
+
+    public void Stop()
+    {
+        _multiplexer?.Stop();
+        Stopped?.Invoke(this, new StoppedEventArgs(StoppedReason.DeletedByUser));
     }
 }

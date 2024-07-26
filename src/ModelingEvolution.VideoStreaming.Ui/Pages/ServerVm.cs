@@ -11,7 +11,7 @@ namespace ModelingEvolution.VideoStreaming.Ui.Pages
         public bool IsStartEnabled => _server.State == State.Initialized || _server.State == State.Stopped;
         public bool IsStopEnabled => _server.State == State.Running;
 
-    
+      
 
         public VideoStreamingServer Server => _server;
         

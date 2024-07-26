@@ -60,9 +60,10 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         get
         {
             if (String.IsNullOrWhiteSpace(StreamName))
-                return Host;
-            else
-                return $"{Host}/{StreamName}";
+                return $"{Host} [{VideoTransport.ToString().ToLower()}+{Codec.ToString().ToLower()} from {VideoSource.ToString().ToLower()}]";
+            else if(VideoSource == VideoSource.Camera)
+                return $"{Host}/{StreamName} [{VideoTransport.ToString().ToLower()}+{Codec.ToString().ToLower()} from {VideoSource.ToString().ToLower()}]";
+            else return $"{StreamName} [{VideoTransport.ToString().ToLower()}+{Codec.ToString().ToLower()} from {VideoSource.ToString().ToLower()}]";
         }
     }
 
@@ -75,7 +76,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
     public Uri Uri => new Uri(_str);
     public string? File { get; init; }
     public VideoSource VideoSource { get; init; }
-
+    
     public VideoAddress(VideoCodec codec, string host = "localhost",
             int port = 0, string? streamName = null,
             VideoResolution resolution = VideoResolution.FullHd,
@@ -143,5 +144,20 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         }
         catch { }
         return false;
+    }
+    public static bool operator ==(VideoAddress a, VideoAddress b) => a.Equals(b);
+    public static bool operator !=(VideoAddress a, VideoAddress b) => !a.Equals(b);
+    public override bool Equals(object? obj)
+    {
+        return obj is VideoAddress address &&
+               Resolution == address.Resolution &&
+               StreamName == address.StreamName &&
+               Host == address.Host &&
+               Port == address.Port &&
+               VideoTransport == address.VideoTransport &&
+               Codec == address.Codec &&
+               Tags.Except(address.Tags).Count() == 0 &&
+               File == address.File &&
+               VideoSource == address.VideoSource;
     }
 }

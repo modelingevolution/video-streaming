@@ -5,10 +5,11 @@
 @using System.Net.Sockets
 @using System.Text
 @using Microsoft.CodeAnalysis.Differencing
+@using Microsoft.Extensions.Configuration
 @inject ServerVm _vm
 @inject NavigationManager _nm
-@inject StreamPersister _persisterVm
-
+@inject PersistedStreamVm _persisterVm
+@inject IConfiguration _con
 <MudText Typo="Typo.h6" Class="pa-4">
     Current connections:
 </MudText>
@@ -16,16 +17,16 @@
     <thead>
     <tr>
         <th>Source</th>
-        <th>Actions</th>
+        <th>Recording actions</th>
     </tr>
     </thead>
     <tbody>
     <ObservableForEach ItemSource="_vm.Items">
         <tr>
-            <td>@context.Address</td>
+            <td>@context.VideoAddress.FriendlyName</td>
             <td>
                 <MudStack Row="true">
-                  
+                  @if(context.VideoAddress.VideoSource == VideoSource.Camera) {
                     <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary">
                         <MudIconButton Disabled="@(_persisterVm.IsStartDisabled(context.Source.VideoAddress))"
                                        Icon="@Icons.Material.Filled.FiberManualRecord"
@@ -38,7 +39,7 @@
                         <MudToggleItem Value="@("mp4")"/>
                         <MudToggleItem Value="@("mjpeg")"/>
                     </MudToggleGroup>
-
+                  }
                 </MudStack>
             </td>
         </tr>
@@ -61,7 +62,12 @@
                     <MudStack Row>
                         <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" Title="Play" Disabled="@(context.Item.FileName.EndsWith("mjpeg"))"
                                        OnClick="@(x=> _nm.NavigateTo($"/play/{context.Item.FileName}"))"></MudIconButton>
-
+                        @if (_enableCameraSimulator)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.LiveTv"
+                                           Style="padding:0" Title="Simulate"
+                                           OnClick="@(async () => await _persisterVm.ConnectToVideoFile(context.Item.FileName))"></MudIconButton>
+                        }
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Style="padding:0" Title="Edit" OnClick="@(async () => await context.Actions.StartEditingItemAsync())"></MudIconButton>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Style="padding:0" Title="Delete" OnClick="@context.Item.Delete"></MudIconButton>
                     </MudStack>
@@ -71,7 +77,10 @@
     </MudDataGrid>
 </Observable>
 @code {
-    
-    
+    private bool _enableCameraSimulator;
+    protected override void OnInitialized()
+    {
+        _enableCameraSimulator = _con.GetValue<bool>("EnableCameraSimulator");
+    }
 
 }

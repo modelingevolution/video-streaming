@@ -18,6 +18,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
 {
 
     public event EventHandler<VideoAddress> SourceStreamConnected;
+    public event EventHandler<VideoAddress> SourceStreamDisconnected;
     public IReadOnlyCollection<VideoAddress> DisconnectedSources => _disconnected;
     private readonly ObservableCollection<VideoAddress> _disconnected;
     private readonly ObservableCollection<IVideoStreamReplicator> _streams;
@@ -41,7 +42,19 @@ public class VideoStreamingServer : INotifyPropertyChanged
     }
 
     public string Host => _host;
-    
+    public async Task Delete(VideoAddress address)
+    {
+        for (int i = 0; i < _streams.Count; i++) 
+        {
+            var r = _streams[i];
+            if (r.VideoAddress.Equals(address))
+            {
+                await RemoveConfig(r.VideoAddress);
+                r.Stop();
+                break;
+            }
+        }
+    }
     public int Port => _port;
     public IList<IVideoStreamReplicator> Streams => _streams;
     private readonly ILogger<VideoStreamingServer> _logger;
@@ -50,7 +63,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
         IPlumber plumber, bool isSingleVideo, 
         VideoStreamEventSink sink,
         IEnvironment env,
-        IConfiguration config, 
+        IConfiguration config,
         ILoggerFactory loggerFactory)
     {
         _host = host;
@@ -81,6 +94,10 @@ public class VideoStreamingServer : INotifyPropertyChanged
   
     public async Task<IVideoStreamReplicator> ConnectVideoSource(VideoAddress va)
     {
+        var rep = _streams.FirstOrDefault(x => x.VideoAddress == va);
+        if (rep != null)
+            return rep;
+
         var streamReplicator = OnConnectVideoSource(va);
         await SaveConfig(va);
         return streamReplicator;
@@ -93,13 +110,20 @@ public class VideoStreamingServer : INotifyPropertyChanged
         config.Sources.Add(va.Uri);
         await _configProvider.Save();
     }
+    private async Task RemoveConfig(VideoAddress va)
+    {
+        var config = await _configProvider.Get();
 
-     
+        var s = config.Sources.RemoveAll(x => VideoAddress.CreateFrom(x).Equals(va));
+
+        await _configProvider.Save();
+    }
+
     private IVideoStreamReplicator OnConnectVideoSource(VideoAddress va)
     {
         IVideoStreamReplicator streamReplicator = va.VideoTransport == VideoTransport.Tcp ?
             new VideoStreamReplicator(va, _loggerFactory, _sink):
-            new VideoSharedBufferReplicator(va.StreamName,
+            new VideoSharedBufferReplicator(va,
                 va.Resolution == VideoResolution.FullHd ? FrameInfo.FullHD : FrameInfo.SubHD,
                 _sink,
                 _loggerFactory.CreateLogger<VideoSharedBufferReplicator>(), 
@@ -120,15 +144,20 @@ public class VideoStreamingServer : INotifyPropertyChanged
         return streamReplicator;
     }
 
-    private void OnReplicatorStopped(object? sender, EventArgs e)
+    private void OnReplicatorStopped(object? sender, StoppedEventArgs e)
     {
-        VideoStreamReplicator replicator = (VideoStreamReplicator)sender;
+        var replicator = (IVideoStreamReplicator)sender;
+        OnDisconnectReplicator(replicator, e.Reason);
+    }
+
+    private void OnDisconnectReplicator(IVideoStreamReplicator replicator, StoppedReason reason)
+    {
         replicator.Stopped -= OnReplicatorStopped;
         _streams.Remove(replicator);
-        
-        OnDisconnectVideoSource(replicator.VideoAddress, true);
 
+        OnDisconnectVideoSource(replicator.VideoAddress, true, reason);
         replicator.Dispose();
+        SourceStreamDisconnected?.Invoke(this, replicator.VideoAddress);
     }
 
     public DateTime? Started
@@ -395,7 +424,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
         return true;
     }
 
-    private void OnDisconnectVideoSource(VideoAddress videoSource, bool saveEvent = false)
+    private void OnDisconnectVideoSource(VideoAddress videoSource, bool saveEvent = false, StoppedReason r = StoppedReason.ConnectionDisconnected)
     {
         if (saveEvent)
         {
@@ -406,8 +435,8 @@ public class VideoStreamingServer : INotifyPropertyChanged
 
             _plumber.AppendEvent(streamingStopped, _env.HostName);
         }
-
-        _disconnected.SafeAddUnique(videoSource);
+        if(r == StoppedReason.ConnectionDisconnected) 
+            _disconnected.SafeAddUnique(videoSource);
     }
 
     

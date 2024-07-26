@@ -25,7 +25,7 @@ namespace ModelingEvolution.VideoStreaming
         public static IServiceCollection AddVideoStreaming(this IServiceCollection services, string rootDir)
         {
             services.AddBackgroundServiceIfMissing<VideoStreamingServerStarter>();
-            services.AddSingleton<StreamPersister>();
+            services.AddSingleton<PersistedStreamVm>();
             services.AddSingleton<VideoStreamEventSink>();
             services.AddSingleton<VideoStreamingServer>((sp) =>
             {

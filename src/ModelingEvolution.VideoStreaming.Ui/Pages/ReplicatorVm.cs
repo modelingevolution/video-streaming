@@ -13,7 +13,7 @@ public class ReplicatorVm : IViewFor<IVideoStreamReplicator>, IEquatable<Replica
     public string Host => _source.VideoAddress.Host;
 
     public string Address => _source.VideoAddress.ToString();
-
+    public VideoAddress VideoAddress => _source.VideoAddress;
     public string ViewerUrl
     {
         get { return $"/viewer/{_source?.VideoAddress.StreamName ?? Host}"; }

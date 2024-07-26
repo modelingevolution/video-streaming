@@ -96,7 +96,11 @@
     <tbody>
         <ObservableForEach ItemSource="_vm.Items">
             <tr>
-                <td><MudLink Href="@context.ViewerUrl">@(context.Address)</MudLink></td>
+                <td>
+                    <MudLink Href="@context.ViewerUrl">@(context.VideoAddress.FriendlyName)</MudLink>
+                    <MudIconButton Icon="@(@Icons.Material.Filled.Delete)"  
+                    OnClick="@(async () => await _vm.Server.Delete(context.VideoAddress))"></MudIconButton>
+                </td>
                 <td>@(context.Started)</td>
                 <td>@(context.MultiplexingStats.ClientCount)</td>
                 <td>@(context.MultiplexingStats.AvgPipelineExecution)</td>

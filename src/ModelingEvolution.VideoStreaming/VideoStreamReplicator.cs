@@ -62,10 +62,18 @@ namespace ModelingEvolution.VideoStreaming
     }
 
    
-
+    public class StoppedEventArgs(StoppedReason reason) : EventArgs
+    {
+        public StoppedReason Reason => reason;
+    }
+    public enum StoppedReason
+    {
+        ConnectionDisconnected,
+        DeletedByUser
+    }
     public interface IVideoStreamReplicator : IDisposable
     {
-        event EventHandler Stopped;
+        event EventHandler<StoppedEventArgs> Stopped;
         IMultiplexingStats MultiplexingStats { get; }
         DateTime Started { get; }
         VideoAddress VideoAddress { get; }
@@ -74,6 +82,7 @@ namespace ModelingEvolution.VideoStreaming
         Task ReplicateTo(WebSocket ns, string? identifier);
         void ReplicateTo(Stream ns, string? identifier, CancellationToken token = default);
         bool Is(string name);
+        void Stop();
     }
 
     public class VideoStreamEventSink(IPlumber plumberd, IEnvironment e)
@@ -96,7 +105,7 @@ namespace ModelingEvolution.VideoStreaming
     }
     public class VideoStreamReplicator : IVideoStreamReplicator
     {
-        public event EventHandler Stopped;
+        public event EventHandler<StoppedEventArgs> Stopped;
         private NetworkStream _source;
         private StreamMultiplexer? _multiplexer;
         
@@ -107,6 +116,7 @@ namespace ModelingEvolution.VideoStreaming
         private readonly ILoggerFactory _loggerFactory;
         private readonly DateTime _started;
         private readonly VideoStreamEventSink _evtSink;
+        private CancellationTokenSource _cts;
         private TcpClient _client;
         public IMultiplexingStats MultiplexingStats => _multiplexer;
         public DateTime Started => _started;
@@ -160,7 +170,7 @@ namespace ModelingEvolution.VideoStreaming
 
         private void OnStreamingStopped(object? sender, EventArgs e)
         {
-            Stopped?.Invoke(this, EventArgs.Empty);
+            Stopped?.Invoke(this, new StoppedEventArgs(StoppedReason.ConnectionDisconnected));
             _client?.Dispose();
             _multiplexer!.Stopped -= OnStreamingStopped;
             _multiplexer.Disconnected -= OnClientDisconnected;
@@ -201,6 +211,11 @@ namespace ModelingEvolution.VideoStreaming
             if(_multiplexer != null)
                 _multiplexer.Disconnected -= OnClientDisconnected;
             _client?.Dispose();
+        }
+
+        public void Stop()
+        {
+            _multiplexer?.Stop();
         }
     }
     

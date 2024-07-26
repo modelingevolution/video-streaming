@@ -499,7 +499,10 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
 
             }
         }
-        catch (OperationCanceledException) { /* Do nothing */}
+        catch (OperationCanceledException) {
+            /* Do nothing */
+            Debug.WriteLine("OnMergeResults canceled.");
+        }
     }
     private void OnDispatch()
     {
@@ -529,7 +532,12 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
                 _dispatched += 1;
             }
         }
-        catch (OperationCanceledException) { return; }
+        catch (ObjectDisposedException) { return; }
+        catch (OperationCanceledException)
+        {
+            Debug.WriteLine("OnDispatch canceled.");
+            return;
+        }
     }
 
     public void Dispose()
@@ -706,10 +714,11 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
         return new JpegFrame(metadata, data);
     }
-
+    CancellationTokenSource _cts;
     public void Start()
     {
-        _pipeline.Start();
+        _cts = new CancellationTokenSource();
+        _pipeline.Start(_cts.Token);
         IsEnabled = true;
         IsRunning = true;
     }
@@ -753,6 +762,12 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         StreamFrameChaser c = new StreamFrameChaser(dst, identifier, this, token);
         _chasers.Add(c);
         c.Start();
+    }
+
+    internal void Stop()
+    {
+        _pipeline.Pipeline.Stop();
+        Disconnected?.Invoke(this, EventArgs.Empty);
     }
 }
 public static class StopWatchExtensions

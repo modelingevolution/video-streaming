@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Net.Sockets;
+using System.Reactive;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -13,7 +14,7 @@ using Microsoft.Extensions.Logging;
 namespace ModelingEvolution.VideoStreaming;
 
 #pragma warning disable CS4014
-public class StreamPersister : INotifyPropertyChanged
+public class PersistedStreamVm : INotifyPropertyChanged
 {
     public string Format
     {
@@ -21,7 +22,7 @@ public class StreamPersister : INotifyPropertyChanged
         set => SetField(ref _format, value);
     }
 
-    record PersisterStream(Stream Stream, ILogger<StreamPersister> logger)
+    record StreamStorageVm(Stream Stream, ILogger<PersistedStreamVm> logger)
     {
         public CancellationTokenSource GracefullCencellationTokenSource = new();
         public CancellationTokenSource ForcefullCencellationTokenSource = new();
@@ -44,7 +45,7 @@ public class StreamPersister : INotifyPropertyChanged
     private readonly int _localPort;
     private readonly string _dataDir;
     private readonly string _ffmpegExec;
-    private readonly Dictionary<VideoAddress, PersisterStream> _streams = new();
+    private readonly Dictionary<VideoAddress, StreamStorageVm> _streams = new();
        
     public bool IsStartDisabled(VideoAddress address) => _streams.ContainsKey(address);
     public bool IsStopDisabled(VideoAddress address) => !IsStartDisabled(address);
@@ -60,24 +61,35 @@ public class StreamPersister : INotifyPropertyChanged
 
     static readonly Regex mp3_regex = new Regex(mp3_pattern, RegexOptions.Compiled);
     static readonly Regex mjpeg_regex = new Regex(mjpeg_pattern, RegexOptions.Compiled);
-    private readonly ILogger<StreamPersister> _logger;
+    private readonly ILogger<PersistedStreamVm> _logger;
     private string _format = "mp4";
     public string DataDir => _dataDir;
-        
-    public StreamPersister(VideoStreamingServer srv, IConfiguration configuration, 
-        ILogger<StreamPersister> logger, IWebHostingEnv he)
+    private readonly VideoStreamingServer _server;
+    public PersistedStreamVm(VideoStreamingServer srv, IConfiguration configuration, 
+        ILogger<PersistedStreamVm> logger, IWebHostingEnv he)
     {
+        _server = srv;
         _logger = logger;
         _localPort = srv.Port;
         _dataDir = configuration.VideoStorageDir(he.WwwRoot);
-        if(Directory.Exists(_dataDir))
+        if(!Directory.Exists(_dataDir))
             Directory.CreateDirectory(_dataDir);
 
         _ffmpegExec = configuration.FfmpegPath();
         if(!File.Exists(_ffmpegExec))
             logger.LogWarning("FFMPEG executable not found at: {ffmpeg}", _ffmpegExec);
     }
-
+    public async Task ConnectToVideoFile(string fileName)
+    {
+        if (fileName.EndsWith(".mp4", true, null))
+        {
+            string fullFileName = Path.Combine(_dataDir, fileName);
+            string fn = Path.GetFileNameWithoutExtension(fileName);
+            await _server.ConnectVideoSource(new VideoAddress(VideoCodec.Mjpeg, streamName: fn, vt: VideoTransport.Shm,
+                vs: VideoSource.File, file: fullFileName));
+        }
+        else throw new NotSupportedException("File format not supported");
+    }
     private static Recording Parse(string fullName, Regex regex)
     {
         var fileName = Path.GetFileName(fullName);
@@ -136,7 +148,7 @@ public class StreamPersister : INotifyPropertyChanged
             await using NetworkStream inStream = tcpClient.GetStream();
             await using BufferedStream bufferedStream = new BufferedStream(inStream);
 
-            var persisterStream = new PersisterStream(bufferedStream, _logger);
+            var persisterStream = new StreamStorageVm(bufferedStream, _logger);
             _streams.Add(address, persisterStream);
             OnPropertyChanged();
 
@@ -176,7 +188,7 @@ public class StreamPersister : INotifyPropertyChanged
             await using NetworkStream h264Stream = tcpClient.GetStream();
             await using BufferedStream bufferedStream = new BufferedStream(h264Stream);
 
-            var persisterStream = new PersisterStream(bufferedStream, _logger);
+            var persisterStream = new StreamStorageVm(bufferedStream, _logger);
             _streams.Add(address, persisterStream);
             OnPropertyChanged();
 
