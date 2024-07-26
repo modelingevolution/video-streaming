@@ -6,14 +6,64 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using CliWrap;
+using Emgu.CV;
 using EventPi.Abstractions;
 using FFmpeg.NET;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace ModelingEvolution.VideoStreaming;
 
+
 #pragma warning disable CS4014
+public class VideoIndexer
+{
+    private bool _isRunning;
+    private DateTime? _lastRun;
+    private string _dataDir;
+    private string _ffmpegExec;
+    private bool _ffmpegReady;
+    public VideoIndexer(IWebHostingEnv he, IConfiguration configuration)
+    {
+        _dataDir = configuration.VideoStorageDir(he.WwwRoot);
+        _ffmpegExec = configuration.FfmpegPath();
+        if (File.Exists(_ffmpegExec))
+            _ffmpegReady = true;
+    }
+
+    public bool TryRun()
+    {
+        if (!_isRunning && (_lastRun == null || _lastRun.Value.AddSeconds(30) < DateTime.Now) && _ffmpegReady)
+        {
+            _isRunning = true;
+            Task.Factory.StartNew(Run);
+            return true;
+        }
+        return false;
+    }
+
+    private async Task Run()
+    {
+        try
+        {
+            var recordings = Recording.GetMissing(_dataDir);
+            foreach (var recording in recordings)
+                try
+                {
+                    if (recording.EndsWith("mp4"))
+                        Recording.MakeRecording(recording);
+
+                }
+                catch
+                {
+                }
+        }
+        catch { }
+        _lastRun = DateTime.Now;
+        _isRunning = false;
+    }
+}
 public class PersistedStreamVm : INotifyPropertyChanged
 {
     public string Format
@@ -34,9 +84,9 @@ public class PersistedStreamVm : INotifyPropertyChanged
                 await GracefullCencellationTokenSource.CancelAsync();
                 ForcefullCencellationTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                logger.LogWarning(ex,"Coudn't close nicely ffmpeg.");
+                logger.LogWarning(ex, "Coudn't close nicely ffmpeg.");
             }
 
             await Stream.DisposeAsync();
@@ -46,38 +96,41 @@ public class PersistedStreamVm : INotifyPropertyChanged
     private readonly string _dataDir;
     private readonly string _ffmpegExec;
     private readonly Dictionary<VideoAddress, StreamStorageVm> _streams = new();
-       
+
     public bool IsStartDisabled(VideoAddress address) => _streams.ContainsKey(address);
     public bool IsStopDisabled(VideoAddress address) => !IsStartDisabled(address);
     public bool IsRecording(VideoAddress address) => _streams.ContainsKey(address);
-    public IEnumerable<Recording> Files => Directory.Exists(_dataDir) ? Directory.EnumerateFiles(_dataDir,"*.mp4")
-        .Select(x => Parse(x,mp3_regex))
-        .Union(Directory.EnumerateFiles(_dataDir, "*.mjpeg").Select(x => Parse(x,mjpeg_regex)))
-        .Where(x=>x!=null)
-        .OrderByDescending(x=>x.Started) : Array.Empty<Recording>();
+    public IEnumerable<Recording> Files
+    {
+        get
+        {
+            _indexer.TryRun();
+            return Recording.Load(_dataDir);
+        }
+    }
 
-    const string mp3_pattern = @"^(.+?)\.(\d{4})(\d{2})(\d{2})\.((?:\d{1,2}\.)?)(\d{2})(\d{2})(\d{2})-(\d+)\.mp4$";
-    const string mjpeg_pattern = @"^(.+?)\.(\d{4})(\d{2})(\d{2})\.((?:\d{1,2}\.)?)(\d{2})(\d{2})(\d{2})-(\d+)\.mjpeg";
 
-    static readonly Regex mp3_regex = new Regex(mp3_pattern, RegexOptions.Compiled);
-    static readonly Regex mjpeg_regex = new Regex(mjpeg_pattern, RegexOptions.Compiled);
     private readonly ILogger<PersistedStreamVm> _logger;
     private string _format = "mp4";
+
     public string DataDir => _dataDir;
     private readonly VideoStreamingServer _server;
-    public PersistedStreamVm(VideoStreamingServer srv, IConfiguration configuration, 
-        ILogger<PersistedStreamVm> logger, IWebHostingEnv he)
+    private readonly VideoIndexer _indexer;
+    public PersistedStreamVm(VideoStreamingServer srv, IConfiguration configuration,
+        ILogger<PersistedStreamVm> logger, IWebHostingEnv he, VideoIndexer indexer)
     {
         _server = srv;
         _logger = logger;
         _localPort = srv.Port;
         _dataDir = configuration.VideoStorageDir(he.WwwRoot);
-        if(!Directory.Exists(_dataDir))
+        if (!Directory.Exists(_dataDir))
             Directory.CreateDirectory(_dataDir);
 
         _ffmpegExec = configuration.FfmpegPath();
-        if(!File.Exists(_ffmpegExec))
+        if (!File.Exists(_ffmpegExec))
             logger.LogWarning("FFMPEG executable not found at: {ffmpeg}", _ffmpegExec);
+        indexer.TryRun();
+        _indexer = indexer;
     }
     public async Task ConnectToVideoFile(string fileName)
     {
@@ -110,17 +163,17 @@ public class PersistedStreamVm : INotifyPropertyChanged
             DateTime date = new DateTime(int.Parse(year), int.Parse(month), int.Parse(day));
             TimeSpan time = new TimeSpan(int.Parse(hour), int.Parse(minute), int.Parse(second));
 
-            if (!string.IsNullOrEmpty(optionalDays)) 
+            if (!string.IsNullOrEmpty(optionalDays))
                 time = time.Add(TimeSpan.FromDays(int.Parse(optionalDays)));
             date += time;
             FileInfo finto = new FileInfo(fullName);
-            return new Recording(fileName, fullName,videoName, date, TimeSpan.FromSeconds(int.Parse(duration)), finto.Length);
+            return new Recording(fileName, fullName, videoName, date, TimeSpan.FromSeconds(int.Parse(duration)), finto.Length);
         }
 
         return null;
     }
     public async Task Stop(VideoAddress address)
-    { 
+    {
         _streams[address].Close();
         _streams.Remove(address);
     }
@@ -131,9 +184,9 @@ public class PersistedStreamVm : INotifyPropertyChanged
     }
     public async Task Save(VideoAddress address, HashSet<string> tags)
     {
-        if(Format == "mp4")
+        if (Format == "mp4")
             await SaveMp4(address, tags);
-        else 
+        else
             await SaveMjpeg(address, tags);
     }
     private async Task SaveMjpeg(VideoAddress address, HashSet<string> tags)
@@ -158,11 +211,11 @@ public class PersistedStreamVm : INotifyPropertyChanged
 
             await using var fs = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
             await bufferedStream.CopyToAsync(fs, persisterStream.GracefullCencellationTokenSource.Token);
-                
+
             Debug.WriteLine(stdOutBuffer);
             Debug.WriteLine(stdErrBuffer);
 
-            await CompleteSave(outputFilePath,"mjpeg");
+            await CompleteSave(outputFilePath, "mjpeg");
         }
         catch (Exception ex)
         {
@@ -203,9 +256,9 @@ public class PersistedStreamVm : INotifyPropertyChanged
                 .WithStandardInputPipe(PipeSource.FromStream(bufferedStream))
                 .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
                 .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))
-                .ExecuteAsync(persisterStream .ForcefullCencellationTokenSource.Token,
-                    persisterStream .GracefullCencellationTokenSource.Token);
-               
+                .ExecuteAsync(persisterStream.ForcefullCencellationTokenSource.Token,
+                    persisterStream.GracefullCencellationTokenSource.Token);
+
             Debug.WriteLine(result.ExitCode);
             Debug.WriteLine(stdOutBuffer);
             Debug.WriteLine(stdErrBuffer);
@@ -217,7 +270,7 @@ public class PersistedStreamVm : INotifyPropertyChanged
             Debug.WriteLine(stdOutBuffer);
             Debug.WriteLine(stdErrBuffer);
 
-            if (outputFilePath != null) await CompleteSave(outputFilePath,"mp4");
+            if (outputFilePath != null) await CompleteSave(outputFilePath, "mp4");
             Debug.WriteLine("Save failed!");
             Debug.WriteLine(ex.Message);
         }

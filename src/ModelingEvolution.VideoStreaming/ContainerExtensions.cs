@@ -27,6 +27,7 @@ namespace ModelingEvolution.VideoStreaming
             services.AddBackgroundServiceIfMissing<VideoStreamingServerStarter>();
             services.AddSingleton<PersistedStreamVm>();
             services.AddSingleton<VideoStreamEventSink>();
+            services.AddSingleton<VideoIndexer>();
             services.AddSingleton<VideoStreamingServer>((sp) =>
             {
                 var configuration = sp.GetRequiredService<IConfiguration>();
