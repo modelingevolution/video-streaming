@@ -2,11 +2,12 @@
 using EventPi.Abstractions;
 using MicroPlumberd;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace ModelingEvolution.VideoStreaming;
 
 
-public class ServerConfigProvider(IConfiguration conf, IPlumber plumber, IEnvironment env)
+public class ServerConfigProvider(IConfiguration conf, IPlumber plumber, IEnvironment env, ILogger<ServerConfigProvider> logger)
 {
     private ServerConfig? _config;
 
@@ -17,11 +18,23 @@ public class ServerConfigProvider(IConfiguration conf, IPlumber plumber, IEnviro
 
         var urlToMerge = conf.GetConnections();
         _config = await plumber.GetState<ServerConfig>(_id) ?? new ServerConfig() { Id=_id};
-        
-        
-        foreach(var i in urlToMerge.Select(x=> new Uri(x)))
-            if(!_config!.Sources.Contains(i))
-                _config.Sources.Add(i);
+
+
+        foreach (var u in urlToMerge)
+        {
+            try
+            {
+                if(string.IsNullOrWhiteSpace(u)) continue;
+
+                var i = new Uri(u);
+                if (!_config!.Sources.Contains(i))
+                    _config.Sources.Add(i);
+            }
+            catch (Exception ex) 
+            {
+                logger.LogError(ex, "Cannot parse uri: " + u);
+            }
+        }
 
         return _config;
     }

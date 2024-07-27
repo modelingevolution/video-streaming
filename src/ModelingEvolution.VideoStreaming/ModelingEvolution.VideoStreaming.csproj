@@ -11,6 +11,8 @@
     <PackageReference Include="CliWrap" Version="3.6.6" />
     <PackageReference Include="Emgu.CV" Version="4.9.0.5494" />
     <PackageReference Include="Emgu.CV.runtime.debian-arm64" Version="4.9.0.5494" />
+    <PackageReference Include="Emgu.CV.runtime.ubuntu-x64" Version="4.9.0.5494" />
+    <PackageReference Include="Emgu.CV.runtime.mini.ubuntu-x64" Version="4.9.0.5494" />
     <PackageReference Include="Emgu.CV.runtime.mini.debian-arm64" Version="4.9.0.5494" />
     <PackageReference Include="Emgu.CV.runtime.windows" Version="4.9.0.5494" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />

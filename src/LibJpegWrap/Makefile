@@ -1,11 +1,9 @@
 # Makefile for building LibJpegWrap.so
+# execute: make USE_TURBO=1
 
 # Compiler settings
 CXX = g++
-CXXFLAGS = -fPIC -Wall -I/opt/libjpeg-turbo/include -O3
-LDFLAGS = -shared
-LIBDIR = /opt/libjpeg-turbo/lib64/
-LIBS = -lturbojpeg -ljpeg
+CXXFLAGS = -fPIC -Wall -O3
 
 # Source and target files
 SRC = LibJpegWrap.cpp
@@ -16,8 +14,18 @@ INSTALL_LIB_DIR = /usr/local/lib
 # Default target
 all: $(TARGET)
 
+# Check for USE_TURBO switch
+ifdef USE_TURBO
+    CXXFLAGS += -I/opt/libjpeg-turbo/include
+    LIBDIR = /opt/libjpeg-turbo/lib64/
+    LIBS = -lturbojpeg -ljpeg
+else
+    LIBDIR = /usr/lib/x86_64-linux-gnu/
+    LIBS = -ljpeg
+endif
+
 $(TARGET): $(OBJ)
-	$(CXX) $(LDFLAGS) -L$(LIBDIR) -o $@ $^ $(LIBS)
+	$(CXX) -shared -L$(LIBDIR) -o $@ $^ $(LIBS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@

@@ -86,7 +86,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
             }
         };
         _streams = new ObservableCollection<IVideoStreamReplicator>();
-        _configProvider = new ServerConfigProvider(config, plumber, env);
+        _configProvider = new ServerConfigProvider(config, plumber, env, loggerFactory.CreateLogger<ServerConfigProvider>());
         _logger = logger;
         _disconnected = new ObservableCollection<VideoAddress>();
         NxReconnect = DateTime.Now;
