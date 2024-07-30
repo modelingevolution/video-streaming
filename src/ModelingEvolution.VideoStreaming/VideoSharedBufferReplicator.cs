@@ -14,6 +14,7 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
     private readonly VideoStreamEventSink _evtSink;
     private readonly ILogger<VideoSharedBufferReplicator> _logger;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IPartialMatFrameHandler[] _partialProcessors;
     private readonly FrameInfo _info;
     public string SharedMemoryName { get; private set; }
 
@@ -21,13 +22,15 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         FrameInfo info,
         VideoStreamEventSink evtSink, 
         ILogger<VideoSharedBufferReplicator> logger,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        params IPartialMatFrameHandler[] partialProcessors)
     {
         SharedMemoryName = va.StreamName;
         _info = info;
         _evtSink = evtSink;
         _logger = logger;
         _loggerFactory = loggerFactory;
+        _partialProcessors = partialProcessors;
         VideoAddress = va;
     }
 
@@ -45,8 +48,12 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         //_multiplexer = new SharedBufferMultiplexer(_buffer, _info, _loggerFactory);
         _multiplexer = new SharedBufferMultiplexer2(_buffer, 
             VideoAddress.VideoSource == VideoSource.File ?
-            FrameProcessingHandlers.OnProcess:
-            FrameProcessingHandlers.OnProcessHdr, _info, _loggerFactory);
+                FrameProcessingHandlers.OnProcess:
+                FrameProcessingHandlers.OnProcessHdr, 
+            _info, 
+            _loggerFactory, 
+            _partialProcessors);
+        
         _multiplexer.Start();
         Started = DateTime.Now;
         _evtSink.OnStreamingStarted(VideoAddress);

@@ -74,9 +74,20 @@ public class CyclicMemoryBuffer
         return nextIteration;
     }
 }
-public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
+public interface IPartialMatFrameHandler
 {
-    
+    int Every
+    {
+        get;
+    }
+    void Handle(MatFrame frame,
+        Func<MatFrame?> func,
+        ulong seq,
+        CancellationToken token, object st);
+}
+
+public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
+{ 
     public event EventHandler Disconnected;
     
     private readonly List<IChaser> _chasers = new();
@@ -89,7 +100,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
     private volatile int _lastFrameOffset;
     private readonly int _maxFrameSize;
     private readonly int _bufferSize;
-    private readonly VideoPipelineBuilder.VideoPipeline _pipeline;
+    private readonly VideoPipeline _pipeline;
     private volatile int _padding;
     private bool _isCanceled;
     private ulong _totalBytesRead;
@@ -130,7 +141,8 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
     public bool IsEnabled { get; private set; }
     public SharedBufferMultiplexer2(SharedCyclicBuffer ipBuffer, 
         Func<YuvFrame, Nullable<YuvFrame>, ulong, int, PipeProcessingState, CancellationToken, JpegFrame> handler,
-        FrameInfo info, ILoggerFactory loggerFactory)
+        FrameInfo info, ILoggerFactory loggerFactory, 
+        params IPartialMatFrameHandler[] partialProcessors)
     {
         
         _ipBuffer = ipBuffer;
@@ -140,7 +152,10 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         _maxFrameSize = info.Yuv420;
         _bufferSize = _maxFrameSize * 30; // 1sec
         _pipeline = VideoPipelineBuilder.Create(info, OnGetItem, handler, loggerFactory);
-        
+
+        foreach(var processor in partialProcessors) 
+            _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Every);
+
         _logger.LogInformation($"Buffered prepared for: {info}");
     }
     ulong hdrProcessing;
@@ -149,36 +164,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
     
     public int AvgPipelineExecution => _pipeline.Pipeline.AvgPipeExecution;
     
-    private unsafe JpegFrame OnProcessHdrSimple(YuvFrame frame,
-       YuvFrame? prv,
-       ulong secquence,
-       int pipeId,
-       PipeProcessingState state,
-       CancellationToken token)
-    {
-        var sw = Stopwatch.StartNew();
-        if (frame.Metadata.FrameNumber % 30 == 0)
-        {
-            _logger.LogInformation($"Avg pipe processing time: {_pipeline.Pipeline.AvgPipeExecution}ms");
-            
-        }
-
-        var ptr = state.Buffer.GetPtr();
-
-        var s = new Size(_info.Width, _info.Height);
-        using Mat src = new Mat(s, DepthType.Cv8U, 3, (IntPtr)frame.Data, 0);
-        
-        IntPtr prvPtr = prv.HasValue ? (IntPtr)prv.Value.Data : (IntPtr)frame.Data;
-        using Mat src2 = new Mat(s, DepthType.Cv8U, 3, prvPtr, 0);
-                
-        CvInvoke.AddWeighted(src, 0.5d, src2, 0.5d, 0, state.Dst, DepthType.Cv8U);
-
-        var len = state.Encoder.Encode(state.Dst.DataPointer, (nint)ptr, state.Buffer.MaxObjectSize);
-        var data = state.Buffer.Use((uint)len);
-
-        var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
-        return new JpegFrame(metadata, data);
-    }
+    
     CancellationTokenSource _cts;
     public void Start()
     {
@@ -187,6 +173,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         IsEnabled = true;
         IsRunning = true;
     }
+    public void SubscribePartialProcessing(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> action, object state, int every) => _pipeline.SubscribePartialProcessing(action, state, every);
     ulong _fn = 0;
     ulong _stream = 0;
     private unsafe YuvFrame OnGetItem(CancellationToken token)

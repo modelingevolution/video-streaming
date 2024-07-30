@@ -41,7 +41,8 @@ namespace ModelingEvolution.VideoStreaming
                     sp.GetRequiredService<VideoStreamEventSink>(),
                     sp.GetRequiredService<IEnvironment>(),
                     sp.GetRequiredService<IConfiguration>(), 
-                    sp.GetRequiredService<ILoggerFactory>());
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetServices<IPartialMatFrameHandler>());
             });
             return services;
         }

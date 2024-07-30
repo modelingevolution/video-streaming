@@ -12,9 +12,14 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
     ILogger<MultiPipeline<TIn, TThreadState, TOut>> logger) : IDisposable
     where TIn : struct
 {
+    readonly record struct PartialProcessInput(PartialProcessing Process, InData Data);
+    record PartialProcessing(int Every, object State, Action<TIn, Nullable<TIn>, ulong, CancellationToken, object> Action);
+
     record StateData(TThreadState State, int Id);
     readonly record struct InData(ulong SeqNo, StateData Id, CancellationToken Token, TIn Data, TIn? Prv);
     readonly record struct OutData(ulong SeqNo, TOut Data);
+
+    private readonly List<PartialProcessing> _partialProcessing = new();
 
     private SemaphoreSlim? _sem;
     private readonly ConcurrentBag<OutData> _results = new();
@@ -40,6 +45,10 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
     public ulong Finished => _merged;
     public bool IsRunning => _isRunning;
     public int AvgPipeExecution => _processed == 0 ? int.MaxValue : (int)(_processingTimeMs / _processed);
+    public void SubscribePartialProcessing(Action<TIn, Nullable<TIn>, ulong, CancellationToken, object> action,object state, int every)
+    {
+        _partialProcessing.Add(new PartialProcessing(every, state, action));
+    }
     public void Stop()
     {
         if (!_isRunning) return;
@@ -96,7 +105,13 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
         OnProcess(i.Data, i.Prv, i.Token, i.SeqNo, i.Id);
 
     }
-    
+    private void OnProcessPartial(object state)
+    {
+        var d = (PartialProcessInput)state;
+        var i = d.Data;
+        d.Process.Action(i.Data, i.Prv, i.SeqNo, i.Token, d.Process.State);
+
+    }
     private void OnProcess(TIn data, TIn? prv, CancellationToken token, ulong seqNo, StateData id)
     {
         if (token.IsCancellationRequested)
@@ -189,9 +204,20 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
                     continue;
                 }
 
-                if (_ids.TryDequeue(out var r) && !ThreadPool.QueueUserWorkItem(OnProcess, new InData(_i++, r, _ct, item, prv)))
-                    throw new InvalidOperationException("Cannot enqueue process operation.");
+                if (_ids.TryDequeue(out var r))
+                {
+                    var data = new InData(_i++, r, _ct, item, prv);
+                    if (!ThreadPool.QueueUserWorkItem(OnProcess, data))
+                        throw new InvalidOperationException("Cannot enqueue process operation.");
 
+                    // Not sure if this should be here
+                    foreach (var i in _partialProcessing)
+                    {
+                        if (((long)(_i) % i.Every) == 0)
+                            ThreadPool.QueueUserWorkItem(OnProcessPartial, new PartialProcessInput(i, data));
+
+                    }
+                }
                 prv = item;
                 _dispatched += 1;
             }

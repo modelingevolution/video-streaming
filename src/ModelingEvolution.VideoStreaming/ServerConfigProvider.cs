@@ -24,7 +24,8 @@ public class ServerConfigProvider(IConfiguration conf, IPlumber plumber, IEnviro
         {
             try
             {
-                if(string.IsNullOrWhiteSpace(u)) continue;
+                if (string.IsNullOrWhiteSpace(u)) continue;
+                if (u == "\"\"") continue;
 
                 var i = new Uri(u);
                 if (!_config!.Sources.Contains(i))
