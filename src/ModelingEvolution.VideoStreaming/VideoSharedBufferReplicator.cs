@@ -48,7 +48,8 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         //_multiplexer = new SharedBufferMultiplexer(_buffer, _info, _loggerFactory);
         _multiplexer = new SharedBufferMultiplexer2(_buffer, 
             VideoAddress.VideoSource == VideoSource.File ?
-                FrameProcessingHandlers.OnProcess:
+                
+            FrameProcessingHandlers.OnProcess:
                 FrameProcessingHandlers.OnProcessHdr, 
             _info, 
             _loggerFactory, 
