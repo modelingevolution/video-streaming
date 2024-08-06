@@ -20,6 +20,9 @@ public class VideoPipeline
     private readonly FrameInfo _frameInfo;
     private readonly ConcurrentCyclicBuffer<JpegFrame> _buffer;
     private readonly uint _pipeBufferCount;
+    private readonly List<MatPartialProcess> _matPartialProcesses = new();
+    private readonly List<YuvPartialProcess> _yuvPartialProcesses = new();
+
     public ulong BufferSize => (ulong)_pipeline.MaxParallelItems * _pipeBufferCount * (ulong)_frameInfo.Yuv420;
     private int _quality = 80;
     public int Quality
@@ -52,21 +55,33 @@ public class VideoPipeline
 
     public void Start(CancellationToken token = default)
     {
-        foreach (var i in _partialProcesses)
-        {
+        foreach (var i in _matPartialProcesses)
             _pipeline.SubscribePartialProcessing(i.OnProcess, i, i.Every);
-        }
+        foreach (var i in _yuvPartialProcesses)
+            _pipeline.SubscribePartialProcessing(i.OnProcess, i, i.Every);
+
+
         _pipeline.Start(token);
         foreach (var i in _pipeline.Pipes)
             i.Quality = _quality;
     }
-    public void SubscribePartialProcessing(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> action, object state, int every) => _partialProcesses.Add(new PartialProcess(action, state, every));
-    private List<PartialProcess> _partialProcesses = new();
-    record PartialProcess(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> Action, object State, int Every)
+    public void SubscribePartialProcessing(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> action, object state, int every) => _matPartialProcesses.Add(new MatPartialProcess(action, state, every));
+    public void SubscribePartialProcessing(Action<YuvFrame, YuvFrame?, ulong, CancellationToken, object> action, object state, int every) => _yuvPartialProcesses.Add(new YuvPartialProcess(action, state, every));
+
+
+    
+    record MatPartialProcess(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> Action, object State, int Every)
     {
         internal void OnProcess(YuvFrame frame, YuvFrame? nullable, ulong arg3, CancellationToken token, object arg5)
         {
             Action(frame.ToMatFrame(), () => nullable?.ToMatFrame(), arg3, token, State);
+        }
+    }
+    record YuvPartialProcess(Action<YuvFrame, YuvFrame?, ulong, CancellationToken, object> Action, object State, int Every)
+    {
+        internal void OnProcess(YuvFrame frame, YuvFrame? nullable, ulong arg3, CancellationToken token, object arg5)
+        {
+            Action(frame, nullable, arg3, token, State);
         }
     }
 

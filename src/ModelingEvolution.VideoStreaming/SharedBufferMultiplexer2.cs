@@ -74,6 +74,18 @@ public class CyclicMemoryBuffer
         return nextIteration;
     }
 }
+public interface IPartialYuvFrameHandler
+{
+    int Every
+    {
+        get;
+    }
+    void Handle(YuvFrame frame,
+        YuvFrame? prv,
+        ulong seq,
+        CancellationToken token, object st);
+    
+}
 public interface IPartialMatFrameHandler
 {
     int Every
@@ -142,7 +154,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
     public SharedBufferMultiplexer2(SharedCyclicBuffer ipBuffer, 
         Func<YuvFrame, Nullable<YuvFrame>, ulong, int, PipeProcessingState, CancellationToken, JpegFrame> handler,
         FrameInfo info, ILoggerFactory loggerFactory, 
-        params IPartialMatFrameHandler[] partialProcessors)
+        IPartialMatFrameHandler[] matPartialProcessors, IPartialYuvFrameHandler[] yuvPartialProcessors)
     {
         
         _ipBuffer = ipBuffer;
@@ -153,7 +165,10 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         _bufferSize = _maxFrameSize * 30; // 1sec
         _pipeline = VideoPipelineBuilder.Create(info, OnGetItem, handler, loggerFactory);
 
-        foreach(var processor in partialProcessors) 
+        foreach(var processor in matPartialProcessors) 
+            _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Every);
+
+        foreach (var processor in yuvPartialProcessors)
             _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Every);
 
         _logger.LogInformation($"Buffered prepared for: {info}");

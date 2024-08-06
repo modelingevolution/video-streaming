@@ -30,7 +30,8 @@ public class VideoStreamingServer : INotifyPropertyChanged
     private readonly TcpListener _listener;
     private readonly ServerConfigProvider _configProvider;
     private readonly IPlumber _plumber;
-    private readonly IPartialMatFrameHandler[] _handlers;
+    private readonly IPartialMatFrameHandler[] _matHandlers;
+    private readonly IPartialYuvFrameHandler[] _yuvHandlers;
     private readonly VideoStreamEventSink _sink;
     private readonly IEnvironment _env;
 
@@ -66,14 +67,16 @@ public class VideoStreamingServer : INotifyPropertyChanged
         IEnvironment env,
         IConfiguration config,
         ILoggerFactory loggerFactory, 
-        IEnumerable<IPartialMatFrameHandler> handlers)
+        IEnumerable<IPartialMatFrameHandler> matHandlers,
+        IEnumerable<IPartialYuvFrameHandler> yuvHandlers)
     {
         _host = host;
         _port = port;
         _loggerFactory = loggerFactory;
         IsSingleVideoSource = isSingleVideo;
         _plumber = plumber;
-        _handlers = handlers.ToArray();
+        _matHandlers = matHandlers.ToArray();
+        _yuvHandlers = yuvHandlers.ToArray();
         _sink = sink;
         _env = env;
         if (host == "localhost") 
@@ -130,7 +133,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
                 va.Resolution == VideoResolution.FullHd ? FrameInfo.FullHD : FrameInfo.SubHD,
                 _sink,
                 _loggerFactory.CreateLogger<VideoSharedBufferReplicator>(), 
-                _loggerFactory, _handlers);
+                _loggerFactory, _matHandlers, _yuvHandlers);
         try
         {
             _streams.Add(streamReplicator.Connect());

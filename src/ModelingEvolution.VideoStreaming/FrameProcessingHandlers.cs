@@ -10,7 +10,7 @@ namespace ModelingEvolution.VideoStreaming;
 
 public static class FrameProcessingHandlers
 {
-    public static EventHandler<byte[]> OnFrameMerged;
+    
 
     public static unsafe JpegFrame OnProcessHdr(YuvFrame frame,
         YuvFrame? prvFrame,
@@ -50,7 +50,7 @@ public static class FrameProcessingHandlers
 
         }
 
-        _ = Task.Run(() => OnFrameMerged?.Invoke(new object(), data.ToArray()));
+        
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
 
         return new JpegFrame(metadata, data);

@@ -3,6 +3,7 @@ using Emgu.CV.Util;
 using Emgu.CV;
 using ModelingEvolution.VideoStreaming.Buffers;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.VideoStreaming;
 public readonly struct MatFrame
@@ -11,6 +12,7 @@ public readonly struct MatFrame
     public readonly FrameMetadata Metadata;
     public readonly FrameInfo Info;
 
+
     public MatFrame(Mat data, FrameMetadata metadata, FrameInfo info)
     {
         Data = data;
@@ -18,11 +20,50 @@ public readonly struct MatFrame
         Info = info;
     }
 }
+public readonly record struct YuvPixel(byte Y, byte U, byte V);
 public unsafe readonly struct YuvFrame
 {
     public readonly byte* Data;
     public readonly FrameMetadata Metadata;
     public readonly FrameInfo Info;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public byte Y(int x, int y)
+    {
+        if (x < 0 || x >= Info.Width || y < 0 || y >= Info.Height)
+        {
+            // Handle invalid coordinates, e.g., return 0 or throw an exception
+            return 0;
+        }
+
+        // Calculate offset into the Y plane
+        int yOffset = y * Info.Width + x;
+        return Data[yOffset];
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public YuvPixel GetPixel(int x, int y)
+    {
+        int width = Info.Width;
+        int height = Info.Height;
+        // Check for valid coordinates
+        if (x < 0 || x >= width || y < 0 || y >= height)
+            throw new ArgumentOutOfRangeException(nameof(x), "x or y is out of range");
+        
+
+        // Calculate offsets
+        int yOffset = y * width + x;
+        int uvWidth = width / 2;
+        int uvHeight = height / 2;
+        int uvOffset = (y / 2) * uvWidth + (x / 2);
+
+        // Access Y, U, and V values
+        byte yVal = Data[yOffset];
+        byte uVal = Data[width * height + uvOffset];
+        byte vVal = Data[width * height + uvOffset + uvWidth / 2];
+
+        return new YuvPixel(yVal, uVal, vVal);
+    }
+
     public YuvFrame(in FrameMetadata metadata, in FrameInfo info, byte* data)
     {
         Data = data;

@@ -222,7 +222,15 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
                 _dispatched += 1;
             }
         }
+       
         catch (ObjectDisposedException) { return; }
+        catch (InvalidOperationException)
+        {
+            if (Debugger.IsAttached){
+                Debug.WriteLine("Normally app would shutdown. But because you're debugging we let you continue. The dispatch loop has exited.");
+                return;
+            } else throw;
+        }
         catch (OperationCanceledException)
         {
             Debug.WriteLine("OnDispatch canceled.");
