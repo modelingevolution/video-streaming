@@ -21,7 +21,7 @@ public static class FrameProcessingHandlers
     {
 
         var ptr = state.Buffer.GetPtr();
-
+       
         ulong len = 0;
         var prv = prvFrame.HasValue ? (nint)prvFrame.Value.Data : (nint)IntPtr.Zero;
         Memory<byte> data = null;
@@ -76,7 +76,7 @@ public static class FrameProcessingHandlers
 
         var len = state.Encoder.Encode(state.Dst.DataPointer, (nint)ptr, state.Buffer.MaxObjectSize);
         var data = state.Buffer.Use((uint)len);
-
+       
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
         return new JpegFrame(metadata, data);
     }
@@ -92,7 +92,7 @@ public static class FrameProcessingHandlers
         var len = state.Encoder.Encode((nint)frame.Data, (nint)ptr, state.Buffer.MaxObjectSize);
         var data = state.Buffer.Use((uint)len);
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
-      
+        _ = Task.Run(() => OnFrameMerged?.Invoke(new object(), frame.ConvertMat3().GetRawData()));
         return new JpegFrame(metadata, data);
     }
 }
