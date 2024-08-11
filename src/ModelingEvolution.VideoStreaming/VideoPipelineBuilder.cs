@@ -9,7 +9,7 @@ public class VideoPipelineBuilder
     public static VideoPipeline Create(FrameInfo info, Func<CancellationToken, YuvFrame> getWorkItem,
         Func<YuvFrame, Nullable<YuvFrame>, ulong, int, PipeProcessingState, CancellationToken, JpegFrame> onProcess,
         ILoggerFactory loggerFactory,
-        uint pipeBufferCount = 60 * 2, int mergeBufferFrameCount = 60 * 4)
+        uint pipeBufferCount = 60, int mergeBufferFrameCount = 60 * 4)
     {
         return new VideoPipeline(info, getWorkItem, onProcess, pipeBufferCount, loggerFactory, mergeBufferFrameCount);
     }

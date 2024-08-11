@@ -5,6 +5,7 @@ using ModelingEvolution.VideoStreaming.Buffers;
 using System.Diagnostics;
 using System.Drawing;
 using Tmds.Linux;
+using ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
 namespace ModelingEvolution.VideoStreaming;
 
@@ -78,6 +79,7 @@ public static class FrameProcessingHandlers
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
         return new JpegFrame(metadata, data);
     }
+    
     public static unsafe JpegFrame OnProcess(YuvFrame frame,
         YuvFrame? prv,
         ulong secquence,
@@ -86,11 +88,18 @@ public static class FrameProcessingHandlers
         CancellationToken token)
     {
         var ptr = state.Buffer.GetPtr();
+        
+        //if (_frame != null) return _frame.Value;
 
+        //var enc = WorkingSetDebugUtil.Check();
         var len = state.Encoder.Encode((nint)frame.Data, (nint)ptr, state.Buffer.MaxObjectSize);
+        //enc.Dispose();
+
+        
         var data = state.Buffer.Use((uint)len);
         var metadata = new FrameMetadata(frame.Metadata.FrameNumber, len, frame.Metadata.StreamPosition);
+        var f = new JpegFrame(metadata, data);
         
-        return new JpegFrame(metadata, data);
+        return f;
     }
 }

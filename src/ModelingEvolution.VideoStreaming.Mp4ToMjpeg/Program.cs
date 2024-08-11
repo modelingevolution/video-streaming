@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Buffers;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using ModelingEvolution.VideoStreaming.LibJpegTurbo;
@@ -16,6 +18,62 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
                 fs.Write(data, 0, size);
         }
     }
+    public class CyclicMemoryBuffer
+    {
+        private readonly uint _maxObjectSize;
+        private readonly Memory<byte> _buffer;
+        private readonly MemoryHandle _handle;
+        private uint _cursor;
+        private ulong _cycle;
+        private ulong _written;
+        public long Size => _buffer.Length;
+        public ulong MaxObjectSize => _maxObjectSize;
+        public CyclicMemoryBuffer(uint capacity, uint maxObjectSize)
+        {
+            _buffer = new Memory<byte>(new byte[capacity * maxObjectSize]);
+            _handle = _buffer.Pin();
+            _maxObjectSize = maxObjectSize;
+        }
+        public void Write<T>(in T data, uint offset = 0) where T : struct
+        {
+            MemoryMarshal.Write(_buffer.Span.Slice((int)(_cursor + offset)), in data);
+        }
+        public ulong SpaceLeft => (ulong)(_buffer.Length - _cursor);
+        public unsafe byte* GetPtr(int offset = 0)
+        {
+            return ((byte*)_handle.Pointer) + _cursor + offset;
+        }
+        public Memory<byte> Use(uint size)
+        {
+            var u = _buffer.Slice((int)_cursor, (int)size);
+            Advance(size);
+            return u;
+        }
+        /// <summary>
+        /// Advances the specified size.
+        /// </summary>
+        /// <param name="size">The size.</param>
+        /// <returns>true if it is the next cycle in the buffer.</returns>
+        public bool Advance(uint size)
+        {
+            bool nextIteration = false;
+            var left = _buffer.Length - _cursor;
+            if (left <= (_maxObjectSize))
+            {
+                _cursor = 0;
+                _written += (ulong)size;
+                nextIteration = true;
+                Interlocked.Increment(ref _cycle);
+                Debug.WriteLine($"Buffer is full for writing, resetting. Last frame was: {_cycle - 1} ");
+            }
+            else
+            {
+                _cursor += size;
+                _written += (ulong)size;
+            }
+            return nextIteration;
+        }
+    }
     internal class Program
     {
         static void Main(string[] args)
@@ -28,8 +86,8 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             }
 
             string dst = args.Length == 1 ? src + ".yuv" : args[1];
-            ExtractFramesToJpeg(src, dst);
-            //ExtractFramesToJpegInMem(src, dst);
+            //ExtractFramesToJpeg(src, dst);
+            ExtractFramesToJpegInMem(src, dst);
             Console.ReadLine();
         }
         private static void ExtractFramesToJpegInMem(string src, string dst)
@@ -69,6 +127,7 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
                 c++;
             }
             sw.Stop();
+            GC.Collect();
             Console.WriteLine("Load from disk:");
             Console.WriteLine($"Elapsed: {sw.Elapsed}");
             Console.WriteLine($"Fps: {c / sw.Elapsed.TotalSeconds}");
@@ -82,13 +141,13 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             Encode(sw, bufferSize, yuvFrames, frameWidth, frameHeight, 95, DiscreteCosineTransform.Float);
         }
 
-        private static void Encode(Stopwatch sw, ulong bufferSize, List<Mat> yuvFrames,
+        private static unsafe void Encode(Stopwatch sw, ulong bufferSize, List<Mat> yuvFrames,
             int frameWidth,
             int frameHeight, 
             int quality, 
             DiscreteCosineTransform mode)
         {
-            using JpegEncoder encoder = JpegEncoderFactory.Create(frameWidth, frameHeight, 90, bufferSize);
+            using JpegEncoder encoder = JpegEncoderFactory.Create(frameWidth, frameHeight, quality, bufferSize);
             encoder.Quality = quality;
             encoder.Mode = mode;
             int c;
@@ -96,13 +155,22 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToMjpeg
             c = 0;
             byte[] dstBuffer = new byte[bufferSize];
             BigInteger totalSize = 0;
-            foreach(var i in yuvFrames)
+            var buffer = new CyclicMemoryBuffer(4, 1920*1080*3/2);
+
+            while(true)
+            foreach (var i in yuvFrames)
             {
-                var size = encoder.Encode(i.DataPointer, dstBuffer);
+                var dst = buffer.GetPtr();
+                var size = encoder.Encode(i.DataPointer,(nint)dst, buffer.MaxObjectSize);
+                var data = buffer.Use((uint)size);
+
                 totalSize += size;
                 c++;
 
-
+                if(c % 30 == 0)
+                    {
+                        Console.WriteLine($"\r{c}");
+                    }
                 //sw.Stop();
                 //string fn = $"{c}.jpeg";
                 //if (File.Exists(fn)) File.Delete(fn);

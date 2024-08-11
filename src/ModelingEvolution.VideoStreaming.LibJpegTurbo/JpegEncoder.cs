@@ -1,7 +1,35 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Buffers;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
+public static class WorkingSetDebugUtil
+{
+    public readonly record struct AllocationBlock(string Location, int LineNumber, long WorkingSet) : IDisposable
+    {
+        public void Dispose()
+        {
+            var w = GetPrivMem();
+            var d = w - WorkingSet;
+            if(d > 16*1024)
+            {
+                //Console.WriteLine($"{d.ToString("+0")}B in {Location} at {LineNumber}");
+            }
+        }
+    }
+    public static long GetPrivMem()
+    {
+        
+        using (var p = Process.GetCurrentProcess())
+            return p.PrivateMemorySize64;
+    }
+    public static AllocationBlock Check([CallerFilePath] string file=null, [CallerLineNumber] int nr=0)
+    {
+        return new AllocationBlock(file, nr, GetPrivMem());
+    }
+}
 public class JpegEncoder : IDisposable
 {
     private int _mode = 0;

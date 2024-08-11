@@ -31,6 +31,7 @@ public class CyclicMemoryBuffer
     public CyclicMemoryBuffer(uint capacity, uint maxObjectSize)
     {
         _buffer = new Memory<byte>(new byte[capacity * maxObjectSize]);
+        _buffer.Span.Fill(0xFF);
         _handle = _buffer.Pin();
         _maxObjectSize = maxObjectSize;
     }

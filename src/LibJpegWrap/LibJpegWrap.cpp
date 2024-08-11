@@ -2,6 +2,41 @@
 //
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)
+//#include <windows.h>
+//#include <psapi.h>
+//#include <string>
+//#include <iostream>
+//
+//long long GetPrvMem() {
+//    PROCESS_MEMORY_COUNTERS_EX pmc;
+//    if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc))){
+//        return pmc.PrivateUsage;
+//    }
+//    return 0;
+//}
+//
+//// A class to manage memory allocations
+//class AllocationBlock {
+//public:
+//    AllocationBlock(const std::string &location, int lineNumber)
+//        : location_(location), lineNumber_(lineNumber), workingSet_(GetPrvMem()) {}
+//
+//    ~AllocationBlock() {
+//        long long w = GetPrvMem();
+//        long long d = w - workingSet_;
+//        if (d > 16 * 1024) {
+//            std::cout << "+" << d << "B of allocated: "<< w << "B in " << location_ << " at " << lineNumber_ << std::endl;
+//        }
+//        
+//    }
+//
+//private:
+//    std::string location_;
+//    int lineNumber_;
+//    long long workingSet_;
+//};
+//#define CHECK_ALLOCATION() AllocationBlock allocationBlock(__FILE__, __LINE__)
+
 #endif
 
 #ifndef _WIN32
@@ -49,16 +84,25 @@ memory_destination_mgr* jpeg_memory_dest(j_compress_ptr cinfo, byte* buffer, ulo
         cinfo->dest = (struct jpeg_destination_mgr*)
             (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_PERMANENT,
                 sizeof(memory_destination_mgr));
+        //std::cout << "\n\rAllocating " << sizeof(memory_destination_mgr) << "B for libjpeg buffer.\n\r";
+        memory_destination_mgr* dest = (memory_destination_mgr*)cinfo->dest;
+        dest->pub.init_destination = init_destination;
+        dest->pub.empty_output_buffer = empty_output_buffer;
+        dest->pub.term_destination = term_destination;
+        dest->buffer = buffer;
+        dest->buffer_size = size;
+        dest->data_size = 0; // No data written yet
+        return dest;
     }
+    else 
+    {
+        memory_destination_mgr* dest = (memory_destination_mgr*)cinfo->dest;
 
-    memory_destination_mgr* dest = (memory_destination_mgr*)cinfo->dest;
-    dest->pub.init_destination = init_destination;
-    dest->pub.empty_output_buffer = empty_output_buffer;
-    dest->pub.term_destination = term_destination;
-    dest->buffer = buffer;
-    dest->buffer_size = size;
-    dest->data_size = 0; // No data written yet
-    return dest;
+        dest->buffer = buffer;
+        dest->buffer_size = size;
+        dest->data_size = 0; // No data written yet
+        return dest;
+    }
 }
 
 class YuvEncoder {
@@ -67,7 +111,7 @@ public:
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
 
-    YuvEncoder(int width, int height, int quality, int bufferSize)
+    YuvEncoder(const int width, const int height, const int quality, const int bufferSize)
     {
     	cinfo.err = jpeg_std_error(&jerr);
 		jpeg_create_compress(&cinfo);
@@ -75,7 +119,7 @@ public:
         cinfo.image_height = height;
         cinfo.input_components = 3;
         cinfo.in_color_space = JCS_YCbCr;
-
+        
         
         jpeg_set_defaults(&cinfo);
         jpeg_set_quality(&cinfo, quality, FALSE);
@@ -105,9 +149,11 @@ public:
     }
     ulong Encode(byte* data, byte* dstBuffer, ulong dstBufferSize)
     {
+        //CHECK_ALLOCATION();
+        
         jpeg_memory_dest(&cinfo, dstBuffer, dstBufferSize);
-
         jpeg_start_compress(&cinfo, TRUE);
+      
         auto width = cinfo.image_width;
         auto height = cinfo.image_height;
 
@@ -131,9 +177,14 @@ public:
                 }
             }
             JSAMPARRAY planes[3] = { y, cb, cr };
+            //{
+                //CHECK_ALLOCATION();
             jpeg_write_raw_data(&cinfo, planes, 16);
+            //}
         }
+        
         jpeg_finish_compress(&cinfo);
+        
         memory_destination_mgr* dest = (memory_destination_mgr*)cinfo.dest;
         return dest->data_size;
     }

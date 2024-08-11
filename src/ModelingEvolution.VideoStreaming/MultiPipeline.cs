@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
 namespace ModelingEvolution.VideoStreaming;
 
@@ -99,15 +100,15 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
         _merger.Start();
     }
 
-    private void OnProcess(object state)
+    private void OnProcess(object? state)
     {
-        InData i = (InData)state;
+        InData i = (InData)state!;
         OnProcess(i.Data, i.Prv, i.Token, i.SeqNo, i.Id);
 
     }
-    private void OnProcessPartial(object state)
+    private void OnProcessPartial(object? state)
     {
-        var d = (PartialProcessInput)state;
+        var d = (PartialProcessInput)state!;
         var i = d.Data;
         d.Process.Action(i.Data, i.Prv, i.SeqNo, i.Token, d.Process.State);
 
@@ -209,6 +210,7 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
                     var data = new InData(_i++, r, _ct, item, prv);
                     if (!ThreadPool.QueueUserWorkItem(OnProcess, data))
                         throw new InvalidOperationException("Cannot enqueue process operation.");
+
 
                     // Not sure if this should be here
                     foreach (var i in _partialProcessing)
