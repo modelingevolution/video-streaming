@@ -36,7 +36,10 @@ public class VideoStreamingServer : INotifyPropertyChanged
     private readonly IEnvironment _env;
 
     private DateTime _started;
-    
+    public void SwapVideoAddress(VideoAddress old, VideoAddress n)
+    {
+
+    }
     public State State
     {
         get => _state;
