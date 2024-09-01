@@ -14,7 +14,7 @@ public class VideoAddressTests
     [Fact]
     public void ComplexUri()
     {
-        string url = "shm+mjpeg://localhost/a?tags=elo_melo&resolution=SubHd&file=e%3A%5C1.mp4";
+        string url = "shm+mjpeg://localhost/a?tags=elo_melo&resolution=SubHd&file=e%3A%5C1.mp4&camera=1";
         VideoAddress va = VideoAddress.Parse(url);
         va.Port.Should().Be(0);
         va.Codec.Should().Be(VideoCodec.Mjpeg);

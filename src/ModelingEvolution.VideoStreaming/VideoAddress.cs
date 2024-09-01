@@ -22,7 +22,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         e = default;
         return false;
     }
-
+    
     public static VideoAddress CreateFrom(Uri uri)
     {
         var proto = uri.Scheme.Split('+', StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -42,14 +42,19 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
 
         string? resolution = queryParameters["resolution"];
         string? file = queryParameters["file"];
+        string? cameraNr = queryParameters["camera"];
 
         VideoResolution rv = VideoResolution.FullHd;
         if (!string.IsNullOrEmpty(resolution))
             rv = Enum.Parse<VideoResolution>(resolution, true);
         RecognizeProtocol<VideoCodec>(proto, out var codec);
         RecognizeProtocol<VideoTransport>(proto, out var transport);
+        int? camera = null;
+        if (cameraNr != null && int.TryParse(cameraNr, out var c))
+            camera = c;
+
         var vs = file != null ? VideoSource.File : (host == "localhost" ? VideoSource.Camera : VideoSource.Stream);
-        return new VideoAddress(codec, host, port, streamName, rv, transport,vs ,file, tags);
+        return new VideoAddress(codec, host, port, streamName, rv, transport,vs ,file, camera, tags);
     }
 
     private readonly string _str;
@@ -70,6 +75,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
     public string? StreamName { get; init; }
     public string Host { get; init; }
     public int Port { get; init; }
+    public int? CameraNumber { get; init; }
     public VideoTransport VideoTransport { get; init; } = VideoTransport.Tcp;
     public VideoCodec Codec { get; init; }
     public HashSet<string>? Tags { get; init; }
@@ -83,6 +89,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
             VideoTransport vt = VideoTransport.Tcp,
             VideoSource vs = VideoSource.Camera,
             string? file = null,
+            int? cameraNr = null,
             params string[] tags)
     {
         if (string.IsNullOrWhiteSpace(file) && vs == VideoSource.File)
@@ -96,6 +103,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         Tags = tags.ToHashSet();
         VideoTransport = vt;
         File = file;
+        CameraNumber = cameraNr;
         VideoSource = vs;
         StringBuilder sb = new($"{VideoTransport}+{Codec}".ToLower());
         sb.Append($"://{Host}");
@@ -123,7 +131,12 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
             sb.Append($"file={UrlEncoder.Default.Encode(File)}");
             query = true;
         }
-
+        if(cameraNr.HasValue && cameraNr > 0)
+        {
+            sb.Append(!query ? "?" : "&");
+            sb.Append($"camera={cameraNr.Value}");
+            query = true;
+        }
         _str = sb.ToString();
     }
 
@@ -158,6 +171,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
                Codec == address.Codec &&
                Tags.Except(address.Tags).Count() == 0 &&
                File == address.File &&
+               CameraNumber == address.CameraNumber &&
                VideoSource == address.VideoSource;
     }
 }
