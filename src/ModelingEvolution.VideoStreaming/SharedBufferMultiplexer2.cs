@@ -85,6 +85,7 @@ public interface IPartialYuvFrameHandler
         YuvFrame? prv,
         ulong seq,
         CancellationToken token, object st);
+    void Init();
     
 }
 public interface IPartialMatFrameHandler
@@ -155,7 +156,8 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
     public SharedBufferMultiplexer2(SharedCyclicBuffer ipBuffer, 
         Func<YuvFrame, Nullable<YuvFrame>, ulong, int, PipeProcessingState, CancellationToken, JpegFrame> handler,
         FrameInfo info, ILoggerFactory loggerFactory, 
-        IPartialMatFrameHandler[] matPartialProcessors, IPartialYuvFrameHandler[] yuvPartialProcessors)
+        IPartialMatFrameHandler[] matPartialProcessors, 
+        IPartialYuvFrameHandler[] yuvPartialProcessors)
     {
         
         _ipBuffer = ipBuffer;
@@ -170,8 +172,10 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
             _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Every);
 
         foreach (var processor in yuvPartialProcessors)
+        {
+            processor.Init();
             _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Every);
-
+        }
         _logger.LogInformation($"Buffered prepared for: {info}");
     }
     ulong hdrProcessing;

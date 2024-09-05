@@ -9,6 +9,17 @@ using System.Threading.Tasks;
 
 namespace ModelingEvolution.VideoStreaming.Ui.Components
 {
+    static class Extensions {
+        public static int IndexOf<T>(this IEnumerable<T> source, Func<T,bool> predicate){
+            int index = 0;
+            foreach (T item in source){
+                if (predicate(item))
+                    return index;
+                index++;
+            }
+            return -1;
+        }
+    }
     class FreeSpaceVmProvider : IDisposable, IAsyncDisposable
     {
         private readonly ConcurrentDictionary<string, Vm> _index = new();

@@ -2,7 +2,7 @@
 @using ModelingEvolution.Controls.Blazor.AnchorPanelControl
 
 @inject VideoStreamingServer _srv
-
+@inject NavigationManager _nm
 @inject IJSRuntime JSRuntime
 @inject PersistedStreamVm _persister
 
@@ -21,31 +21,43 @@ else
         </Dock>
         <Anchors>
             <AnchorUpperRight>
-                @if (_address!.Value.VideoSource != VideoSource.File)
-                {
-                    <Observable Source="_persister">
-                        <MudStack Row="true">
-                        @UpperRightButtons
-                        <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
-                                       Disabled="@(_address == null)"
-                                       OnClick="ToggleRecording" IconStyle="@_recordIconBtnStyle()"></IconButton_v7>
-
-                    </MudStack>
-                </Observable>
-                }
+                <MudStack Row="true">
+                    @UpperRightButtons
+                    @if (_address!.Value.VideoSource != VideoSource.File)
+                    {
+                        <Observable Source="_persister">
+                                <IconButton_v7 Style="padding:24px" 
+                                               Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
+                                               Disabled="@(_address == null)"
+                                               OnClick="ToggleRecording" 
+                                               IconStyle="@_recordIconBtnStyle()"/>
+                           
+                        
+                        </Observable>
+                    }
+                    @if (_srv.HasManySourceStreams)
+                    {
+                        <MudIconButton Style="padding:24px" Icon="@Icons.Material.Filled.Cameraswitch"
+                                       OnClick="ToggleSource" />
+                    }
+                </MudStack>
             </AnchorUpperRight>
             <AnchorLowerRight>
-              
+                @if (IsFullScreenIconVisible) {
                     <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.Fullscreen"
                                    IconStyle="fill:white"
-                                   Size="Size.Large" OnClick="@ToggleFullScreen"></IconButton_v7>
-   
+                                   Size="Size.Large" 
+                                   OnClick="@ToggleFullScreen"></IconButton_v7>
+                }
             </AnchorLowerRight>
         </Anchors>
     </AnchorPanel>
 }
 @code {
     private string _imgStyle= "width:100%;";
+
+    [Parameter]
+    public bool IsFullScreenIconVisible { get; set; } = true;
 
     [Parameter]
     public string? Stream { get; set; }
@@ -56,7 +68,7 @@ else
     [Parameter]
     public string? Style { get; set; }
 
-  
+
 
     [Parameter]
     public string? ImgStyle { get; set; }
@@ -71,7 +83,19 @@ else
         return _persister.IsRecording(_address.Value) ? "fill:red" : "fill:gray";
     }
 
+    private async Task ToggleSource()
+    {
+        var i = _srv.Streams.IndexOf(x => x.VideoAddress == _address);
+        i = (i+1) % _srv.Streams.Count;
+        var url = new Uri(_nm.Uri);
 
+        var baseUrl = url.GetLeftPart(UriPartial.Path);
+        var lastSlashIndex = baseUrl.LastIndexOf('/');
+        var urlWithoutLastSegment = baseUrl.Substring(0, lastSlashIndex + 1);
+
+        var newUrl = $"{urlWithoutLastSegment}{_srv.Streams[i].VideoAddress.StreamName}";
+        _nm.NavigateTo(newUrl);
+    }
     private async Task ToggleRecording()
     {
         if (!_address.HasValue) return;

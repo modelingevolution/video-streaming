@@ -19,6 +19,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
 
     public event EventHandler<VideoAddress> SourceStreamConnected;
     public event EventHandler<VideoAddress> SourceStreamDisconnected;
+
     public IReadOnlyCollection<VideoAddress> DisconnectedSources => _disconnected;
     private readonly ObservableCollection<VideoAddress> _disconnected;
     private readonly ObservableCollection<IVideoStreamReplicator> _streams;
@@ -36,10 +37,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
     private readonly IEnvironment _env;
 
     private DateTime _started;
-    public void SwapVideoAddress(VideoAddress old, VideoAddress n)
-    {
-
-    }
+    public bool HasManySourceStreams => _streams.Count > 0;
     public State State
     {
         get => _state;
