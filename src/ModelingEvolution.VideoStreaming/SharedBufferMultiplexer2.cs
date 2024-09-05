@@ -85,7 +85,7 @@ public interface IPartialYuvFrameHandler
         YuvFrame? prv,
         ulong seq,
         CancellationToken token, object st);
-    void Init();
+    void Init(VideoAddress va);
     
 }
 public interface IPartialMatFrameHandler
@@ -173,7 +173,6 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
 
         foreach (var processor in yuvPartialProcessors)
         {
-            processor.Init();
             _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Every);
         }
         _logger.LogInformation($"Buffered prepared for: {info}");

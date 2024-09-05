@@ -49,6 +49,9 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         _buffer = new SharedCyclicBuffer(120, _info.Yuv420,  SharedMemoryName, OpenMode.CreateNewForReading); // ~180MB
 
         //_multiplexer = new SharedBufferMultiplexer(_buffer, _info, _loggerFactory);
+        foreach (var i in _yuvPartialProcessors)
+            i.Init(VideoAddress);
+
         _multiplexer = new SharedBufferMultiplexer2(_buffer, 
             VideoAddress.VideoSource == VideoSource.File ?
                 
