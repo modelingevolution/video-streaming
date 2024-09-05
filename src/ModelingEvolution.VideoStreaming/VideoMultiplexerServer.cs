@@ -37,7 +37,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
     private readonly IEnvironment _env;
 
     private DateTime _started;
-    public bool HasManySourceStreams => _streams.Count > 0;
+    public bool HasManySourceStreams => _streams.Count > 1;
     public State State
     {
         get => _state;
