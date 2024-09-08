@@ -24,12 +24,34 @@ namespace ModelingEvolution.VideoStreaming
 
     public enum VideoResolution : int
     {
-        FullHd, SubHd
+        FullHd, SubHd, Hd, Xga, Svga
     }
     public readonly record struct Resolution(int Width, int Height) : IParsable<Resolution>
     {
         public static readonly Resolution FullHd = new Resolution(1920, 1080);
         public static readonly Resolution SubHd = new Resolution(1456, 1088);
+        public static readonly Resolution Hd = new Resolution(1280, 720);
+        public static readonly Resolution Xga = new Resolution(1024, 768);
+        public static readonly Resolution Svga = new Resolution(800, 600);
+
+        public static explicit operator Resolution(VideoResolution r)
+        {
+            switch (r)
+            {
+                case VideoResolution.FullHd:
+                    return FullHd;
+                case VideoResolution.SubHd:
+                    return SubHd;
+                case VideoResolution.Hd: 
+                    return Hd;
+                case VideoResolution.Xga:
+                    return Xga;
+                case VideoResolution.Svga:
+                    return Svga;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
         public override string ToString()
         {
             return $"{Width}x{Height}";

@@ -131,7 +131,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
         IVideoStreamReplicator streamReplicator = va.VideoTransport == VideoTransport.Tcp ?
             new VideoStreamReplicator(va, _loggerFactory, _sink):
             new VideoSharedBufferReplicator(va,
-                va.Resolution == VideoResolution.FullHd ? FrameInfo.FullHD : FrameInfo.SubHD,
+                (FrameInfo)va.Resolution,
                 _sink,
                 _loggerFactory.CreateLogger<VideoSharedBufferReplicator>(), 
                 _loggerFactory, _matHandlers, _yuvHandlers);

@@ -28,6 +28,22 @@ namespace ModelingEvolution.VideoStreaming
     {
         public static readonly FrameInfo FullHD = new FrameInfo(1920, 1080, 1920);
         public static readonly FrameInfo SubHD = new FrameInfo(1456, 1088, 1456);
+        public static readonly FrameInfo HD = new FrameInfo(1280, 720, 1280);
+        public static readonly FrameInfo Xga = new FrameInfo(1024, 768, 1024);
+        public static readonly FrameInfo Svga = new FrameInfo(800, 600, 800);
+        public static explicit operator FrameInfo(VideoResolution r)
+        {
+            switch (r)
+            {
+                case VideoResolution.FullHd: return FullHD;
+                case VideoResolution.SubHd: return SubHD;
+                case VideoResolution.Hd: return HD;
+                case VideoResolution.Xga: return Xga;
+                case VideoResolution.Svga: return Svga;
+                default:
+                    throw new ArgumentException("video resolution");
+            }
+        }
         public FrameInfo(int Width, int Height, int Stride)
         {
             this.Width = Width;
