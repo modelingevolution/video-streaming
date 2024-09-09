@@ -48,13 +48,16 @@ namespace ModelingEvolution.VideoStreaming
             return services;
         }
     }
-    class VideoStreamingServerStarter(VideoStreamingServer srv, IConfiguration config) : BackgroundService
+    class VideoStreamingServerStarter(VideoStreamingServer srv, IConfiguration config, ILogger<VideoStreamingServerStarter> logger) : BackgroundService
     {
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             if (config.IsStreamingAutostarted())
             {
-                await Task.Delay(2000, stoppingToken);
+                logger.LogInformation("Camera start in 8 seconds.");
+                await Task.Delay(8000, stoppingToken);
+
+                logger.LogInformation("Camera are starting...");
                 await srv.LoadConfig();
                 srv.Start();
             }
