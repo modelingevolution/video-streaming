@@ -5,6 +5,7 @@ using EventPi.SharedMemory;
 
 namespace ModelingEvolution.VideoStreaming.CameraSimulator
 {
+    // Long movies should not chached in memory
     internal class Program
     {
         static void Main(string[] args)
