@@ -9,8 +9,10 @@ using Makaretu.Dns;
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming.Events;
+using Zeroconf;
 
 namespace ModelingEvolution.VideoStreaming;
 
@@ -28,11 +30,11 @@ public class VideoStreamingServer : INotifyPropertyChanged
     private readonly string _protocol;
     private readonly string[] _tags;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IServiceProvider _serviceProvider;
     private readonly TcpListener _listener;
     private readonly ServerConfigProvider _configProvider;
     private readonly IPlumber _plumber;
-    private readonly IPartialMatFrameHandler[] _matHandlers;
-    private readonly IPartialYuvFrameHandler[] _yuvHandlers;
+    
     private readonly VideoStreamEventSink _sink;
     private readonly IEnvironment _env;
 
@@ -68,16 +70,15 @@ public class VideoStreamingServer : INotifyPropertyChanged
         IEnvironment env,
         IConfiguration config,
         ILoggerFactory loggerFactory, 
-        IEnumerable<IPartialMatFrameHandler> matHandlers,
-        IEnumerable<IPartialYuvFrameHandler> yuvHandlers)
+        IServiceProvider serviceProvider)
     {
         _host = host;
         _port = port;
         _loggerFactory = loggerFactory;
+        _serviceProvider = serviceProvider;
         IsSingleVideoSource = isSingleVideo;
         _plumber = plumber;
-        _matHandlers = matHandlers.ToArray();
-        _yuvHandlers = yuvHandlers.ToArray();
+
         _sink = sink;
         _env = env;
         if (host == "localhost") 
@@ -134,7 +135,9 @@ public class VideoStreamingServer : INotifyPropertyChanged
                 (FrameInfo)va.Resolution,
                 _sink,
                 _loggerFactory.CreateLogger<VideoSharedBufferReplicator>(), 
-                _loggerFactory, _matHandlers, _yuvHandlers);
+                _loggerFactory, 
+                _serviceProvider.GetServices<IPartialMatFrameHandler>().ToArray(),
+                _serviceProvider.GetServices<IPartialYuvFrameHandler>().ToArray());
         try
         {
             _streams.Add(streamReplicator.Connect());
