@@ -1,53 +1,37 @@
 ﻿@using ModelingEvolution.Controls.Blazor
 @using ModelingEvolution.Controls.Blazor.AnchorPanelControl
+@using ModelingEvolution.VideoStreaming.VectorPlayer.Components
 
 @inject VideoStreamingServer _srv
-@inject NavigationManager _nm
-@inject IJSRuntime JSRuntime
-@inject PersistedStreamVm _persister
 
 
-@if(_protocol == "tcp")
+@if (_address.VideoTransport == VideoTransport.Tcp)
 {
-    <BroadwayPlayer Src="@WsUrl()" Width="1920" Height="1080" Style="float: left; position: relative;"></BroadwayPlayer>
+    <BroadwayPlayer @rendermode="InteractiveServer" 
+                    Src="@WsUrl()" Width="1920" Height="1080" Style="float: left; position: relative;"></BroadwayPlayer>
 } 
 else 
 {
     <AnchorPanel Id="player-1" Style="@Style">
         <Dock>
-            <img src="@MjpegUrl()" alt="MJPEG LIVE STREAM" class="anchor-dock" style="@_imgStyle"/> 
+            <img src="@MjpegUrl()" alt="MJPEG LIVE STREAM" class="anchor-dock" style="@ImgStyleComputed" />
             @* <img src="_content/ModelingEvolution.VideoStreaming.Ui/CameraPreviewImg.png" 
                  class="anchor-dock" /> *@
+            <CanvasPlayer Style="@CanvasStyle" Url="@VectorUrl()"></CanvasPlayer>
+
+            @ChildContent
         </Dock>
         <Anchors>
             <AnchorUpperRight>
                 <MudStack Row="true">
                     @UpperRightButtons
-                    @if (_address!.Value.VideoSource != VideoSource.File)
-                    {
-                        <Observable Source="_persister">
-                                <IconButton_v7 Style="padding:24px" 
-                                               Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
-                                               Disabled="@(_address == null)"
-                                               OnClick="ToggleRecording" 
-                                               IconStyle="@_recordIconBtnStyle()"/>
-                           
-                        
-                        </Observable>
-                    }
-                    @if (_srv.HasManySourceStreams)
-                    {
-                        <MudIconButton Style="padding:24px" Icon="@Icons.Material.Filled.Cameraswitch"
-                                       OnClick="ToggleSource" />
-                    }
+                    <RecordingButton Address="@_address" @rendermode="InteractiveServer"/>
+                    <SwitchCameraButton Address="@_address" @rendermode="InteractiveServer"/>
                 </MudStack>
             </AnchorUpperRight>
             <AnchorLowerRight>
                 @if (IsFullScreenIconVisible) {
-                    <IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.Fullscreen"
-                                   IconStyle="fill:white"
-                                   Size="Size.Large" 
-                                   OnClick="@ToggleFullScreen"></IconButton_v7>
+                    <FullScreenButton ControlId="player-1" @rendermode="InteractiveServer" />
                 }
             </AnchorLowerRight>
         </Anchors>
@@ -55,81 +39,56 @@ else
 }
 @code {
     private string _imgStyle= "width:100%;";
+    private string _imgStyleFinal;
+    private string ImgStyleComputed => _imgStyleFinal ?? _imgStyle;
+    private string CanvasStyle => ImgStyleComputed + "position:absolute; top:0;left:0;height:100%";
 
     [Parameter]
     public bool IsFullScreenIconVisible { get; set; } = true;
 
     [Parameter]
-    public string? Stream { get; set; }
+    public string? Stream
+    {
+        get => _stream;
+        set
+        {
+            _stream = value;
+            var rpl =  _srv.GetReplicator(Stream);
+            if (rpl == null) return;
+            _address = rpl.VideoAddress;
+        }
+    }
 
     [Parameter]
     public RenderFragment UpperRightButtons { get; set; }
 
     [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
     public string? Style { get; set; }
 
-
-
     [Parameter]
-    public string? ImgStyle { get; set; }
-
-    [Parameter]
-    public EventCallback OverrideFullScreen { get; set; }
-
-    private string _recordIconBtnStyle()
+    public string? ImgStyle
     {
-        if (!_address.HasValue) return "fill:gray";
-
-        return _persister.IsRecording(_address.Value) ? "fill:red" : "fill:gray";
+        get => _imgStyle1;
+        set
+        {
+            _imgStyle1 = value;
+            if (value != null)
+            {
+                _imgStyleFinal = _imgStyle + value;
+            }
+        }
     }
 
-    private async Task ToggleSource()
-    {
-        var i = _srv.Streams.IndexOf(x => x.VideoAddress == _address);
-        i = (i+1) % _srv.Streams.Count;
-        var url = new Uri(_nm.Uri);
 
-        var baseUrl = url.GetLeftPart(UriPartial.Path);
-        var lastSlashIndex = baseUrl.LastIndexOf('/');
-        var urlWithoutLastSegment = baseUrl.Substring(0, lastSlashIndex + 1);
+    private VideoAddress _address;
+    private string? _imgStyle1;
+    private string? _stream;
 
-        var newUrl = $"{urlWithoutLastSegment}{_srv.Streams[i].VideoAddress.StreamName}";
-        _nm.NavigateTo(newUrl);
-    }
-    private async Task ToggleRecording()
-    {
-        if (!_address.HasValue) return;
-
-        if (_persister.IsRecording(_address.Value))
-            await Task.Factory.StartNew(() => _persister.Stop(_address.Value), TaskCreationOptions.LongRunning);
-        else
-            await Task.Factory.StartNew(() => _persister.Save(_address.Value, _tags), TaskCreationOptions.LongRunning);
-
-    }
-
-    private string _protocol;
-    private VideoAddress? _address;
-    private HashSet<string>? _tags;
     private string WsUrl() => $"/ws/{Stream}";
     private string MjpegUrl() => StreamUrls.GetStreamUrlPath(Stream);
+    private string VectorUrl() => StreamUrls.GetVectorStreamUrlPath(Stream);
 
-    private async Task ToggleFullScreen()
-    {
-        if (OverrideFullScreen.HasDelegate)
-        {
-            await OverrideFullScreen.InvokeAsync();
-            return;
-        }
-        await JSRuntime.ToggleFullScreen("player-1");
-    }
-   
-    protected override void OnParametersSet()
-    {
-       
-        var rpl =  _srv.GetReplicator(Stream);
-        _protocol = rpl?.VideoAddress.Codec.ToString();
-        _address = rpl?.VideoAddress;
-        _tags = rpl?.VideoAddress.Tags;
-        _imgStyle += ImgStyle;
-    }
 }

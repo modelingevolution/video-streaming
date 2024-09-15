@@ -1,0 +1,28 @@
+﻿@inject VideoStreamingServer _srv
+@inject NavigationManager _nm
+
+@if (_srv.HasManySourceStreams)
+{
+    <MudIconButton Style="padding:24px" Icon="@Icons.Material.Filled.Cameraswitch"
+                   OnClick="ToggleSource" />
+}
+
+@code {
+
+    [Parameter]
+    public VideoAddress Address { get; set; }
+
+    private async Task ToggleSource()
+    {
+        var i = _srv.Streams.IndexOf(x => x.VideoAddress == Address);
+        i = (i + 1) % _srv.Streams.Count;
+        var url = new Uri(_nm.Uri);
+
+        var baseUrl = url.GetLeftPart(UriPartial.Path);
+        var lastSlashIndex = baseUrl.LastIndexOf('/');
+        var urlWithoutLastSegment = baseUrl.Substring(0, lastSlashIndex + 1);
+
+        var newUrl = $"{urlWithoutLastSegment}{_srv.Streams[i].VideoAddress.StreamName}";
+        _nm.NavigateTo(newUrl);
+    }
+}

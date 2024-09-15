@@ -7,6 +7,7 @@ namespace ModelingEvolution.VideoStreaming;
 
 public readonly struct VideoAddress : IParsable<VideoAddress>
 {
+    
     static bool RecognizeProtocol<T>(IList<string> list, out T e) where T : Enum
     {
         for (int i = 0; i < list.Count; i++)

@@ -1,0 +1,39 @@
+﻿@using ModelingEvolution.VideoStreaming
+@using ModelingEvolution.Observable.Blazor
+@inject PersistedStreamVm _persister
+
+@if (Address.HasValue && Address.Value.VideoSource != VideoSource.File)
+{
+    <Observable Source="_persister">
+        <IconButton_v7 Style="padding:24px" 
+                       Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
+                       Disabled="@(Address == null)"
+                       OnClick="ToggleRecording" 
+                       IconStyle="@_recordIconBtnStyle()"/>
+                           
+                        
+    </Observable>
+}
+
+@code {
+    [Parameter]
+    public VideoAddress? Address { get; set; }
+
+    private string _recordIconBtnStyle()
+    {
+        if (!Address.HasValue) return "fill:gray";
+
+        return _persister.IsRecording(Address.Value) ? "fill:red" : "fill:gray";
+    }
+
+    private async Task ToggleRecording()
+    {
+        if (!Address.HasValue) return;
+
+        if (_persister.IsRecording(Address.Value))
+            await Task.Factory.StartNew(() => _persister.Stop(Address.Value), TaskCreationOptions.LongRunning);
+        else
+            await Task.Factory.StartNew(() => _persister.Save(Address.Value, Address.Value.Tags), TaskCreationOptions.LongRunning);
+
+    }
+}

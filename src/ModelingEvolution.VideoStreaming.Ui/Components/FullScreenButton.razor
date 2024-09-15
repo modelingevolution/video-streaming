@@ -1,0 +1,26 @@
+﻿@using ModelingEvolution.Controls.Blazor
+@inject IJSRuntime JSRuntime
+
+<IconButton_v7 Style="padding:24px" Icon="@Icons.Material.Filled.Fullscreen"
+               IconStyle="fill:white"
+               Size="Size.Large" 
+               OnClick="@ToggleFullScreen"></IconButton_v7>
+
+@code {
+    [Parameter]
+    public EventCallback OverrideFullScreen { get; set; }
+
+
+    [Parameter]
+    public string ControlId { get; set; }
+
+    private async Task ToggleFullScreen()
+    {
+        if (OverrideFullScreen.HasDelegate)
+        {
+            await OverrideFullScreen.InvokeAsync();
+            return;
+        }
+        await JSRuntime.ToggleFullScreen(ControlId);
+    }
+}

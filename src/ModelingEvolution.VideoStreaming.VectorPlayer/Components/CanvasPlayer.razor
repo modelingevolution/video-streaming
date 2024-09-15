@@ -1,0 +1,57 @@
+﻿@using ModelingEvolution.VideoStreaming.VectorGraphics
+@rendermode @(new InteractiveWebAssemblyRenderMode(false))
+@inject StreamingCanvasEngine _engine
+@inject NavigationManager _nm
+<SKCanvasView OnPaintSurface="OnPaintSurface" 
+              style="@Style"
+              EnableRenderLoop="true"
+              />
+
+@code {
+    private Uri? _uri;
+
+    [Parameter]
+    public string Style { get; set; }
+
+    [Parameter]
+    public string? Url
+    {
+        get => _uri?.ToString();
+        set
+        {
+            if (value != null)
+            {
+                var v = value;
+                if (v.StartsWith("http"))
+                    v = v.Replace("http", "ws");
+                else if (!v.StartsWith("ws"))
+                    v = _nm.BaseUri.Replace("http", "ws") + v;
+                _uri = new Uri(v);
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_engine.IsRunning)
+        {
+            if (_engine.Uri == _uri)
+                return;
+            await _engine.StopAsync();
+        }
+
+        if (_uri != null)
+            try
+            {
+                await _engine.ConnectAsync(_uri);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Cannot connect to: {_uri}");
+            }
+
+    }
+
+    private void OnPaintSurface(SKPaintSurfaceEventArgs obj) => _engine.Render(obj.Surface.Canvas);
+
+}
