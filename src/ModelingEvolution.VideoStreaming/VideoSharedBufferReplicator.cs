@@ -51,6 +51,8 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         //_multiplexer = new SharedBufferMultiplexer(_buffer, _info, _loggerFactory);
         foreach (var i in _yuvPartialProcessors)
             i.Init(VideoAddress);
+        foreach(var i in _matPartialProcessors)
+            i.Init(VideoAddress);
 
         _multiplexer = new SharedBufferMultiplexer2(_buffer, 
             VideoAddress.VideoSource == VideoSource.File ?

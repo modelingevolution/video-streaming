@@ -12,8 +12,13 @@ public class RemoteStreamingCanvasClient
     public RemoteStreamingCanvasClient(WebSocket socket)
     {
         _writer = new WebSocketFrameWriter(socket);
-        _canvas = new RemoteCanvas(OnPush, OnComplete);
+        _canvas = new RemoteCanvas(OnBegin, OnPush, OnComplete);
         _writer.WriteFrameNumber(_frame).GetAwaiter().GetResult();
+    }
+
+    private void OnBegin(ulong obj)
+    {
+        _writer.WriteFrameNumber(obj).GetAwaiter().GetResult();
     }
 
     private void OnComplete()
@@ -25,6 +30,6 @@ public class RemoteStreamingCanvasClient
 
     private void OnPush(IRenderOp obj)
     {
-        _writer.WriteFramePayload(1, obj).GetAwaiter().GetResult();
+        _writer.WriteFramePayload(obj.Id, obj).GetAwaiter().GetResult();
     }
 }

@@ -15,4 +15,6 @@ public class Draw<TObject> : IRenderOp where TObject: IRenderItem
     {
         Value.Render(canvas,Context);
     }
+
+    public ushort Id => Value.Id;
 }

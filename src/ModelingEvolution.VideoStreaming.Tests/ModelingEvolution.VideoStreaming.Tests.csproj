@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.LibJpegTurbo\ModelingEvolution.VideoStreaming.LibJpegTurbo.csproj" />
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming.VectorGraphics\ModelingEvolution.VideoStreaming.VectorGraphics.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming\ModelingEvolution.VideoStreaming.csproj" />
   </ItemGroup>
 

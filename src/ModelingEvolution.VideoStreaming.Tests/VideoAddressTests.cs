@@ -9,6 +9,8 @@ using NSubstitute.Core;
 
 namespace ModelingEvolution.IO.Tests;
 
+using Xunit;
+
 public class VideoAddressTests
 {
     [Fact]

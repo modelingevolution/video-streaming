@@ -12,7 +12,8 @@ public class StreamingCanvasEngine
     public StreamingCanvasEngine(ILoggerFactory factory)
     {
         var r = MessageRegisterBuilder.Create()
-            .With(1, typeof(Draw<Text>)).Build();
+            .With(1, typeof(Draw<Text>))
+            .With(2, typeof(Draw<Polygon>)).Build();
         
         _client = new ProtoStreamClient(new Serializer(r), factory.CreateLogger<ProtoStreamClient>());
         _canvas = new SkiaCanvas();
@@ -40,6 +41,8 @@ public class StreamingCanvasEngine
 
             await foreach (var i in _client.Read(_cts!.Token))
             {
+                _canvas.Begin(i.Number);
+                
                 Frame = i.Number;
                 Fps = (float)sw++.Value;
                 foreach (var o in i.OfType<IRenderOp>())
@@ -52,7 +55,7 @@ public class StreamingCanvasEngine
         catch (Exception ex)
         {
             Error = ex.Message;
-            
+            Console.WriteLine(ex.Message);
         }
         IsRunning = false;
         _cts = null;

@@ -22,6 +22,8 @@ public class Polygon : IRenderItem
 
     public void Render(ICanvas canvas, DrawContext? context)
     {
-        
+        canvas.DrawPolygon(Points,context.Stroke);
     }
+
+    public ushort Id => 2;
 }

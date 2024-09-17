@@ -12,6 +12,7 @@ namespace ModelingEvolution.VideoStreaming.VectorGraphics
         public static IServiceCollection AddVectorGraphicsStreaming(this IServiceCollection services)
         {
             services.AddTransient<StreamingCanvasEngine>();
+            services.AddSingleton<RemoteCanvasStreamPool>();
             return services;
         }
     }

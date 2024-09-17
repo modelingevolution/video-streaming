@@ -166,6 +166,8 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
                 return length - offset;
             }
             var subHeader = MemoryMarshal.Read<SubHeader>(buffer.Slice(offset));
+            Console.WriteLine($"Deserialized: {subHeader}");
+            
             offset += SubHeaderSize;
             if (subHeader.Equals(EOF))
             {
@@ -181,6 +183,8 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
             }
             var payload = buffer.Slice(offset, (int)subHeader.Size);
             offset += (int)subHeader.Size;
+            
+            
             var deserializedObject = serializer.Deserialize(ref payload, subHeader.Type);
             _currentFrame.Objects.Add(deserializedObject);
         }

@@ -17,4 +17,6 @@ public class Text : IRenderItem
 
         canvas.DrawText(Content, offsetX, offsetY, fontSize, fontColor);
     }
+
+    public ushort Id => 1;
 }

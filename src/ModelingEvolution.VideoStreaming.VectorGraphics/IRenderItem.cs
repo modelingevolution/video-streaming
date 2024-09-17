@@ -3,4 +3,5 @@
 public interface IRenderItem
 {
     void Render(ICanvas canvas, DrawContext? context);
+    ushort Id { get; }
 }

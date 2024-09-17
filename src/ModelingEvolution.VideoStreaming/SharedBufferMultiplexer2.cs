@@ -98,6 +98,7 @@ public interface IPartialMatFrameHandler
         Func<MatFrame?> func,
         ulong seq,
         CancellationToken token, object st);
+    void Init(VideoAddress va);
 }
 
 public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
