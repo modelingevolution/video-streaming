@@ -11,6 +11,9 @@ public class Draw<TObject> : IRenderOp where TObject: IRenderItem
     [ProtoMember(2)]
     public DrawContext? Context { get; init; }
 
+    //[ProtoMember(3)]
+    //public byte ContextId { get; set; }
+    
     public void Render(ICanvas canvas)
     {
         Value.Render(canvas,Context);

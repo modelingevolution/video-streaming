@@ -13,7 +13,7 @@ public class RemoteCanvasStreamPool(ILoggerFactory loggerFactory)
 {
     private record Item(ICanvas Canvas, BufferWriter Writer);
     private readonly ConcurrentDictionary<VideoAddress, Item> _items = new ConcurrentDictionary<VideoAddress, Item>();
-    public ICanvas GetCanvas(VideoAddress va)
+    public ICanvas GetCanvas(VideoAddress va, byte contextId=0)
     {
         return Get(va).Canvas;
     }

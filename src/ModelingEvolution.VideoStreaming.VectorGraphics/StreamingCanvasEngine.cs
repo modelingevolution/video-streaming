@@ -76,6 +76,42 @@ public class StreamingCanvasEngine
     }
 }
 
+public class PeriodicConsoleWriter(TimeSpan period)
+{
+    private readonly Stopwatch _sw = Stopwatch.StartNew();
+    private readonly TimeSpan _period = period;
+
+    public void WriteLine(string text)
+    {
+        if (_sw.Elapsed <= _period) return;
+        Console.WriteLine(text);
+        _sw.Restart();
+    }
+}
+public class TransferWatch
+{
+    private readonly Stopwatch _sw = Stopwatch.StartNew();
+    public TimeSpan MeasurePeriod = TimeSpan.FromSeconds(5);
+    private Bytes _i = 0;
+    private Bytes _lastBps;
+    public Bytes Value => _lastBps;
+    public static explicit operator Bytes(TransferWatch watch)
+    {
+        return watch._lastBps;
+    }
+    public static TransferWatch operator +(TransferWatch watch, Bytes bytes)
+    {
+        watch._i += bytes;
+        if (watch._sw.Elapsed <= watch.MeasurePeriod) return watch;
+
+        watch._lastBps = (long)(watch._i * 1000 / watch._sw.Elapsed.TotalMilliseconds);
+        watch._sw.Restart();
+        watch._i = 0;
+        return watch;
+    }
+
+    public override string ToString() => _lastBps.ToString();
+}
 public class FpsWatch
 {
     private readonly Stopwatch _sw = Stopwatch.StartNew();
@@ -98,6 +134,5 @@ public class FpsWatch
         return watch;
     }
 
-    
-
+    public override string ToString() => Value.ToString();
 }

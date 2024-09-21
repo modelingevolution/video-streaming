@@ -9,9 +9,13 @@
 
 @code {
     private Uri? _uri;
+    private PeriodicConsoleWriter _writer = new(TimeSpan.FromSeconds(10));
+    private FpsWatch fps = new();
 
     [Parameter]
     public string Style { get; set; }
+
+    [Parameter] public Resolution Resolution { get; set; } = ModelingEvolution.VideoStreaming.Resolution.FullHd;
 
     [Parameter]
     public string? Url
@@ -52,6 +56,24 @@
 
     }
 
-    private void OnPaintSurface(SKPaintSurfaceEventArgs obj) => _engine.Render(obj.Surface.Canvas);
+    private void OnPaintSurface(SKPaintSurfaceEventArgs obj)
+    {
+        try
+        {
+            float scaleX = (float)obj.Info.Width / Resolution.Width;
+            float scaleY = (float)obj.Info.Height / Resolution.Height;
+            float scale = Math.Min(scaleX, scaleY);
+            obj.Surface.Canvas.Scale(scale);
+
+            fps++;
+            _engine.Render(obj.Surface.Canvas);
+            _writer.WriteLine($"Render fps: {(int)fps.Value} in canvas: {obj.Info.Width}x{obj.Info.Height}, scale: {scale}x");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            Console.WriteLine(ex.StackTrace);
+        }
+    }
 
 }

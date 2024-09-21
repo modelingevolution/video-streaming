@@ -88,6 +88,8 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
             Console.WriteLine("Receive loop...");
             var buffer = new byte[BufferSize];
             int offset = 0;
+            var bps = new TransferWatch();
+            var pw = new PeriodicConsoleWriter(TimeSpan.FromSeconds(2.5));
             while (_webSocket.State == WebSocketState.Open)
             {
                 var bufferLength = buffer.Length - offset;
@@ -99,12 +101,11 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
                 {
                     //Console.WriteLine("Received data: " + result.Count);
                     offset = ProcessFragment(buffer, result.Count);
-                    
+                    bps += result.Count;
                     if (offset > 0)
                         Buffer.BlockCopy(buffer, result.Count - offset, buffer, 0, offset);
-                } 
-                //else 
-                    //Console.WriteLine(result.MessageType);
+                }
+                pw.WriteLine($"Received speed: {bps.Value}/s");
 
 
                 if (result.CloseStatus.HasValue)
@@ -166,7 +167,7 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
                 return length - offset;
             }
             var subHeader = MemoryMarshal.Read<SubHeader>(buffer.Slice(offset));
-            Console.WriteLine($"Deserialized: {subHeader}");
+            //Console.WriteLine($"Deserialized: {subHeader}");
             
             offset += SubHeaderSize;
             if (subHeader.Equals(EOF))

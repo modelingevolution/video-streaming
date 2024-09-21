@@ -9,6 +9,7 @@ public class SkiaCanvas : ICanvas
 {
     private List<IRenderOp> _opRenderBuffer = new();
     private List<IRenderOp> _opSinkBuffer = new();
+    private PeriodicConsoleWriter _writer = new(TimeSpan.FromSeconds(10));
     private SKCanvas _canvas;
     public void Add(IRenderOp op) => _opSinkBuffer.Add(op);
 
@@ -22,32 +23,32 @@ public class SkiaCanvas : ICanvas
         _opRenderBuffer = _opSinkBuffer;
         temp.Clear();
         _opSinkBuffer = temp;
-        Console.WriteLine("Complete");
+        //Console.WriteLine("Complete");
     }
 
     public void Render(SKCanvas canvas)
     {
         _canvas = canvas;
-        End();
-    }
-    public void End()
-    {
         var ops = _opRenderBuffer;
         foreach (var i in ops)
         {
             i.Render(this);
         }
     }
+    public void End()
+    {
+        
+    }
 
     public void Begin(ulong frameNr)
     {
-        Console.WriteLine($"Begin: {frameNr}");
+        _writer.WriteLine($"Render frame: {frameNr}");
     }
 
 
     public void DrawText(string text, ushort x, ushort y, ushort size, RgbColor? color)
     {
-        Console.WriteLine($"Text: {text}");
+        //Console.WriteLine($"Text: {text}");
         using var paint = new SKPaint
         {
             TextSize = size,
