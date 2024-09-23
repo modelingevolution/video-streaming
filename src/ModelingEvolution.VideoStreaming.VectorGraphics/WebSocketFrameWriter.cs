@@ -8,7 +8,7 @@ public class WebSocketFrameWriter(WebSocket socket)
 {
     private readonly ArrayBufferWriter<byte> buffer = new ArrayBufferWriter<byte>(512 * 1024);
     private MemoryBufferWriter _msgBuffer;
-    public async Task WriteFrameNumber(ulong frame)
+    public async Task WriteFrameNumber(ulong frame, byte layer)
     {
         buffer.Clear();
         var span = buffer.GetMemory(sizeof(ulong));
@@ -20,7 +20,7 @@ public class WebSocketFrameWriter(WebSocket socket)
     {
         buffer.Clear();
         var destination = buffer.GetSpan(SubHeaderSize).Slice(0, SubHeaderSize);
-        MemoryMarshal.Write(destination, ProtoStreamClient.EOF);
+        MemoryMarshal.Write(destination, ProtoStreamClient.EOF(0));
         buffer.Advance(SubHeaderSize);
         await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Binary, true, CancellationToken.None);
     }

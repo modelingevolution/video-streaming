@@ -28,7 +28,7 @@ public class StreamingCanvasEngine
     }
     public Uri Uri { get; private set; }
     public ulong Frame { get; private set; }
-    public float Fps { get; private set; }
+    public float Lps { get; private set; }
     public bool IsRunning { get; private set; }
     public string? Error { get; private set; }
     private async Task OnStartStreaming()
@@ -41,14 +41,14 @@ public class StreamingCanvasEngine
 
             await foreach (var i in _client.Read(_cts!.Token))
             {
-                _canvas.Begin(i.Number);
+                _canvas.Begin(i.Number, i.LayerId);
                 
                 Frame = i.Number;
-                Fps = (float)sw++.Value;
+                Lps = (float)sw++.Value;
                 foreach (var o in i.OfType<IRenderOp>())
-                    _canvas.Add(o);
+                    _canvas.Add(o, i.LayerId);
 
-                _canvas.Complete();
+                _canvas.End(i.LayerId);
             }
 
         }

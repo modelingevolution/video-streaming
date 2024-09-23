@@ -1,11 +1,8 @@
-using FluentAssertions;
-using FluentAssertions.Execution;
-using ModelingEvolution.VideoStreaming;
 using ModelingEvolution.VideoStreaming.Chasers;
 using ModelingEvolution.VideoStreaming.Nal;
 using NSubstitute;
 
-namespace ModelingEvolution.IO.Tests;
+namespace ModelingEvolution.VideoStreaming.Tests;
 
 public class ChaserTests
 {
@@ -91,19 +88,5 @@ public class ChaserTests
         actual.ShouldBe(buffer.AsMemory(0,offset));
 
         sut.Cancel();
-    }
-}
-public static class MemoryAssertions {
-    public static void ShouldBe(this Memory<byte> actual, Memory<byte> expected)
-    {
-        if (actual.Length != expected.Length)
-            throw new AssertionFailedException($"Buffer lengths are different. Should be {expected.Length} but was {actual.Length}.");
-        for (int i = 0; i < actual.Length; i++)
-        {
-            if (actual.Span[i] != expected.Span[i])
-            {
-                throw new AssertionFailedException($"Buffers are different at {i}, {actual.Span[i]} should be {expected.Span[i]}");
-            }
-        }
     }
 }

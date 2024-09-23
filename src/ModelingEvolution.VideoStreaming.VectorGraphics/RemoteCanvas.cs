@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Drawing;
 using System.Net.WebSockets;
 using System.Text;
@@ -13,7 +14,7 @@ public class RemoteCanvasStreamPool(ILoggerFactory loggerFactory)
 {
     private record Item(ICanvas Canvas, BufferWriter Writer);
     private readonly ConcurrentDictionary<VideoAddress, Item> _items = new ConcurrentDictionary<VideoAddress, Item>();
-    public ICanvas GetCanvas(VideoAddress va, byte contextId=0)
+    public ICanvas GetCanvas(VideoAddress va)
     {
         return Get(va).Canvas;
     }
@@ -97,7 +98,7 @@ public class BufferWriter(ILoggerFactory loggerFactory)
                 catch(Exception ex)
                 {
                     _logger.LogWarning(ex,"WebSocket Connection Closed");
-                    _link.Dispose();
+                    _link?.Dispose();
                     _link = null;
                     _closed.Set();
                 }
@@ -130,32 +131,41 @@ public class BufferWriter(ILoggerFactory loggerFactory)
     {
         return new SinkBlock(ws, loggerFactory.CreateLogger<SinkBlock>()).LinkFrom(_data);
     }
-    public void Push(IRenderOp obj)
+    public void Push(IRenderOp obj, byte layerId)
     {
-        _buffer.WriteFramePayload(obj.Id, obj);
-        _data.Post(new Msg(MsgType.Obj,_buffer.WrittenMemory));
+        
+        _buffer.WriteFramePayload(obj.Id, layerId, obj);
+        var m = _buffer.WrittenMemory;
+        _data.Post(new Msg(MsgType.Obj,m));
         _buffer.SlideChunk();
+        //Debug.WriteLine($"Push layer {layerId} with {obj.Id}, {m.Length}B");
     }
 
-    public void End()
+    public void End(byte layerId)
     {
-        _buffer.WriteFrameEnd();
-        _data.Post(new Msg(MsgType.End, _buffer.WrittenMemory));
+        
+        _buffer.WriteFrameEnd(layerId);
+        var m = _buffer.WrittenMemory;
+        _data.Post(new Msg(MsgType.End, m));
         _buffer.SlideChunk();
+        //Debug.WriteLine($"End: {layerId}, {m.Length}B");
     }
 
-    public void Begin(ulong obj)
+    public void Begin(ulong obj, byte layerId)
     {
-        _buffer.WriteFrameNumber(obj);
-        _data.Post(new Msg(MsgType.Start, _buffer.WrittenMemory));
+        
+        _buffer.WriteFrameNumber(obj,layerId);
+        var m = _buffer.WrittenMemory;
+        _data.Post(new Msg(MsgType.Start, m));
         _buffer.SlideChunk();
+        //Debug.WriteLine($"Begin: {obj}, layer: {layerId}, {m.Length}B");
     }
 }
 
-public class RemoteCanvas(Action<ulong> onBegin, Action<IRenderOp> onPush, Action onEnd) : ICanvas
+public class RemoteCanvas(Action<ulong, byte> onBegin, Action<IRenderOp, byte> onPush, Action<byte> onEnd) : ICanvas
 {
     
-    public void DrawPolygon(IEnumerable<Vector> points, RgbColor? color = null)
+    public void DrawPolygon(IEnumerable<Vector> points, RgbColor? color = null, byte? layerId = null)
     {
         var renderOp = new Draw<Polygon>
         {
@@ -165,13 +175,14 @@ public class RemoteCanvas(Action<ulong> onBegin, Action<IRenderOp> onPush, Actio
              Stroke = color ?? RgbColor.Black
             }
         };
-        onPush(renderOp);
+        onPush(renderOp, layerId ?? LayerId);
     }
 
-    public void End() => onEnd();
-    public void Begin(ulong frameNr) => onBegin(frameNr);
+    public byte LayerId { get; set; } = 0x0;
+    public void End(byte? layerId = null) => onEnd(layerId ?? LayerId);
+    public void Begin(ulong frameNr, byte? layerId = null) => onBegin(frameNr, layerId ?? LayerId);
 
-    public void DrawText(string text, ushort x = 0, ushort y = 0, ushort size = 12, RgbColor? color = null)
+    public void DrawText(string text, ushort x = 0, ushort y = 0, ushort size = 12, RgbColor? color = null, byte? layerId = null)
     {
         var renderOp = new Draw<Text>
         {
@@ -183,7 +194,7 @@ public class RemoteCanvas(Action<ulong> onBegin, Action<IRenderOp> onPush, Actio
                 Offset = new Vector { X = x, Y = y }
             }
         };
-        onPush(renderOp);
+        onPush(renderOp, layerId ?? LayerId);
     }
 
     

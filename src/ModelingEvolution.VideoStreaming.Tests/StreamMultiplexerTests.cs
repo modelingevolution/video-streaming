@@ -1,10 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using ModelingEvolution.VideoStreaming;
 using ModelingEvolution.VideoStreaming.Nal;
 using NSubstitute;
 
-namespace ModelingEvolution.IO.Tests;
+namespace ModelingEvolution.VideoStreaming.Tests;
 
 public class StreamMultiplexerTests
 {

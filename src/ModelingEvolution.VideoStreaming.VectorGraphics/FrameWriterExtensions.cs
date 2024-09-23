@@ -9,31 +9,35 @@ public static class FrameWriterExtensions
     {
         return new MemoryBufferWriter(ref mem);
     }
-    public static void WriteFrameNumber(this IBufferWriter<byte> buffer, ulong frame)
+    public static void WriteFrameNumber(this IBufferWriter<byte> buffer, ulong frame, byte layer)
     {
-        MemoryMarshal.Write(buffer.GetSpan(sizeof(ulong)), frame);
-        buffer.Advance(sizeof(long));
+        ProtoStreamClient.Header h = new ProtoStreamClient.Header(frame,layer);
+        MemoryMarshal.Write(buffer.GetSpan(HEADER_SIZE), h);
+        buffer.Advance(HEADER_SIZE);
     }
 
-    public static void WriteFrameEnd(this IBufferWriter<byte> buffer)
+    public static void WriteFrameEnd(this IBufferWriter<byte> buffer, byte layer)
     {
-        var destination = buffer.GetSpan(SubHeaderSize).Slice(0,SubHeaderSize);
-        MemoryMarshal.Write( destination,ProtoStreamClient.EOF);
-        buffer.Advance(SubHeaderSize);
+        var destination = buffer.GetSpan(SUB_HEADER_SIZE).Slice(0,SUB_HEADER_SIZE);
+        MemoryMarshal.Write( destination,ProtoStreamClient.EOF(layer));
+        buffer.Advance(SUB_HEADER_SIZE);
     }
-    private static readonly int SubHeaderSize = Marshal.SizeOf<ProtoStreamClient.SubHeader>();
-    public static void WriteFramePayload<T>(this IBufferWriter<byte> buffer, ushort type, T value)
+    private static readonly int SUB_HEADER_SIZE = Marshal.SizeOf<ProtoStreamClient.SubHeader>();
+    private static readonly int HEADER_SIZE = Marshal.SizeOf<ProtoStreamClient.Header>();
+    public static void WriteFramePayload<T>(this IBufferWriter<byte> buffer, ushort type, byte layerId, T value)
     {
-        var header = buffer.GetSpan(SubHeaderSize)
-            .Slice(0,SubHeaderSize);
+        var subFrameMem = buffer.GetMemory();
+        
+        var header = subFrameMem
+            .Slice(0,SUB_HEADER_SIZE);
 
-        var msgMem = buffer.GetMemory(0).Slice(SubHeaderSize);
+        var msgMem = subFrameMem.Slice(SUB_HEADER_SIZE);
         var msgWriter = msgMem.GetWriter();
         ProtoBuf.Serializer.Serialize(msgWriter, value);
             
-        var h = new ProtoStreamClient.SubHeader((uint)msgWriter.WrittenMemory, type);
-        MemoryMarshal.Write(header,h);
-        buffer.Advance(msgWriter.WrittenMemory + SubHeaderSize);
+        var h = new ProtoStreamClient.SubHeader((uint)msgWriter.WrittenMemory, type, layerId);
+        MemoryMarshal.Write(header.Span,h);
+        buffer.Advance(msgWriter.WrittenMemory + SUB_HEADER_SIZE);
     }
         
 }

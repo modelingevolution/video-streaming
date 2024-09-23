@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using FluentAssertions;
 using ModelingEvolution.VideoStreaming.Buffers;
 
-namespace ModelingEvolution.IO.Tests;
+namespace ModelingEvolution.VideoStreaming.Tests;
 
 public class MjpegStreamTests
 {

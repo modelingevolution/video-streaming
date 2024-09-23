@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace ModelingEvolution.IO.Tests;
+namespace ModelingEvolution.VideoStreaming.Tests;
 
 public class ControlStream : Stream
 {

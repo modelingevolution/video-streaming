@@ -1,7 +1,6 @@
 using FluentAssertions;
-using ModelingEvolution.VideoStreaming;
 
-namespace ModelingEvolution.IO.Tests;
+namespace ModelingEvolution.VideoStreaming.Tests;
 
 public class FrameInfoTests
 {

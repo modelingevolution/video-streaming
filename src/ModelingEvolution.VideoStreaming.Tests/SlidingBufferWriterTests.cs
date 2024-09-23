@@ -1,7 +1,92 @@
+using System.Buffers;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming.VectorGraphics;
 
-namespace ModelingEvolution.IO.Tests;
+namespace ModelingEvolution.VideoStreaming.Tests;
 
+static class Ext
+{
+    public static async IAsyncEnumerable<T> BreakOnCancel<T>(this IAsyncEnumerable<T> items, CancellationToken token =default)
+    {
+        var it = items.GetAsyncEnumerator(token);
+        while(!token.IsCancellationRequested)
+        {
+            T tmp = default;
+            try
+            {
+                if (await it.MoveNextAsync())
+                    tmp = it.Current;
+
+            }
+            catch(OperationCanceledException)
+            {
+                break;
+            }
+
+            yield return tmp;
+        }
+    }
+}
+public class ProtoStreamClientTests
+{
+    private CancellationToken CreateWithCancelAfter(TimeSpan ts)
+    {
+        CancellationTokenSource cts = new CancellationTokenSource();
+        cts.CancelAfter(ts);
+        return cts.Token;
+    }
+    
+    [Fact]
+    public async Task WriteHeaderRead_ShouldTransferData()
+    {
+        ArrayBufferWriter<byte> buffer = new();
+        buffer.WriteFrameNumber(1,2);
+        buffer.WriteFrameEnd(2);
+        
+        var sut = new ProtoStreamClient(NSubstitute.Substitute.For<ISerializer>(),
+            NSubstitute.Substitute.For<ILogger<ProtoStreamClient>>());
+
+        
+        sut.ProcessFragment(buffer.WrittenSpan);
+        
+        
+        var frames = await sut.Read(CreateWithCancelAfter(TimeSpan.FromSeconds(1)))
+            .BreakOnCancel()
+            .ToArrayAsync();
+
+        frames.Should().HaveCount(1);
+        frames[0].LayerId.Should().Be(2);
+        frames[0].Number.Should().Be(1);
+        frames[0].Count.Should().Be(0);
+    }
+    [Fact]
+    public async Task WriteFrameWithPayload_ShouldTransferData()
+    {
+        ArrayBufferWriter<byte> buffer = new(4*1024);
+        buffer.WriteFrameNumber(1, 2);
+        var vObj = new Text() { Content = "Hello"};
+        buffer.WriteFramePayload(1,2,vObj);
+        buffer.WriteFrameEnd(2);
+
+        var b = new MessageRegisterBuilder().With(1, typeof(Text)).Build();
+        
+        var sut = new ProtoStreamClient(new Serializer(b),
+            NSubstitute.Substitute.For<ILogger<ProtoStreamClient>>());
+
+        sut.ProcessFragment(buffer.WrittenSpan);
+
+        var frames = await sut.Read(CreateWithCancelAfter(TimeSpan.FromSeconds(1)))
+            .BreakOnCancel()
+            .ToArrayAsync();
+
+        frames.Should().HaveCount(1);
+        frames[0].LayerId.Should().Be(2);
+        frames[0].Number.Should().Be(1);
+        frames[0].Count.Should().Be(1);
+        frames[0].Objects[0].Should().BeEquivalentTo(vObj);
+    }
+}
 public class SlidingBufferWriterTests
 {
     [Fact]

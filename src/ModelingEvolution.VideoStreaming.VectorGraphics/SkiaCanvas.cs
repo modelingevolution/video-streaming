@@ -1,5 +1,7 @@
-﻿using SkiaSharp;
+﻿using System.Collections.Concurrent;
+using SkiaSharp;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using static ModelingEvolution.VideoStreaming.VectorGraphics.ProtoStreamClient;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -7,46 +9,85 @@ namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 
 public class SkiaCanvas : ICanvas
 {
-    private List<IRenderOp> _opRenderBuffer = new();
-    private List<IRenderOp> _opSinkBuffer = new();
-    private PeriodicConsoleWriter _writer = new(TimeSpan.FromSeconds(10));
-    private SKCanvas _canvas;
-    public void Add(IRenderOp op) => _opSinkBuffer.Add(op);
-
-    /// <summary>
-    /// this method swap buffers. New buffer is cleared before swap.
-    /// </summary>
-    /// <returns></returns>
-    public void Complete()
+    class Layer
     {
-        var temp = _opRenderBuffer;
-        _opRenderBuffer = _opSinkBuffer;
-        temp.Clear();
-        _opSinkBuffer = temp;
-        //Console.WriteLine("Complete");
+        public List<IRenderOp> RenderBuffer = new();
+        public List<IRenderOp> OpSink = new();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Swap()
+        {
+            var temp = RenderBuffer;
+            RenderBuffer = OpSink;
+            temp.Clear();
+            OpSink = temp;
+        }
     }
+
+    private readonly Layer[] _layers = new Layer[255];
+    private volatile byte[] _layerIx = Array.Empty<byte>();
+    private readonly object _sync = new();
+    private byte[] LayerIx => _layerIx;
+    
+
+    private Layer GetLayer(byte ix)
+    {
+        if (_layers[ix] != null!)
+            return _layers[ix];
+        lock (_sync)
+        {
+            if (_layers[ix] != null!)
+                return _layers[ix];
+            else
+            {
+                var l = new Layer();
+                _layers[ix] = l;
+                var n = new byte[_layerIx.Length + 1];
+                Array.Copy(_layerIx, n,_layerIx.Length);
+                n[_layerIx.Length] = ix;
+                Array.Sort(n);
+                _layerIx = n;
+                return l;
+            }
+        }
+        
+    }
+
+
+    private readonly PeriodicConsoleWriter _writer = new(TimeSpan.FromSeconds(30));
+    private SKCanvas _canvas;
+    private byte DefaultLayerId { get; set; }
+    public void Add(IRenderOp op, byte? layerId) => GetLayer(layerId ?? DefaultLayerId).OpSink.Add(op);
+
+
 
     public void Render(SKCanvas canvas)
     {
         _canvas = canvas;
-        var ops = _opRenderBuffer;
-        foreach (var i in ops)
+        var ls = LayerIx;
+        for (byte il = 0; il < ls.Length; il++)
         {
-            i.Render(this);
+            var layer = GetLayer(il);
+            var ops = layer.RenderBuffer;
+            for (var index = 0; index < ops.Count; index++)
+            {
+                var i = ops[index];
+                i.Render(this);
+            }
         }
     }
-    public void End()
+    public void End(byte? layerId)
     {
-        
+        GetLayer(layerId ?? DefaultLayerId).Swap();
     }
 
-    public void Begin(ulong frameNr)
+    public void Begin(ulong frameNr, byte? layerId)
     {
         _writer.WriteLine($"Render frame: {frameNr}");
     }
 
 
-    public void DrawText(string text, ushort x, ushort y, ushort size, RgbColor? color)
+    public void DrawText(string text, ushort x, ushort y, ushort size, RgbColor? color, byte? layerId=null)
     {
         //Console.WriteLine($"Text: {text}");
         using var paint = new SKPaint
@@ -58,7 +99,7 @@ public class SkiaCanvas : ICanvas
         _canvas.DrawText(text, x,y,font, paint);
     }
 
-    public void DrawPolygon(IEnumerable<Vector> points, RgbColor? color = null)
+    public void DrawPolygon(IEnumerable<Vector> points, RgbColor? color = null, byte? layerId=null)
     {
         
         using var paint = new SKPaint

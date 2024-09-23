@@ -1,15 +1,6 @@
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Text;
-using Castle.Core.Logging;
 using FluentAssertions;
-using ModelingEvolution.IO.Tests;
-using ModelingEvolution.VideoStreaming;
-using NSubstitute.Core;
 
-namespace ModelingEvolution.IO.Tests;
-
-using Xunit;
+namespace ModelingEvolution.VideoStreaming.Tests;
 
 public class VideoAddressTests
 {

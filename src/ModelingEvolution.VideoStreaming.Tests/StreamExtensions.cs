@@ -1,8 +1,7 @@
 using System.Security.Cryptography;
 using ModelingEvolution.VideoStreaming.Nal;
-using NSubstitute.Core;
 
-namespace ModelingEvolution.IO.Tests;
+namespace ModelingEvolution.VideoStreaming.Tests;
 
 public static class StreamExtensions
 {

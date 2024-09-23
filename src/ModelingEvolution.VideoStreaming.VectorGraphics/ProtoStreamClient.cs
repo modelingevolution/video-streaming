@@ -1,35 +1,49 @@
 ﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+[assembly:InternalsVisibleTo("ModelingEvolution.VideoStreaming.Tests")]
 
 namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 // Uses websockets to communicate & .net protobuf serialization.
 // Must be high performant, light-weight and native
-// Frames consist of number and payload. The payload is an array of sub-frames. Each subframe consist uint type and ushort type of object to deserialize with protobuf. 
-// At the end of the frame there is a marker Subframe with Size=0 and Type = ushort.Max.
-// Deserialization is done just after a chunk of bytes is received. 
-// After the EOF is received an event is raised.
+// Transfer can be multiplexed with layerId.
+// The stream contains Headers and sub-frames and payloads.
+// The protcol is used to render vectors on a canvas. Each layer on canvas can be rendered independently.
+// So each layer would be interested in data that only applies to this particular layer. The fps for rendering
+// of each layer is idependent. So some layers might be refreshed quicker, other slower.
+// In the stream we will find two types of data, Headers and SubHeaders. A header consist of FrameId, LayerId. 
+// The FrameId is an ulong and it's first bit must be 0. If it is 1 this means it is a Subheader.
+// Each Subheader consits of size and ushort type (required for serializer) and layerId.
+// After Subheader goes payload that's the size defined in prv. subheader. 
+// This subheader data can be then deserialized with protobuf serializer.
+// For a given layer at the end of it's frame there is a marker Subframe with Size=0 and Type = ushort.Max.
 public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient> logger) 
 {
-    public static readonly Frame Empty = new Frame(0,new List<object>(0));
+    public static readonly Frame Empty = new Frame(0,0,new List<object>(0));
     public readonly record struct Frame : IEnumerable<object>, IReadOnlyList<object>
     {
         public readonly ulong Number;
         internal readonly IList<object> Objects;
-        public Frame(ulong nr)
+        public Frame(ulong nr, byte layerId)
         {
             this.Number = nr;
+            LayerId = layerId;
             this.Objects = new List<object>();
         }
-        public Frame(ulong nr, IList<object> o)
+        public Frame(ulong nr, byte layerId, IList<object> o)
         {
             this.Number = nr;
             this.Objects = o;
+            LayerId = layerId;
         }
 
         public int Count => Objects.Count;
+        public byte LayerId { get; }
+
         public IEnumerator<object> GetEnumerator()
         {
             return Objects.GetEnumerator();
@@ -42,33 +56,69 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
 
         public object this[int index] => Objects[index];
     }
-    internal static readonly SubHeader EOF = new SubHeader(0, ushort.MaxValue);
+    internal static SubHeader EOF(byte layerId = 0) => new SubHeader(0, ushort.MaxValue, layerId);
+    
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
+    internal readonly record struct Header
+    {
+        // We expect that FrameId shall always have 0x0 on the first bit. If it is 1 this means that it is Subheader.
+        [FieldOffset(0)]
+        private readonly ulong _frameId;
+
+        public ulong FrameId => _frameId >> 1;
+
+        [FieldOffset(sizeof(ulong))]
+        public readonly byte LayerId;
+
+        
+        public Header()
+        {
+            
+        }
+
+        public Header(ulong frameId, byte layerId)
+        {
+            _frameId = (frameId << 1);
+            LayerId = layerId;
+        }
+    }
+    
     [StructLayout(LayoutKind.Explicit, Pack=1)]
     internal readonly record struct SubHeader
     {
+        // Subheader always have 1 on the first bit.
         [FieldOffset(0)]
-        public readonly uint Size;
+        private readonly uint _size;
+
+        public int Size => (int)(_size >> 1);
             
         [FieldOffset(sizeof(uint))]
         public readonly ushort Type;
 
+        [FieldOffset(sizeof(uint) + sizeof(ushort))]
+        public readonly byte LayerId;
+
+        public bool IsEOF => Size == 0 && Type == ushort.MaxValue;
+
+        public bool IsValid => (_size & 0x1) == 0x1;
         public SubHeader()
         {
                 
         }
 
-        public SubHeader(uint size, ushort type)
+        public SubHeader(uint size, ushort type, byte layerId = 0)
         {
-            this.Size = size;
+            this._size = (size << 1) + 0x1;
             this.Type = type;
+            this.LayerId = layerId;
         }
     }
 
     private readonly Channel<Frame> _channel = Channel.CreateBounded<Frame>(new BoundedChannelOptions(1));
     private readonly ClientWebSocket _webSocket = new();
-    private const int BufferSize = 8*1024*1024; // 8MB
+    private const int BufferSize = 32*1024*1024; // 8MB
 
-    private Frame _currentFrame;
+    private readonly Frame[] _currentFrames = new Frame[255];
 
     private readonly CancellationTokenSource _cts = new();
         
@@ -100,7 +150,7 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
                 if (result.MessageType == WebSocketMessageType.Binary)
                 {
                     //Console.WriteLine("Received data: " + result.Count);
-                    offset = ProcessFragment(buffer, result.Count);
+                    offset = ProcessFragment(buffer.AsSpan(offset,result.Count));
                     bps += result.Count;
                     if (offset > 0)
                         Buffer.BlockCopy(buffer, result.Count - offset, buffer, 0, offset);
@@ -126,71 +176,101 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
         await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client disconnecting", CancellationToken.None);
     }
 
-    private static readonly int SubHeaderSize = Marshal.SizeOf<SubHeader>();
+    
 
     enum State
     {
         ReadingStart, ReadingSubFrames
     }
 
-    private State _state = State.ReadingStart;
-    // Process the incoming fragment of data, if data cannot be deserialized because it's missing, tail offset is returned.
-    internal int ProcessFragment(ReadOnlySpan<byte> buffer, int length)
+    private static readonly int FRAME_HEADER_SIZE = Marshal.SizeOf<Header>();
+    private static readonly int FRAME_SUBHEADER_SIZE = Marshal.SizeOf<SubHeader>();
+    internal int ProcessFragment(in ReadOnlySpan<byte> buffer)
     {
         int offset = 0;
-        // Ensure we have enough data to read the frame number
-           
+        var length = buffer.Length;
+
         while (offset < length)
         {
-            if (_state == State.ReadingStart)
+            // If we don't have enough data for at least a header or sub-header, we need more data.
+            if (length - offset < 7)
             {
-                if (length - offset < sizeof(ulong))
-                {
-                    // Not enough data to read the frame number
-                    return length - offset;
-                }
-                // Read the frame number
-                ulong frameNumber = BitConverter.ToUInt64(buffer.Slice(offset));
-                offset += sizeof(ulong);
-                // Initialize the current frame if it is not already initialized or if the frame number has changed
-                if (_currentFrame == Empty || _currentFrame.Number != frameNumber)
-                    _currentFrame = new Frame(frameNumber);
-
-                else throw new InvalidOperationException(("Duplicated frame detected!"));
-                _state = State.ReadingSubFrames;
-            } 
-                
-            // Read the sub-header
-            if (length - offset < SubHeaderSize)
-            {
-                // Not enough data to read the sub-header
+                // Not enough data to read the header/sub-header.
                 return length - offset;
             }
-            var subHeader = MemoryMarshal.Read<SubHeader>(buffer.Slice(offset));
-            //Console.WriteLine($"Deserialized: {subHeader}");
+
+            // Peek at the first bit of the next header or sub-header to determine if it's a frame header or sub-header.
+            byte firstByte = buffer.Slice(offset, 1)[0];
             
-            offset += SubHeaderSize;
-            if (subHeader.Equals(EOF))
+
+            if ((firstByte & 0x1) == 0)
             {
-                // End of frame
-                _channel.Writer.TryWrite(_currentFrame);
-                _state = State.ReadingStart;
-                continue;
+                // This is a frame header (first bit is 0).
+                if (length - offset < FRAME_HEADER_SIZE)
+                {
+                    // Not enough data to read the full header (FrameId + LayerId).
+                    return length - offset;
+                }
+
+                // Read the header
+                var header = MemoryMarshal.Read<Header>(buffer.Slice(offset, FRAME_HEADER_SIZE));
+                offset += FRAME_HEADER_SIZE;
+
+                // Initialize the current frame if it's a new frame.
+                var f = _currentFrames[header.LayerId];
+                if ((f.Number == 0 && f.LayerId == 0) || f.Number != header.FrameId)
+                {
+                    _currentFrames[header.LayerId] = new Frame(header.FrameId, header.LayerId);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Duplicated frame detected! FrameId: {header.FrameId}, LayerId: {header.LayerId}");
+                }
             }
-            if (length - offset < subHeader.Size)
+            else
             {
-                // Not enough data to read the payload
-                return length - offset + SubHeaderSize;
+                // This is a sub-header (first bit is 1).
+                if (length - offset < FRAME_SUBHEADER_SIZE)
+                {
+                    // Not enough data to read the full sub-header.
+                    return length - offset;
+                }
+
+                // Read the sub-header
+                var subHeader = MemoryMarshal.Read<SubHeader>(buffer.Slice(offset));
+                if (!subHeader.IsValid)
+                    throw new InvalidOperationException("SubHeader is not valid");
+                
+                offset += FRAME_SUBHEADER_SIZE;
+
+                // Check if the sub-header is EOF (End of Frame)
+                if (subHeader.IsEOF)
+                {
+                    // End of frame, push the frame to the corresponding layer's channel
+                    _channel.Writer.TryWrite(_currentFrames[subHeader.LayerId]);
+                    continue; // Move to the next frame or sub-header
+                }
+
+                // Ensure there's enough data for the payload
+                if (length - offset < subHeader.Size)
+                {
+                    // Not enough data to read the payload
+                    return length - offset + FRAME_SUBHEADER_SIZE;
+                }
+
+                // Extract the payload based on the sub-header's size
+                var payload = buffer.Slice(offset, subHeader.Size);
+                offset += subHeader.Size;
+
+                // Deserialize the payload using the provided serializer
+                var deserializedObject = serializer.Deserialize(ref payload, subHeader.Type);
+                _currentFrames[subHeader.LayerId].Objects.Add(deserializedObject);
             }
-            var payload = buffer.Slice(offset, (int)subHeader.Size);
-            offset += (int)subHeader.Size;
-            
-            
-            var deserializedObject = serializer.Deserialize(ref payload, subHeader.Type);
-            _currentFrame.Objects.Add(deserializedObject);
         }
-        return 0;
+
+        return 0; // Fully processed the fragment
     }
+    
 
     public IAsyncEnumerable<Frame> Read(CancellationToken cancellationToken = default)
     {
