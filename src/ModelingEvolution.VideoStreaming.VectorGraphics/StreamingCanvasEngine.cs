@@ -9,6 +9,7 @@ public class StreamingCanvasEngine
     private readonly ProtoStreamClient _client;
     private readonly SkiaCanvas _canvas;
     private CancellationTokenSource? _cts;
+    private HashSet<int>? _filteredLayers;
     public StreamingCanvasEngine(ILoggerFactory factory)
     {
         var r = MessageRegisterBuilder.Create()
@@ -31,6 +32,23 @@ public class StreamingCanvasEngine
     public float Lps { get; private set; }
     public bool IsRunning { get; private set; }
     public string? Error { get; private set; }
+    public int[]? FilteredLayers
+    {
+        get => _filteredLayers?.ToArray();
+        set
+        {
+            if (value == null)
+            {
+                _filteredLayers = null;
+                return;
+            }
+
+            var filteredLayers = new HashSet<int>(value.Distinct());
+            _filteredLayers = filteredLayers;
+            
+        } 
+    }
+    
     private async Task OnStartStreaming()
     {
         try
@@ -41,8 +59,11 @@ public class StreamingCanvasEngine
 
             await foreach (var i in _client.Read(_cts!.Token))
             {
+                var ls = _filteredLayers;
+                if (ls != null && !ls.Contains(i.LayerId)) continue;
+
                 _canvas.Begin(i.Number, i.LayerId);
-                
+
                 Frame = i.Number;
                 Lps = (float)sw++.Value;
                 foreach (var o in i.OfType<IRenderOp>())

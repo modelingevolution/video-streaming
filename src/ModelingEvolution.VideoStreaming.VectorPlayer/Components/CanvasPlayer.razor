@@ -2,20 +2,23 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(false))
 @inject StreamingCanvasEngine _engine
 @inject NavigationManager _nm
-<SKCanvasView OnPaintSurface="OnPaintSurface" 
+<SKCanvasView OnPaintSurface="OnPaintSurface"
               style="@Style"
-              EnableRenderLoop="true"
-              />
+              EnableRenderLoop="true" />
 
 @code {
+    private int[]? _filteredLayers = null;
     private Uri? _uri;
-    private PeriodicConsoleWriter _writer = new(TimeSpan.FromSeconds(30));
+    private readonly PeriodicConsoleWriter _writer = new(TimeSpan.FromSeconds(30));
     private FpsWatch fps = new();
 
     [Parameter]
     public string Style { get; set; }
 
-    [Parameter] public Resolution Resolution { get; set; } = ModelingEvolution.VideoStreaming.Resolution.FullHd;
+    [Parameter]
+    public Resolution Resolution { get; set; } = Resolution.FullHd;
+
+    
 
     [Parameter]
     public string? Url
@@ -33,19 +36,42 @@
             _uri = new Uri(v);
         }
     }
+    protected override void OnParametersSet()
+    {
+        var uri = new Uri(_nm.Uri);
+        if (String.IsNullOrWhiteSpace(uri.Query)) return;
 
+        var queryParameters = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        string? filters = queryParameters["layers"];
+        if (filters == null) return;
+        try
+        {
+            var values = filters.Split(new[] { ',', ';' }).Select(int.Parse).ToArray();
+            _filteredLayers = values;
+            _engine.FilteredLayers = values;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+    }
     protected override async Task OnParametersSetAsync()
     {
         if (_engine.IsRunning)
         {
             if (_engine.Uri == _uri)
+            {
+                _engine.FilteredLayers = this._filteredLayers;
                 return;
+            }
             await _engine.StopAsync();
         }
 
         if (_uri != null)
             try
             {
+                _engine.FilteredLayers = this._filteredLayers;
                 await _engine.ConnectAsync(_uri);
             }
             catch (Exception ex)
