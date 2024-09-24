@@ -10,13 +10,17 @@ public class SlidingBufferWriter : IBufferWriter<byte>
     private int _written;
     private int _offset;
     public int WrittenBytes => _written;
-    public int BytesLeft => _buffer.Length - _written;
+    public int BytesLeft => _buffer.Length - _offset- _written;
     // Slide 
     public void SlideChunk()
     {
         _offset += _written;
         _written = 0;
-        if (BytesLeft < _maxChunk) _offset = 0;
+        if (BytesLeft < _maxChunk)
+        {
+            _offset = 0;
+            //Console.WriteLine("Slide chunk!");
+        }
     }
     public void Write(byte[] buffer, int offset, int count)
     {
@@ -36,12 +40,15 @@ public class SlidingBufferWriter : IBufferWriter<byte>
         _written += count;
     }
 
+    //private PeriodicConsoleWriter w = new PeriodicConsoleWriter(TimeSpan.FromSeconds(10));
     public Memory<byte> GetMemory(int sizeHint = 0)
     {
         if (sizeHint < 0) throw new ArgumentOutOfRangeException(nameof(sizeHint));
 
         if (BytesLeft < sizeHint) SlideChunk();
 
+        //w.WriteLine($"Bytes left in buffer: {BytesLeft}");
+        
         return _buffer.AsMemory(_offset + _written);
     }
 

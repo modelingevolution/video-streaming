@@ -26,7 +26,7 @@ public static class FrameWriterExtensions
     private static readonly int HEADER_SIZE = Marshal.SizeOf<ProtoStreamClient.Header>();
     public static void WriteFramePayload<T>(this IBufferWriter<byte> buffer, ushort type, byte layerId, T value)
     {
-        var subFrameMem = buffer.GetMemory();
+        var subFrameMem = buffer.GetMemory(8*1024);
         
         var header = subFrameMem
             .Slice(0,SUB_HEADER_SIZE);
