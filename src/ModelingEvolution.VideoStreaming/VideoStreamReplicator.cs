@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿using System.Drawing;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -61,6 +62,7 @@ namespace ModelingEvolution.VideoStreaming
         public int Rows { get; }
         public int Height { get;  }
         public int Stride { get;  }
+        public Size Size => new Size(Width, Height);
 
         public override string ToString()
         {
