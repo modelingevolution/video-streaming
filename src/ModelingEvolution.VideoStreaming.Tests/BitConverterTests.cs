@@ -1,5 +1,6 @@
 namespace ModelingEvolution.VideoStreaming.Tests;
 
+
 public class BitConverterTests
 {
     [Fact]

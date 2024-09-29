@@ -15,6 +15,8 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
+using Emgu.CV.Dnn;
+using Microsoft.Extensions.Options;
 
 namespace ModelingEvolution_VideoStreaming.Yolo
 {
@@ -68,7 +70,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             }
         }
     }
-    
+
 
     internal class DenseTensorOwner<T>(IMemoryOwner<T> owner, ReadOnlySpan<int> dimensions) : IDisposable
     {
@@ -90,17 +92,28 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             owner.Dispose();
         }
     }
+
     internal static class MemPoolExtensions
     {
-       
-        public static DenseTensorOwner<T> AllocateTensor<T>(this MemoryPool<T> allocator, 
+        class MemoryOwner<T>(IMemoryOwner<T> inner, int size) : IMemoryOwner<T>
+        {
+            public void Dispose() => inner.Dispose();
+
+            public Memory<T> Memory => inner.Memory.Slice(0, size);
+        }
+        public static IMemoryOwner<T> Exact<T>(this IMemoryOwner<T> m, int size)
+        {
+            return new MemoryOwner<T>(m, size);
+        }
+        public static DenseTensorOwner<T> AllocateTensor<T>(this MemoryPool<T> allocator,
             in TensorShape shape, bool clean = false)
         {
-            var mOwn = allocator.Rent(shape.Length);
+            var mOwn = allocator.Rent(shape.Length).Exact(shape.Length);
             if (clean) mOwn.Memory.Span.Fill(default(T));
             return new DenseTensorOwner<T>(mOwn, shape.Dimensions);
         }
     }
+
     internal class YoloRawOutput(DenseTensorOwner<float> output0, DenseTensorOwner<float>? output1) : IDisposable
     {
         private bool _disposed;
@@ -141,11 +154,13 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             ObjectDisposedException.ThrowIf(_disposed, this);
         }
     }
+
     public interface IYoloPrediction<TSelf>
     {
         internal abstract static string Describe(TSelf[] predictions);
     }
-    internal class YoloConfiguration
+
+    public class YoloConfiguration
     {
         /// <summary>
         /// Specify the minimum confidence value for including a result. Default is 0.3f.
@@ -157,47 +172,122 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         /// </summary>
         public float IoU { get; set; } = .45f;
 
-        /// <summary>
-        /// Specify whether to keep the image aspect ratio when resizing. Default is true.
-        /// </summary>
-        public bool KeepAspectRatio { get; set; } = true;
-        public Size ImgSize { get; init; }
-        
+
+        public Size ImageSize { get; init; } = new Size(640, 640);
+
     }
+
     internal interface IParser<T>
     {
         public T[] ProcessTensorToResult(YoloRawOutput output, Rectangle rectangle);
     }
-    internal class YoloModelRunner(IServiceProvider sp)
+
+    public class YoloPredictorOptions
     {
-        YoloConfiguration configuration;
-        InferenceSession session;
-        SessionTensorInfo tensorInfo;
-        private readonly RunOptions _options = new();
-        public unsafe YoloResult<T> Process<T>(YuvFrame* frame, Rectangle* interestArea)
-            where T : IYoloPrediction<T>
+        public static YoloPredictorOptions Default { get; } = new();
+
+#if GPURELEASE
+    public bool UseCuda { get; init; } = true;
+#else
+        public bool UseCuda { get; init; }
+#endif
+        public int CudaDeviceId { get; init; }
+
+        public SessionOptions? SessionOptions { get; init; }
+
+        public YoloConfiguration? Configuration { get; init; }
+
+        internal InferenceSession CreateSession(byte[] model)
         {
-            using var binding = session.CreateIoBinding();
+            if (UseCuda)
+            {
+                if (SessionOptions is not null)
+                {
+                    throw new InvalidOperationException("'UseCuda' and 'SessionOptions' cannot be used together");
+                }
+
+                return new InferenceSession(model, SessionOptions.MakeSessionOptionWithCudaProvider(CudaDeviceId));
+            }
+
+            if (SessionOptions != null)
+            {
+                return new InferenceSession(model, SessionOptions);
+            }
+
+            return new InferenceSession(model);
+        }
+    }
+
+    public static class YoloModelFactory
+    {
+        public static IYoloModelRunner<Segmentation> LoadSegmentationModel(string segYoloModelFile)
+        {
+            var options = new YoloPredictorOptions();
+
+            var model = File.ReadAllBytes(segYoloModelFile);
+            var session = options.CreateSession(model);
+            var metadata = new YoloMetadata(session);
+            YoloConfiguration configuration = new YoloConfiguration();
+            var bbParser = new RawBoundingBoxParser(metadata, configuration, new NonMaxSuppressionService());
+            var segParser = new SegmentationParser(metadata, bbParser);
+            return new YoloModelRunner<Segmentation>(segParser, session, configuration);
+        }
+    }
+
+
+    public interface IYoloModelRunner<T> where T : IYoloPrediction<T>
+    {
+        unsafe YoloResult Process(
+            YuvFrame* frame, 
+            Rectangle* interestArea);
+    }
+
+    internal class YoloModelRunner<T> : IYoloModelRunner<T> where T : IYoloPrediction<T>
+    {
+        private readonly IParser<T> _parser;
+        private readonly YoloConfiguration _configuration;
+        private readonly InferenceSession _session;
+        private readonly SessionTensorInfo _tensorInfo;
+        private readonly RunOptions _options = new();
+
+       
+        public YoloModelRunner(IParser<T> parser,
+            InferenceSession session,
+            YoloConfiguration? configuration = null)
+        {
+            _parser = parser;
+            _configuration = configuration ?? new YoloConfiguration();
+
+            _session = session;
+            
+            _tensorInfo = new SessionTensorInfo(_session);
+        }
+
+        public unsafe YoloResult Process(
+            YuvFrame* frame, 
+            Rectangle* interestArea)
+        {
+            using var binding = _session.CreateIoBinding();
             var output = CreateRawOutput(binding);
             
-            using var input = MemoryPool<float>.Shared.AllocateTensor<float>(tensorInfo.Input0, true);
+            using var input = MemoryPool<float>.Shared.AllocateTensor<float>(_tensorInfo.Input0, true);
                                     
-            var s = configuration.ImgSize;
+            var s = _configuration.ImageSize;
             var target = input.Tensor;
             target.CopyInputFromYuvFrame(frame, interestArea, &s);
 
             // Create ort values
-            var ortInput = CreateOrtValue(target.Buffer, tensorInfo.Input0.Dimensions64);
+            var ortInput = CreateOrtValue(target.Buffer, _tensorInfo.Input0.Dimensions64);
             
             // Bind input to ort io binding
-            binding.BindInput(session.InputNames[0], ortInput);
+            binding.BindInput(_session.InputNames[0], ortInput);
 
             // Do the interference
-            session.RunWithBinding(_options, binding);
+            _session.RunWithBinding(_options, binding);
 
             // Now we have output we can process the output
-            var p = sp.GetRequiredService<IParser<T>>();
-            var result = p.ProcessTensorToResult(output, *interestArea);
+            
+            var result = _parser.ProcessTensorToResult(output, *interestArea);
 
             return new YoloResult<T>(result)
             {
@@ -207,14 +297,14 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         }
         private YoloRawOutput CreateRawOutput(OrtIoBinding binding)
         {
-            var output0Info = tensorInfo.Output0;
-            var output1Info = tensorInfo.Output1;
+            var output0Info = _tensorInfo.Output0;
+            var output1Info = _tensorInfo.Output1;
 
             // Allocate output0 tensor buffer
             var output0 = MemoryPool<float>.Shared.AllocateTensor(output0Info);
 
             // Bind tensor buffer to ort binding
-            binding.BindOutput(session.OutputNames[0], CreateOrtValue(output0.Tensor.Buffer, output0Info.Dimensions64));
+            binding.BindOutput(_session.OutputNames[0], CreateOrtValue(output0.Tensor.Buffer, output0Info.Dimensions64));
 
             if (output1Info != null)
             {
@@ -222,7 +312,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
                 var output1 = MemoryPool<float>.Shared.AllocateTensor(output1Info.Value);
 
                 // Bind tensor buffer to ort binding
-                binding.BindOutput(session.OutputNames[1], CreateOrtValue(output1.Tensor.Buffer, output1Info.Value.Dimensions64));
+                binding.BindOutput(_session.OutputNames[1], CreateOrtValue(output1.Tensor.Buffer, output1Info.Value.Dimensions64));
 
                 return new YoloRawOutput(output0, output1);
             }
