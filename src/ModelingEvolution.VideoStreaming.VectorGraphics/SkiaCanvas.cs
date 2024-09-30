@@ -99,7 +99,7 @@ public class SkiaCanvas : ICanvas
         _canvas.DrawText(text, x,y,font, paint);
     }
 
-    public void DrawPolygon(IEnumerable<Vector> points, RgbColor? color = null, byte? layerId=null)
+    public void DrawPolygon(IEnumerable<VectorU16> points, RgbColor? color = null, byte? layerId=null)
     {
         
         using var paint = new SKPaint

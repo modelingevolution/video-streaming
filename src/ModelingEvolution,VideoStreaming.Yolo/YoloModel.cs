@@ -11,12 +11,16 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Dnn;
 using Microsoft.Extensions.Options;
+using ModelingEvolution.VideoStreaming.VectorGraphics;
+using Rectangle = System.Drawing.Rectangle;
+using Emgu.CV.Util;
 
 namespace ModelingEvolution_VideoStreaming.Yolo
 {
@@ -155,9 +159,9 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         }
     }
 
-    public interface IYoloPrediction<TSelf>
+    public interface IYoloPrediction<in TSelf> : IDisposable
     {
-        internal abstract static string Describe(TSelf[] predictions);
+        internal static abstract string Describe(TSelf[] predictions);
     }
 
     public class YoloConfiguration
@@ -237,7 +241,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
 
     public interface IYoloModelRunner<T> where T : IYoloPrediction<T>
     {
-        unsafe YoloResult Process(
+        unsafe YoloResult<T> Process(
             YuvFrame* frame, 
             Rectangle* interestArea);
     }
@@ -263,7 +267,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             _tensorInfo = new SessionTensorInfo(_session);
         }
 
-        public unsafe YoloResult Process(
+        public unsafe YoloResult<T> Process(
             YuvFrame* frame, 
             Rectangle* interestArea)
         {
@@ -391,32 +395,75 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         public required Rectangle Bounds { get; init; }
 
         static string IYoloPrediction<Detection>.Describe(Detection[] predictions) => predictions.Summary();
+
+        protected virtual void Dispose(bool disposing) { }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+    }
+
+    public static class Ext
+    {
+        public static List<VectorU16> ToVectorList(this VectorOfPoint p)
+        {
+            var points = new List<VectorU16>(p.Size);
+
+            for (int i = 0; i < p.Size; i++)
+            {
+                points.Add(new VectorU16((ushort)p[i].X, (ushort)p[i].Y));
+            }
+
+            return points;
+        }
     }
     public class Segmentation : Detection, IYoloPrediction<Segmentation>
     {
-        public required ManagedMat8U Mask { get; init; }
+        public required Mat Mask { get; init; }
+        protected override void Dispose(bool disposing)
+        {
+            if(disposing)
+                Mask.Dispose();
+        }
 
+        public Polygon ComputePolygon(float threshold)
+        {
+            var mat = Mask;
+            using var thresholded = new Mat();
+            CvInvoke.Threshold(mat, thresholded, threshold * 255, 255, ThresholdType.Binary);
+            //CvInvoke.Threshold(mat, thresholded, 0,255- threshold * 255, ThresholdType.Binary);
+            using var contours = new VectorOfVectorOfPoint();
+            CvInvoke.FindContours(thresholded, contours, null, RetrType.External, ChainApproxMethod.ChainApproxSimple);
+            var hull = new List<VectorU16>();
+            if (contours.Size <= 0) return new Polygon(hull);
+            
+            var largestContour = contours[0];
+            for (int i = 1; i < contours.Size; i++)
+                if (CvInvoke.ContourArea(contours[i]) > CvInvoke.ContourArea(largestContour))
+                    largestContour = contours[i];
+                
+            using var hullIndices = new VectorOfPoint();
+            CvInvoke.ConvexHull(largestContour, hullIndices);
+            //var points = hullIndices.ToVectorList();
+            var points = largestContour.ToVectorList();
+
+            var w = mat.Width;
+            var h = mat.Height;
+            
+            var scaleX = (float)base.Bounds.Width / w;
+            var scaleY = (float)base.Bounds.Height / h;
+            var scale = new SizeF(scaleX, scaleY);
+            scale = new SizeF(640f / 160, 640f / 160);
+            return new Polygon(points).ScaleBy(scale);
+
+        }
+        
         static string IYoloPrediction<Segmentation>.Describe(Segmentation[] predictions) => predictions.Summary();
     }
 
-    public unsafe class ManagedMat8U(Mat mat) : IDisposable
-    {
-        public Mat Mat => mat;
-        private readonly byte* _ptr = (byte*)mat.DataPointer;
-
-        public static implicit operator ManagedMat8U(Mat m) => new ManagedMat8U(m);
-        public byte this[int x, int y]
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _ptr[y * mat.Cols + x];
-        }
-        
-       
-        public void Dispose()
-        {
-            mat.Dispose();
-        }
-    }
+  
     
     internal interface IRawBoundingBoxParser
     {
@@ -856,7 +903,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             return result;
         }
 
-        private static ManagedMat8U ProcessMask(Tensor<float> prototypes,
+        private static Mat ProcessMask(Tensor<float> prototypes,
                                                     ReadOnlySpan<float> weights)
         {
             var maskChannels = prototypes.Dimensions[1];
@@ -878,8 +925,9 @@ namespace ModelingEvolution_VideoStreaming.Yolo
                         value += prototypes[0, i, y, x] * weights[i];
                     
                     value = value.Sigmoid();
-                    var color = value.GetLuminance();
-                    data[y * maskWidth + x] = color;
+                    var color = 255-value.GetLuminance();
+                    
+                    data[y * maskWidth + x] = (byte)color;
                 }
             }
 

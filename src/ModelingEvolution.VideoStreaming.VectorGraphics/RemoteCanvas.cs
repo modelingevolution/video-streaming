@@ -165,11 +165,11 @@ public class BufferWriter(ILoggerFactory loggerFactory)
 public class RemoteCanvas(Action<ulong, byte> onBegin, Action<IRenderOp, byte> onPush, Action<byte> onEnd) : ICanvas
 {
     
-    public void DrawPolygon(IEnumerable<Vector> points, RgbColor? color = null, byte? layerId = null)
+    public void DrawPolygon(IEnumerable<VectorU16> points, RgbColor? color = null, byte? layerId = null)
     {
         var renderOp = new Draw<Polygon>
         {
-            Value = new Polygon { Points = points is List<Vector> l ? l : points.ToList() },
+            Value = new Polygon { Points = points is List<VectorU16> l ? l : points.ToList() },
             Context = new DrawContext
             {
              Stroke = color ?? RgbColor.Black
@@ -191,7 +191,7 @@ public class RemoteCanvas(Action<ulong, byte> onBegin, Action<IRenderOp, byte> o
             {
                 FontSize = size, 
                 FontColor = color ?? RgbColor.Black, 
-                Offset = new Vector { X = x, Y = y }
+                Offset = new VectorU16 { X = x, Y = y }
             }
         };
         onPush(renderOp, layerId ?? LayerId);

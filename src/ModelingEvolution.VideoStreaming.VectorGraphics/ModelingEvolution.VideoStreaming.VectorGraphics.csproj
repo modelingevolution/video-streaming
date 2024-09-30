@@ -11,6 +11,7 @@
     <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
     <PackageReference Include="protobuf-net" Version="3.2.30" />
     <PackageReference Include="SkiaSharp.Views.Blazor" Version="2.88.8" />
+    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.27.24" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming\ModelingEvolution.VideoStreaming.csproj" />

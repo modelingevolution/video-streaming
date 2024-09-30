@@ -1,4 +1,7 @@
+using System.Drawing;
+using System.Globalization;
 using System.Security.Cryptography;
+using ModelingEvolution.Drawing;
 using ModelingEvolution.VideoStreaming.Nal;
 
 namespace ModelingEvolution.VideoStreaming.Tests;
@@ -12,6 +15,19 @@ public static class StreamExtensions
         return new Guid(hashAlgo.ComputeHash(s));
     }
 
+    public static string ToAnnotationString(this Polygon<float> p)
+    {
+        // return a list of float values, that are composed out of points. 
+        // and make it so that the decimal separator is always the same.
+        CultureInfo culture = CultureInfo.InvariantCulture;
+        var points = p.Select(pt => $"{pt.X.ToString(culture)} {pt.Y.ToString(culture)}");
+        return string.Join(' ', points);
+    }
+    public static Polygon<float> ScaleBy(this Polygon<float> p, SizeF s)
+    {
+        var scaledPoints = p.Select(point => new Point<float>(point.X * s.Width, point.Y * s.Height)).ToArray();
+        return new Polygon<float>(scaledPoints);
+    }
     public static int WriteVideoKeyFrame(this byte[] data, int offset = 0)
     {
         VIDEO_KEY_FRAME.CopyTo(data,offset);

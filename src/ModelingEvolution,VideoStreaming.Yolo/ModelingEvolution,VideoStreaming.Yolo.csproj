@@ -13,7 +13,7 @@
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.VectorGraphics\ModelingEvolution.VideoStreaming.VectorGraphics.csproj" />
     <PackageReference Condition="'$(Configuration)' != 'GpuRelease'" Include="Microsoft.ML.OnnxRuntime" Version="1.19.1" />
     <PackageReference Condition="'$(Configuration)' == 'GpuRelease'" Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.19.1" />
-    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.25.22" />
+    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.27.24" />
   </ItemGroup>
 
 </Project>

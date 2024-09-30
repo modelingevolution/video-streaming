@@ -6,7 +6,7 @@ namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 public class DrawContext
 {
     [ProtoMember(1)]
-    public Vector? Offset { get; init; }
+    public VectorU16? Offset { get; init; }
 
     [ProtoMember(2)]
     public RgbColor? Fill { get; init; }
