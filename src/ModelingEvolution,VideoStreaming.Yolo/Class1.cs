@@ -29,6 +29,20 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         public static byte GetLuminance(this float confidence) => (byte)((confidence * 255 - 255) * -1);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Rectangle TransformBy(this RectangleF bbox, Size modelImgSz, Rectangle interestRegion)
+        {
+            var scaleX = (float)interestRegion.Width / modelImgSz.Width;
+            var scaleY = (float)interestRegion.Height / modelImgSz.Height;
+
+            var x = interestRegion.X + (int)(bbox.X * scaleX);
+            var y = interestRegion.Y + (int)(bbox.Y * scaleY);
+            var width = (int)(bbox.Width * scaleX);
+            var height = (int)(bbox.Height * scaleY);
+
+            return new Rectangle(x, y, width, height);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Rectangle NormalizedTransformBy(this RectangleF rect, Rectangle area)
         {
             int w = area.Width;
@@ -86,9 +100,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo
                 for (var x = _interestRegion->X; x < w; x++)
                 {
                     var pixel = Frame->GetPixel(x, y);
-                    var i = new YuvPixelIterator(new Point(x, y), pixel);
-                    var tensorIndex = _strideR + _strideY * i.Location.Y + _strideX * i.Location.X;
-                    WritePixel(_tensorSpan, tensorIndex, i.Pixel, _strideR, _strideG, _strideB);
+                    var tensorIndex = _strideR + _strideY * y + _strideX * x;
+                    WritePixel(_tensorSpan, tensorIndex, pixel, _strideR, _strideG, _strideB);
                 }
             }
             else
@@ -101,8 +114,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
                 for (var x = 0; x < w; x++)
                 {
                     var pixel = targetFrame.Frame.GetPixel(x, y);
-                    var location = new Point(x, y);
-                    var tensorIndex = _strideR + _strideY * location.Y + _strideX * location.X;
+                    var tensorIndex = _strideR + _strideY * y + _strideX * x;
                     WritePixel(_tensorSpan, tensorIndex, pixel, _strideR, _strideG, _strideB);
                 }
             }

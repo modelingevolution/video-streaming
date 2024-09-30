@@ -838,7 +838,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             for (var index = 0; index < boxes.Length; index++)
             {
                 var box = boxes[index];
-                var bounds = box.Bounds.NormalizedTransformBy(interestRegion);
+                var bounds = box.Bounds.TransformBy(metadata.ImageSize, interestRegion);
 
                 using var maskWeights = CollectMaskWeights(output0, box.Index, maskChannelCount, metadata.Names.Length + 4);
 
