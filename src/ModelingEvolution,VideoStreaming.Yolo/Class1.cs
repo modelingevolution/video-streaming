@@ -96,10 +96,10 @@ namespace ModelingEvolution_VideoStreaming.Yolo
                 // no need to resize.
                 int w = _targetImgSz->Width;
                 int h = _targetImgSz->Height;
-                for (var y = _interestRegion->Y; y < h; y++)
-                for (var x = _interestRegion->X; x < w; x++)
+                for (var y = 0; y < h; y++)
+                for (var x = 0; x < w; x++)
                 {
-                    var pixel = Frame->GetPixel(x, y);
+                    var pixel = Frame->GetPixel(_interestRegion->X + x,_interestRegion->Y + y);
                     var tensorIndex = _strideR + _strideY * y + _strideX * x;
                     WritePixel(_tensorSpan, tensorIndex, pixel, _strideR, _strideG, _strideB);
                 }

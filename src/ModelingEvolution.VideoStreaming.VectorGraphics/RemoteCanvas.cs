@@ -164,12 +164,24 @@ public class BufferWriter(ILoggerFactory loggerFactory)
 
 public class RemoteCanvas(Action<ulong, byte> onBegin, Action<IRenderOp, byte> onPush, Action<byte> onEnd) : ICanvas
 {
-    
+    // implement DrawRectange(Rectangle rect, RgbColor? color, byte? layerId) with the use of DrawPolygon
+    public void DrawRectangle(System.Drawing.Rectangle rect, RgbColor? color, byte? layerId)
+    {
+        var points = new VectorU16[]
+        {
+            new((ushort)rect.X, (ushort)rect.Y),
+            new((ushort)(rect.X + rect.Width), (ushort)rect.Y),
+            new((ushort)(rect.X + rect.Width), (ushort)(rect.Y + rect.Height)),
+            new((ushort)rect.X, (ushort)(rect.Y + rect.Height)),
+        };
+        DrawPolygon(points, color, layerId);
+    }
+
     public void DrawPolygon(IEnumerable<VectorU16> points, RgbColor? color = null, byte? layerId = null)
     {
         var renderOp = new Draw<Polygon>
         {
-            Value = new Polygon { Points = points is List<VectorU16> l ? l : points.ToList() },
+            Value = Polygon.From(points),
             Context = new DrawContext
             {
              Stroke = color ?? RgbColor.Black

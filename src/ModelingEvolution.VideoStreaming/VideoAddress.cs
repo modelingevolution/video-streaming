@@ -1,9 +1,15 @@
 ﻿using System;
 using System.Text;
 using System.Text.Encodings.Web;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ModelingEvolution.VideoStreaming;
 
+public enum VideoSourceApi
+{
+    Libcamera,
+    OpenVidCam
+}
 
 public readonly struct VideoAddress : IParsable<VideoAddress>
 {
@@ -44,7 +50,12 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         string? resolution = queryParameters["resolution"];
         string? file = queryParameters["file"];
         string? cameraNr = queryParameters["camera"];
+        string? videoSourceApi = queryParameters["video-api"];
 
+        VideoSourceApi? vsapi = null;
+        if (!string.IsNullOrWhiteSpace(videoSourceApi))
+            vsapi = (VideoSourceApi)Enum.Parse(typeof(VideoSourceApi), videoSourceApi, true);
+        
         VideoResolution rv = VideoResolution.FullHd;
         if (!string.IsNullOrEmpty(resolution))
             rv = Enum.Parse<VideoResolution>(resolution, true);
@@ -55,12 +66,15 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
             camera = c;
 
         var vs = file != null ? VideoSource.File : (host == "localhost" ? VideoSource.Camera : VideoSource.Stream);
-        return new VideoAddress(codec, host, port, streamName, rv, transport,vs ,file, camera, tags);
+        if (vs == VideoSource.Camera && !vsapi.HasValue)
+            vsapi = VideoSourceApi.Libcamera;
+        
+        return new VideoAddress(codec, host, port, streamName, rv, transport,vs ,file, camera, vsapi, tags);
     }
 
     private readonly string _str;
     public VideoResolution Resolution { get; }
-
+    public VideoSourceApi? SourceApi { get; }
     public string FriendlyName
     {
         get
@@ -85,17 +99,19 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
     public VideoSource VideoSource { get; init; }
     
     public VideoAddress(VideoCodec codec, string host = "localhost",
-            int port = 0, string? streamName = null,
-            VideoResolution resolution = VideoResolution.FullHd,
-            VideoTransport vt = VideoTransport.Tcp,
-            VideoSource vs = VideoSource.Camera,
-            string? file = null,
-            int? cameraNr = null,
-            params string[] tags)
+        int port = 0, string? streamName = null,
+        VideoResolution resolution = VideoResolution.FullHd,
+        VideoTransport vt = VideoTransport.Tcp,
+        VideoSource vs = VideoSource.Camera,
+        string? file = null,
+        int? cameraNr = null,
+        VideoSourceApi? vsapi = null,
+        params string[] tags)
     {
         if (string.IsNullOrWhiteSpace(file) && vs == VideoSource.File)
             throw new ArgumentException("File has to set when video-source is set to file.");
 
+        SourceApi = vsapi;
         Resolution = resolution;
         Host = host;
         Port = port;
@@ -132,10 +148,18 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
             sb.Append($"file={UrlEncoder.Default.Encode(File)}");
             query = true;
         }
+        
         if(cameraNr.HasValue && cameraNr > 0)
         {
             sb.Append(!query ? "?" : "&");
             sb.Append($"camera={cameraNr.Value}");
+            query = true;
+        }
+
+        if (vsapi.HasValue)
+        {
+            sb.Append(!query ? "?" : "&");
+            sb.Append($"video-api={vsapi.Value}");
             query = true;
         }
         _str = sb.ToString();
@@ -170,7 +194,8 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
                Port == address.Port &&
                VideoTransport == address.VideoTransport &&
                Codec == address.Codec &&
-               Tags.Except(address.Tags).Count() == 0 &&
+               SourceApi == address.SourceApi &&
+               !Tags.Except(address.Tags).Any() &&
                File == address.File &&
                CameraNumber == address.CameraNumber &&
                VideoSource == address.VideoSource;

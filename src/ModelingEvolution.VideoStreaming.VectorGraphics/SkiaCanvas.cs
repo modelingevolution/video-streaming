@@ -19,6 +19,8 @@ public class SkiaCanvas : ICanvas
         {
             var temp = RenderBuffer;
             RenderBuffer = OpSink;
+            foreach(var d in  temp.OfType<IDisposable>()) d.Dispose();
+            
             temp.Clear();
             OpSink = temp;
         }
@@ -84,6 +86,11 @@ public class SkiaCanvas : ICanvas
     public void Begin(ulong frameNr, byte? layerId)
     {
         _writer.WriteLine($"Render frame: {frameNr}");
+    }
+
+    public void DrawRectangle(System.Drawing.Rectangle rect, RgbColor? color, byte? layerId)
+    {
+        throw new NotImplementedException();
     }
 
 

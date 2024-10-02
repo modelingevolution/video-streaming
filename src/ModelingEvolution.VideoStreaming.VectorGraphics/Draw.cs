@@ -3,7 +3,8 @@
 namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 
 [ProtoContract]
-public class Draw<TObject> : IRenderOp where TObject: IRenderItem
+public class Draw<TObject> : IRenderOp, IDisposable
+    where TObject: IRenderItem
 {
     [ProtoMember(1)]
     public TObject Value { get; init; }
@@ -20,4 +21,8 @@ public class Draw<TObject> : IRenderOp where TObject: IRenderItem
     }
 
     public ushort Id => Value.Id;
+    public void Dispose()
+    {
+        if(Value is IDisposable d) d.Dispose();
+    }
 }

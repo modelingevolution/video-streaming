@@ -183,7 +183,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
 
     internal interface IParser<T>
     {
-        public T[] ProcessTensorToResult(YoloRawOutput output, Rectangle rectangle);
+        public T[] ProcessTensorToResult(YoloRawOutput output, Rectangle rectangle, float threshold);
     }
 
     public class YoloPredictorOptions
@@ -241,9 +241,11 @@ namespace ModelingEvolution_VideoStreaming.Yolo
 
     public interface IYoloModelRunner<T> where T : IYoloPrediction<T>
     {
+        ModelPerformance Performance { get; }
         unsafe YoloResult<T> Process(
             YuvFrame* frame, 
-            Rectangle* interestArea);
+            Rectangle* interestArea, 
+            float threshold);
     }
 
     internal class YoloModelRunner<T> : IYoloModelRunner<T> where T : IYoloPrediction<T>
@@ -253,8 +255,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         private readonly InferenceSession _session;
         private readonly SessionTensorInfo _tensorInfo;
         private readonly RunOptions _options = new();
+        public ModelPerformance Performance { get; } = new();
 
-       
         public YoloModelRunner(IParser<T> parser,
             InferenceSession session,
             YoloConfiguration? configuration = null)
@@ -269,36 +271,64 @@ namespace ModelingEvolution_VideoStreaming.Yolo
 
         public unsafe YoloResult<T> Process(
             YuvFrame* frame, 
-            Rectangle* interestArea)
+            Rectangle* interestArea, float threshold)
         {
-            using var binding = _session.CreateIoBinding();
-            var output = CreateRawOutput(binding);
-            
-            using var input = MemoryPool<float>.Shared.AllocateTensor<float>(_tensorInfo.Input0, true);
-                                    
-            var s = _configuration.ImageSize;
-            var target = input.Tensor;
-            target.CopyInputFromYuvFrame(frame, interestArea, &s);
+            using var binding = PreProcess(frame, interestArea, out var output);
 
-            // Create ort values
-            var ortInput = CreateOrtValue(target.Buffer, _tensorInfo.Input0.Dimensions64);
-            
-            // Bind input to ort io binding
-            binding.BindInput(_session.InputNames[0], ortInput);
+            ProcessInterference(binding);
 
-            // Do the interference
-            _session.RunWithBinding(_options, binding);
+            return PostProcess(frame, interestArea, threshold, output);
+        }
 
+        private unsafe YoloResult<T> PostProcess(YuvFrame* frame, Rectangle* interestArea, float threshold, YoloRawOutput output)
+        {
             // Now we have output we can process the output
+            using var s = Performance.MeasurePostProcessing();
             
-            var result = _parser.ProcessTensorToResult(output, *interestArea);
+            var result = _parser.ProcessTensorToResult(output, *interestArea, threshold);
 
             return new YoloResult<T>(result)
             {
-                
                 ImageSize = frame->Info.Size
             };
         }
+
+        private void ProcessInterference(OrtIoBinding binding)
+        {
+            using var s = Performance.MeasureInterference();
+            // Do the interference
+            _session.RunWithBinding(_options, binding);
+        }
+
+        private unsafe OrtIoBinding PreProcess(YuvFrame* frame, Rectangle* interestArea, out YoloRawOutput output)
+        {
+            using var perf = Performance.MeasurePreProcessing();
+            OrtIoBinding? binding = null;
+            try
+            {
+                binding = _session.CreateIoBinding();
+                output = CreateRawOutput(binding);
+            
+                using var input = MemoryPool<float>.Shared.AllocateTensor<float>(_tensorInfo.Input0, true);
+                                    
+                var s = _configuration.ImageSize;
+                var target = input.Tensor;
+                target.CopyInputFromYuvFrame(frame, interestArea, &s);
+
+                // Create ort values
+                var ortInput = CreateOrtValue(target.Buffer, _tensorInfo.Input0.Dimensions64);
+            
+                // Bind input to ort io binding
+                binding.BindInput(_session.InputNames[0], ortInput);
+                return binding;
+            }
+            catch
+            {
+                binding?.Dispose();
+                throw;
+            }
+        }
+
         private YoloRawOutput CreateRawOutput(OrtIoBinding binding)
         {
             var output0Info = _tensorInfo.Output0;
@@ -334,13 +364,21 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         public required Size ImageSize { get; init; }
 
     }
-    public class YoloResult<TPrediction>(TPrediction[] predictions) : YoloResult, IEnumerable<TPrediction> where TPrediction : IYoloPrediction<TPrediction>
+    public class YoloResult<TPrediction>(TPrediction[] predictions) : YoloResult, IDisposable, 
+        IEnumerable<TPrediction> where TPrediction : IYoloPrediction<TPrediction>
     {
         public TPrediction this[int index] => predictions[index];
 
         public int Count => predictions.Length;
 
         public override string ToString() => TPrediction.Describe(predictions);
+        public void Dispose()
+        {
+            for (int i = 0; i < predictions.Length; i++)
+            {
+                predictions[i]?.Dispose();
+            }
+        }
 
         #region Enumerator
 
@@ -407,14 +445,23 @@ namespace ModelingEvolution_VideoStreaming.Yolo
 
     public static class Ext
     {
-        public static List<VectorU16> ToVectorList(this VectorOfPoint p)
+        public static VectorU16[] ToVectorArray(this VectorOfPoint p)
         {
-            var points = new List<VectorU16>(p.Size);
+            var points = new VectorU16[p.Size];
 
             for (int i = 0; i < p.Size; i++)
             {
-                points.Add(new VectorU16((ushort)p[i].X, (ushort)p[i].Y));
+                points[i] = new VectorU16((ushort)p[i].X, (ushort)p[i].Y);
             }
+
+            return points;
+        }
+        public static ManagedArray<VectorU16> ToArrayBuffer(this VectorOfPoint p)
+        {
+            var points = new ManagedArray<VectorU16>(p.Size);
+
+            for (int i = 0; i < p.Size; i++) 
+                points.Add(p[i]);
 
             return points;
         }
@@ -422,42 +469,60 @@ namespace ModelingEvolution_VideoStreaming.Yolo
     public class Segmentation : Detection, IYoloPrediction<Segmentation>
     {
         public required Mat Mask { get; init; }
+        public required Rectangle InterestRegion { get; init; }
+        public required float Threshold { get; init; }
+        private SegmentationPolygon? _polygon;
+        private bool _polygonComputed;
+        
         protected override void Dispose(bool disposing)
         {
-            if(disposing)
-                Mask.Dispose();
+            if (!disposing) return;
+            Mask.Dispose();
+            if(_polygonComputed)
+                _polygon?.Dispose();
         }
 
-        public Polygon ComputePolygon(float threshold)
+        public SegmentationPolygon? Polygon
+        {
+            get
+            {
+                if (_polygonComputed) return _polygon;
+                _polygon = ComputePolygon();
+                _polygonComputed = true;
+                if(_polygon != null)
+                    Debug.Assert(_polygon.Polygon.Points.Count > 2);
+                
+                return _polygon;
+            }
+        }
+        private SegmentationPolygon? ComputePolygon()
         {
             var mat = Mask;
             using var thresholded = new Mat();
-            CvInvoke.Threshold(mat, thresholded, threshold * 255, 255, ThresholdType.Binary);
-            //CvInvoke.Threshold(mat, thresholded, 0,255- threshold * 255, ThresholdType.Binary);
+            CvInvoke.Threshold(mat, thresholded, Threshold * 255, 255, ThresholdType.Binary);
+            
             using var contours = new VectorOfVectorOfPoint();
             CvInvoke.FindContours(thresholded, contours, null, RetrType.External, ChainApproxMethod.ChainApproxSimple);
-            var hull = new List<VectorU16>();
-            if (contours.Size <= 0) return new Polygon(hull);
+            
+            if (contours.Size <= 0) 
+                return null;
             
             var largestContour = contours[0];
             for (int i = 1; i < contours.Size; i++)
                 if (CvInvoke.ContourArea(contours[i]) > CvInvoke.ContourArea(largestContour))
                     largestContour = contours[i];
                 
-            using var hullIndices = new VectorOfPoint();
-            CvInvoke.ConvexHull(largestContour, hullIndices);
+            //using var hullIndices = new VectorOfPoint();
+            //CvInvoke.ConvexHull(largestContour, hullIndices);
             //var points = hullIndices.ToVectorList();
-            var points = largestContour.ToVectorList();
-
-            var w = mat.Width;
-            var h = mat.Height;
+            if (largestContour.Length == 0) return null;
             
-            var scaleX = (float)base.Bounds.Width / w;
-            var scaleY = (float)base.Bounds.Height / h;
-            var scale = new SizeF(scaleX, scaleY);
-            scale = new SizeF(640f / 160, 640f / 160);
-            return new Polygon(points).ScaleBy(scale);
-
+            var points = largestContour.ToArrayBuffer();
+            Debug.Assert(points.Count > 2);
+            
+            var result = new SegmentationPolygon(points,mat.Size);
+            
+            return result;
         }
         
         static string IYoloPrediction<Segmentation>.Describe(Segmentation[] predictions) => predictions.Summary();
@@ -872,7 +937,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         IRawBoundingBoxParser rawBoundingBoxParser) 
         : IParser<Segmentation>
     {
-        public Segmentation[] ProcessTensorToResult(YoloRawOutput output,  Rectangle interestRegion)
+        public Segmentation[] ProcessTensorToResult(YoloRawOutput output, 
+            Rectangle interestRegion, float threshold)
         {
             var output0 = output.Output0;
             var output1 = output.Output1 ?? throw new Exception();
@@ -897,6 +963,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo
                     Name = metadata.Names[box.NameIndex],
                     Bounds = bounds,
                     Confidence = box.Confidence,
+                    InterestRegion = interestRegion,
+                    Threshold = threshold
                 };
             }
 
