@@ -39,6 +39,15 @@ public record ModelPerformance
         }
     }
 
+    public override string ToString()
+    {
+        int pre = (int)_preProcessingTime.TotalMilliseconds;
+        int ex = (int)_interferenceTime.TotalMilliseconds;
+        int post = (int)_postProcessingTime.TotalMilliseconds;
+        int t = (int)Total.TotalMilliseconds;
+        return $"Performance: {pre} / {ex} / {post}  {t} ms";
+    }
+
     public TimeSpan PreProcessingTime => _preProcessingTime;
 
     public TimeSpan InterferenceTime => _interferenceTime;

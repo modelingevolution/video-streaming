@@ -12,7 +12,7 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
     
     private T[] _buffer;
     private int _size = 0;
-
+    private bool _disposed;
     public T this[int index]
     {
         get => _buffer[index];
@@ -21,9 +21,13 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
             if (index >= _size)
             {
                 var nb = ArrayPool<T>.Shared.Rent(index + 1);
+                ALLOCATED_BYTES += nb.Length;
                 Array.Copy(_buffer, 0, nb, 0, _size);
                 if (_buffer.Length > 0)
+                {
                     ArrayPool<T>.Shared.Return(_buffer);
+                    ALLOCATED_BYTES -= _buffer.Length;
+                }
                 _buffer = nb;
                 _size = index + 1;
             }
@@ -31,6 +35,10 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
         }
     }
 
+    ~ManagedArray()
+    {
+        Dispose(false);
+    }
     public ManagedArray()
     {
         _buffer = Array.Empty<T>();
@@ -38,10 +46,12 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
     public ManagedArray(int capacity)
     {
         _buffer = capacity > 0 ? ArrayPool<T>.Shared.Rent(capacity) : Array.Empty<T>();
+        ALLOCATED_BYTES += _buffer.Length;
     }
     public ManagedArray(params T[] array)
     {
         _buffer = ArrayPool<T>.Shared.Rent(array.Length);
+        ALLOCATED_BYTES += _buffer.Length;
         Array.Copy(array, 0, _buffer, 0, array.Length);
         _size = array.Length;
     }
@@ -51,9 +61,13 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
         if (_size == _buffer.Length)
         {
             var na = ArrayPool<T>.Shared.Rent(Math.Max(_size * 2, 8));
+            ALLOCATED_BYTES += na.Length;
             Array.Copy(_buffer, 0, na, 0, _size);
-            if(_buffer.Length > 0)
+            if (_buffer.Length > 0)
+            {
                 ArrayPool<T>.Shared.Return(_buffer);
+                ALLOCATED_BYTES -= _buffer.Length;
+            }
             _buffer = na;
         }
 
@@ -65,12 +79,14 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
         if (_buffer.Length > 0)
         {
             ArrayPool<T>.Shared.Return(_buffer);
+            ALLOCATED_BYTES -= _buffer.Length;
             _buffer = Array.Empty<T>();
         }
 
         _size = 0;
     }
 
+    public static long ALLOCATED_BYTES = 0;
     public bool Contains(T item)
     {
         for (var i = 0; i < _size; i++)
@@ -119,9 +135,18 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
         return GetEnumerator();
     }
 
+    private void Dispose(bool disposing)
+    {
+        if (_buffer.Length > 0 && !_disposed)
+        {
+            ArrayPool<T>.Shared.Return(_buffer);
+            ALLOCATED_BYTES -= _buffer.Length;
+        }
+        _disposed = true;
+    }
     public void Dispose()
     {
-        if(_buffer.Length > 0)
-            ArrayPool<T>.Shared.Return(_buffer);
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }
