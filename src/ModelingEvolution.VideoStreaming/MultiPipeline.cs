@@ -14,7 +14,7 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
     where TIn : struct
 {
     readonly record struct PartialProcessInput(PartialProcessing Process, InData Data);
-    record PartialProcessing(int Every, object State, Action<TIn, Nullable<TIn>, ulong, CancellationToken, object> Action);
+    record PartialProcessing(object State, Action<TIn, Nullable<TIn>, ulong, CancellationToken, object> Action, Func<ulong, bool> Should);
 
     record StateData(TThreadState State, int Id);
     readonly record struct InData(ulong SeqNo, StateData Id, CancellationToken Token, TIn Data, TIn? Prv);
@@ -46,9 +46,9 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
     public ulong Finished => _merged;
     public bool IsRunning => _isRunning;
     public int AvgPipeExecution => _processed == 0 ? int.MaxValue : (int)(_processingTimeMs / _processed);
-    public void SubscribePartialProcessing(Action<TIn, Nullable<TIn>, ulong, CancellationToken, object> action,object state, int every)
+    public void SubscribePartialProcessing(Action<TIn, Nullable<TIn>, ulong, CancellationToken, object> action,object state, Func<ulong, bool> should)
     {
-        _partialProcessing.Add(new PartialProcessing(every, state, action));
+        _partialProcessing.Add(new PartialProcessing(state, action, should));
     }
     public void Stop()
     {
@@ -215,8 +215,8 @@ public sealed class MultiPipeline<TIn, TThreadState, TOut>(int maxParallelItems,
                     // Not sure if this should be here
                     foreach (var i in _partialProcessing)
                     {
-                        if (((long)(_i) % i.Every) == 0)
-                            ThreadPool.QueueUserWorkItem(OnProcessPartial, new PartialProcessInput(i, data));
+                        //((long)(_i) % i.Every) == 0
+                        if (i.Should(_i)) ThreadPool.QueueUserWorkItem(OnProcessPartial, new PartialProcessInput(i, data));
 
                     }
                 }

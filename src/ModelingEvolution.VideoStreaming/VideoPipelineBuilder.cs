@@ -56,28 +56,28 @@ public class VideoPipeline
     public void Start(CancellationToken token = default)
     {
         foreach (var i in _matPartialProcesses)
-            _pipeline.SubscribePartialProcessing(i.OnProcess, i, i.Every);
+            _pipeline.SubscribePartialProcessing(i.OnProcess, i, i.Should);
         foreach (var i in _yuvPartialProcesses)
-            _pipeline.SubscribePartialProcessing(i.OnProcess, i, i.Every);
+            _pipeline.SubscribePartialProcessing(i.OnProcess, i, i.Should);
 
 
         _pipeline.Start(token);
         foreach (var i in _pipeline.Pipes)
             i.Quality = _quality;
     }
-    public void SubscribePartialProcessing(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> action, object state, int every) => _matPartialProcesses.Add(new MatPartialProcess(action, state, every));
-    public void SubscribePartialProcessing(Action<YuvFrame, YuvFrame?, ulong, CancellationToken, object> action, object state, int every) => _yuvPartialProcesses.Add(new YuvPartialProcess(action, state, every));
+    public void SubscribePartialProcessing(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> action, object state, Func<ulong, bool> every) => _matPartialProcesses.Add(new MatPartialProcess(action, state, every));
+    public void SubscribePartialProcessing(Action<YuvFrame, YuvFrame?, ulong, CancellationToken, object> action, object state, Func<ulong, bool> every) => _yuvPartialProcesses.Add(new YuvPartialProcess(action, state, every));
 
 
     
-    record MatPartialProcess(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> Action, object State, int Every)
+    record MatPartialProcess(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> Action, object State, Func<ulong, bool> Should)
     {
         internal void OnProcess(YuvFrame frame, YuvFrame? nullable, ulong arg3, CancellationToken token, object arg5)
         {
             Action(frame.ToMatFrame(), () => nullable?.ToMatFrame(), arg3, token, State);
         }
     }
-    record YuvPartialProcess(Action<YuvFrame, YuvFrame?, ulong, CancellationToken, object> Action, object State, int Every)
+    record YuvPartialProcess(Action<YuvFrame, YuvFrame?, ulong, CancellationToken, object> Action, object State, Func<ulong, bool> Should)
     {
         internal void OnProcess(YuvFrame frame, YuvFrame? nullable, ulong arg3, CancellationToken token, object arg5)
         {

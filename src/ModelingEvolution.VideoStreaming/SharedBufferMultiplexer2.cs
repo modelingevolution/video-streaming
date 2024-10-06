@@ -77,10 +77,7 @@ public class CyclicMemoryBuffer
 }
 public interface IPartialYuvFrameHandler
 {
-    int Every
-    {
-        get;
-    }
+    bool Should(ulong seq);
     void Handle(YuvFrame frame,
         YuvFrame? prv,
         ulong seq,
@@ -90,10 +87,7 @@ public interface IPartialYuvFrameHandler
 }
 public interface IPartialMatFrameHandler
 {
-    int Every
-    {
-        get;
-    }
+    bool Should(ulong seq);
     void Handle(MatFrame frame,
         Func<MatFrame?> func,
         ulong seq,
@@ -170,11 +164,11 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         _pipeline = VideoPipelineBuilder.Create(info, OnGetItem, handler, loggerFactory);
 
         foreach(var processor in matPartialProcessors) 
-            _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Every);
+            _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Should);
 
         foreach (var processor in yuvPartialProcessors)
         {
-            _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Every);
+            _pipeline.SubscribePartialProcessing(processor.Handle, processor, processor.Should);
         }
         _logger.LogInformation($"Buffered prepared for: {info}");
     }
@@ -193,7 +187,7 @@ public class SharedBufferMultiplexer2 : IBufferedFrameMultiplexer
         IsEnabled = true;
         IsRunning = true;
     }
-    public void SubscribePartialProcessing(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> action, object state, int every) => _pipeline.SubscribePartialProcessing(action, state, every);
+    public void SubscribePartialProcessing(Action<MatFrame, Func<MatFrame?>, ulong, CancellationToken, object> action, object state, Func<ulong, bool> every) => _pipeline.SubscribePartialProcessing(action, state, every);
     ulong _fn = 0;
     ulong _stream = 0;
     private unsafe YuvFrame OnGetItem(CancellationToken token)
