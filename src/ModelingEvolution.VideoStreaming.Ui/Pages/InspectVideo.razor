@@ -1,0 +1,85 @@
+﻿@page "/inspect/{Id}"
+@rendermode InteractiveServer
+@using System.Diagnostics
+@using System.Text.Json
+@using EventPi.Abstractions
+@using Microsoft.Extensions.Configuration
+@using ModelingEvolution.VideoStreaming.Recordings
+@inject DatasetRecordingsModel _model
+@inject VideoImgFrameProvider _srv
+
+<PageTitle>Inspector</PageTitle>
+
+<MudStack Row="true" Style="width: 100%" @onkeydown="OnKeyDown">
+    
+    <MudList T="ulong" Dense="true" SelectionMode="SelectionMode.SingleSelection" @bind-SelectedValue="@this.SelectedFrame" 
+             ReadOnly="false" 
+             Style="flex: 1 1 auto;max-height: calc(100vh - 61px); overflow-y: auto;">
+        @foreach (var i in _doc)
+        {
+            <MudListItem Text="@i.Key.ToString()" Value="@i.Key" T="ulong"/>
+        }
+    </MudList>
+    <MudGrid Style="max-height: calc(100vh - 61px)">
+        
+        <MudImage Src="@ImageSrc1" ObjectFit="ObjectFit.Contain" ObjectPosition="ObjectPosition.Top" />
+        <MudImage Src="@ImageSrc2" ObjectFit="ObjectFit.Contain" ObjectPosition="ObjectPosition.Top" />
+    </MudGrid>
+</MudStack>
+
+@code {
+    private string? _name;
+    private FramesJson _doc;
+
+    private string ImageSrc1 => $"/video/{_name}/{SelectedFrame}";
+    private string ImageSrc2 => $"/video/{_name}/{_doc.GetNextKey(SelectedFrame)}";
+
+    private ulong _selectedFrame = 0;
+    private Guid? _id;
+
+    private ulong SelectedFrame
+    {
+        get { return _selectedFrame; }
+        set => _selectedFrame = value;
+    }
+
+
+    [Parameter]
+    public string? Id
+    {
+        get => _id?.ToString();
+        set => _id = Guid.Parse(value);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Id == null) return;
+        var rm = _model.GetById(_id.Value);
+        if (rm == null) return;
+
+        _name = rm.DirectoryName;
+        _doc = _srv[rm.DirectoryName];
+        if (_doc.Any())
+            _selectedFrame = _doc.First().Key;
+    }
+
+    private void OnFrameClicked(int key)
+    {
+        Debug.WriteLine(key);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs obj)
+    {
+        switch (obj.Code)
+        {
+            case "ArrowRight":
+                _selectedFrame = _doc.GetNextKey(_selectedFrame);
+                break;
+            case "ArrowLeft":
+                _selectedFrame = _doc.GetPrevKey(_selectedFrame);
+                break;
+            
+        }
+    }
+
+}

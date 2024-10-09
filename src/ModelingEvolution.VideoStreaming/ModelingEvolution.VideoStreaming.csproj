@@ -16,10 +16,10 @@
     <PackageReference Include="Emgu.CV.runtime.mini.debian-arm64" Version="4.9.0.5494" />
     <PackageReference Include="Emgu.CV.runtime.windows" Version="4.9.0.5494" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Common" Version="8.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Common" Version="8.0.8" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Features" Version="8.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Features" Version="8.0.8" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Primitives" Version="8.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
@@ -34,6 +34,7 @@
     <ProjectReference Include="..\..\..\EventPi\src\EventPi.Abstractions\EventPi.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\EventPi\src\EventPi.SharedMemory\EventPi.SharedMemory.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj" />
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming.CVat\ModelingEvolution.VideoStreaming.CVat.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Events\ModelingEvolution.VideoStreaming.Events.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.LibJpegTurbo\ModelingEvolution.VideoStreaming.LibJpegTurbo.csproj" />
   </ItemGroup>

@@ -1,7 +1,4 @@
 ﻿using System.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
-using ModelingEvolution.VideoStreaming.Ui.Components;
-using ModelingEvolution.VideoStreaming.Ui.Pages;
 
 namespace ModelingEvolution.VideoStreaming.Ui;
 
@@ -24,15 +21,5 @@ class SpeedVm
         _sw.Restart();
         _prv = transferred;
         return $"{(Bytes)(1000 * delta / dt)}/sec";
-    }
-}
-
-public static class ContainerExtensions
-{
-    public static IServiceCollection AddVideoStreamingUi(this IServiceCollection services)
-    {
-        services.AddSingleton<ServerVm>();
-        services.AddSingleton<FreeSpaceVmProvider>();
-        return services;
     }
 }

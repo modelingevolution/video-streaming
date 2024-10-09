@@ -1,0 +1,39 @@
+﻿@page "/datasets"
+@rendermode InteractiveServer
+@inject DatasetExplorerVm _vm
+@inject NavigationManager _nm
+
+<Observable Source="_vm" Context="obs">
+    <MudDataGrid Items="@_vm.Items" ReadOnly="false"
+                 Dense="false" EditMode="DataGridEditMode.Cell" EditTrigger="DataGridEditTrigger.Manual">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Source" />
+            <PropertyColumn Property="x => x.Source.Started" Title="Created" Editable="false" />
+            <PropertyColumn Property="x => x.Source.Duration" Title="Duration" Editable="false" />
+            <PropertyColumn Property="x => x.Source.Size" Title="Size" Editable="false" />
+            <PropertyColumn Property="x => x.Source.FrameCount" Title="Frame count" Editable="false"  />
+            <PropertyColumn Property="x => x.Source.PublishState" Title="Publish state" Editable="false" />
+            <PropertyColumn Property="x => x.Source.PublishedDate" Title="Publish date" Editable="false" />
+            <TemplateColumn CellClass="d-flex justify-end" Editable="false">
+                <CellTemplate>
+                    <MudStack Row>
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" Title="Play" 
+                                       OnClick="@(x=> _nm.NavigateTo(context.Item.InspectUrl))"></MudIconButton>
+                        
+                        <MudIconButton Icon="@Icons.Material.Filled.Upload" Style="padding:0" Title="Upload"
+                                       OnClick="@(x=> _nm.NavigateTo(context.Item.UploadUrl))"></MudIconButton>
+                        
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Style="padding:0" Title="Edit" OnClick="@(async () => await context.Actions.StartEditingItemAsync())"></MudIconButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Style="padding:0" Title="Delete" OnClick="@context.Item.Delete"></MudIconButton>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</Observable>
+
+@code {
+
+
+
+}

@@ -1,21 +1,43 @@
-﻿@using ModelingEvolution.VideoStreaming
+﻿@using MicroPlumberd
+@using Microsoft.Extensions.Configuration
+@using ModelingEvolution.VideoStreaming
 @using ModelingEvolution.Observable.Blazor
+@using ModelingEvolution.VideoStreaming.Recordings
 @inject PersistedStreamVm _persister
-
-@if (Address.HasValue && Address.Value.VideoSource != VideoSource.File)
+@inject VideoRecordingDeviceModel rm
+@inject IConfiguration _config
+@inject ICommandBus _bus
+@if (Address.HasValue)
 {
-    <Observable Source="_persister">
-        <IconButton_v7 Style="padding:24px" 
-                       Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
-                       Disabled="@(Address == null)"
-                       OnClick="ToggleRecording" 
-                       IconStyle="@_recordIconBtnStyle()"/>
-                           
-                        
-    </Observable>
+    if (_config.IsLabelingModeEnabled())
+    {
+        <Observable Source="_vm">
+            <IconButton_v7 Style="padding:24px"
+                           Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
+                           Disabled="@(Address == null)"
+                           OnClick="ToggleDatasetRecording"
+                           IconStyle="@_vm.Style()" />
+
+
+        </Observable>
+    }
+    else
+    {
+        <Observable Source="_persister">
+            <IconButton_v7 Style="padding:24px"
+                           Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
+                           Disabled="@(Address == null)"
+                           OnClick="ToggleRecording"
+                           IconStyle="@_recordIconBtnStyle()"/>
+
+
+        </Observable>
+    }
 }
 
 @code {
+    private VideoRecordingDeviceModel.State _vm;
+
     [Parameter]
     public VideoAddress? Address { get; set; }
 
@@ -24,6 +46,26 @@
         if (!Address.HasValue) return "fill:gray";
 
         return _persister.IsRecording(Address.Value) ? "fill:red" : "fill:gray";
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_config.IsLabelingModeEnabled() && Address.HasValue)
+        {
+            this._vm = rm[Address.Value];
+        }
+    }
+
+ 
+    private async Task ToggleDatasetRecording()
+    {
+        if (!Address.HasValue) return;
+
+        if (!_vm.IsRecording)
+            await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StartDatasetRecording());
+        else
+            await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StopDatasetRecording());
+
     }
 
     private async Task ToggleRecording()

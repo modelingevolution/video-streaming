@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ModelingEvolution.VideoStreaming.Recordings;
 
 namespace ModelingEvolution.VideoStreaming
 {
@@ -24,10 +25,16 @@ namespace ModelingEvolution.VideoStreaming
             configuration.GetValue<bool>("IsStreamingAutoStarted");
         public static IServiceCollection AddVideoStreaming(this IServiceCollection services, string rootDir)
         {
+            services.AddTransient<UnmergedRecordingService>();
+            services.AddTransient<IPartialYuvFrameHandler>(sp => sp.GetRequiredService<UnmergedRecordingService>());
+            services.AddSingleton<UnmergedRecordingManager>();
+            services.AddSingleton<IUnmergedRecordingManager>(sp => sp.GetRequiredService<UnmergedRecordingManager>());
+            
             services.AddBackgroundServiceIfMissing<VideoStreamingServerStarter>();
             services.AddSingleton<PersistedStreamVm>();
             services.AddSingleton<VideoStreamEventSink>();
             services.AddSingleton<VideoIndexer>();
+            services.AddSingleton<VideoImgFrameProvider>();
             services.AddSingleton<VideoStreamingServer>((sp) =>
             {
                 var configuration = sp.GetRequiredService<IConfiguration>();
@@ -44,6 +51,13 @@ namespace ModelingEvolution.VideoStreaming
                     sp.GetRequiredService<ILoggerFactory>(),
                     sp);
             });
+            services.AddSingleton<DatasetRecordingsModel>();
+            services.AddEventHandler<DatasetRecordingsModel>();
+
+            services.AddSingleton<VideoRecordingDeviceModel>();
+            services.AddEventHandler<VideoRecordingDeviceModel>(start: FromRelativeStreamPosition.End);
+            
+            services.AddCommandHandler<DatasetRecordingCommandHandler>();
             return services;
         }
     }

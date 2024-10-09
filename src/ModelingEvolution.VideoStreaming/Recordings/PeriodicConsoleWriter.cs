@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace ModelingEvolution.VideoStreaming.OpenVidCam;
+namespace ModelingEvolution.VideoStreaming.Recordings;
 
 internal class PeriodicConsoleWriter(TimeSpan period)
 {

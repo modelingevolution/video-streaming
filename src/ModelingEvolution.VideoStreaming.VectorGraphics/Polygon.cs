@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using ModelingEvolution.Drawing;
+using ModelingEvolution.VideoStreaming.Buffers;
 using ProtoBuf;
 
 namespace ModelingEvolution.VideoStreaming.VectorGraphics;

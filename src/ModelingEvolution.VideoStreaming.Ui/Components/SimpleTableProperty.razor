@@ -1,0 +1,20 @@
+﻿@typeparam T
+@if (!string.IsNullOrWhiteSpace(Value?.ToString()))
+{
+    <tr>
+        <td>@Label</td>
+        <td><MudText Color="@Color"></MudText> @Value</td>
+    </tr>
+}
+
+@code {
+    [Parameter]
+    public T Value { get; set; }
+
+    [Parameter]
+    public string Label { get; set; }
+
+
+    [Parameter] 
+    public Color Color { get; set; } = Color.Default;
+}

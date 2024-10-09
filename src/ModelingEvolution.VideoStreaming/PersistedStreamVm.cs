@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Data;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Reactive;
@@ -12,6 +13,7 @@ using FFmpeg.NET;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ModelingEvolution.VideoStreaming.Recordings;
 
 namespace ModelingEvolution.VideoStreaming;
 
@@ -64,6 +66,21 @@ public class VideoIndexer
         _isRunning = false;
     }
 }
+public interface IUnmergedRecordingManager
+{
+
+    IUnmergedRecordingService? Get(VideoRecordingDevice va);
+
+}
+public interface IUnmergedRecordingService
+{
+    bool ShouldRun { get; }
+    VideoAddress Address { get; }
+    Task<VideoRecordingIdentifier> Start();
+    Task<UnmergedRecordingService.StopResult> Stop();
+}
+
+
 public class PersistedStreamVm : INotifyPropertyChanged
 {
     public string Format
@@ -97,9 +114,17 @@ public class PersistedStreamVm : INotifyPropertyChanged
     private readonly string _ffmpegExec;
     private readonly Dictionary<VideoAddress, StreamStorageVm> _streams = new();
 
-    public bool IsStartDisabled(VideoAddress address) => _streams.ContainsKey(address);
+    public bool IsStartDisabled(VideoAddress address)
+    {
+        return IsRecording(address);
+    }
+
     public bool IsStopDisabled(VideoAddress address) => !IsStartDisabled(address);
-    public bool IsRecording(VideoAddress address) => _streams.ContainsKey(address);
+    public bool IsRecording(VideoAddress address)
+    {
+        return _streams.ContainsKey(address);
+    }
+
     public IEnumerable<Recording> Files
     {
         get
@@ -115,14 +140,19 @@ public class PersistedStreamVm : INotifyPropertyChanged
 
     public string DataDir => _dataDir;
     private readonly VideoStreamingServer _server;
+    
     private readonly VideoIndexer _indexer;
+    
+    
     public PersistedStreamVm(VideoStreamingServer srv, IConfiguration configuration,
         ILogger<PersistedStreamVm> logger, IWebHostingEnv he, VideoIndexer indexer)
     {
         _server = srv;
+        
         _logger = logger;
         _localPort = srv.Port;
         _dataDir = configuration.VideoStorageDir(he.WwwRoot);
+        
         if (!Directory.Exists(_dataDir))
             Directory.CreateDirectory(_dataDir);
 
@@ -131,6 +161,7 @@ public class PersistedStreamVm : INotifyPropertyChanged
             logger.LogWarning("FFMPEG executable not found at: {ffmpeg}", _ffmpegExec);
         indexer.TryRun();
         _indexer = indexer;
+        
     }
     public async Task ConnectToVideoFile(string fileName)
     {
@@ -174,18 +205,22 @@ public class PersistedStreamVm : INotifyPropertyChanged
     }
     public async Task Stop(VideoAddress address)
     {
+      
+        
         _streams[address].Close();
         _streams.Remove(address);
     }
 
     public async Task Save(VideoAddress address)
     {
-        await Save(address, new HashSet<string>());
+         await Save(address, new HashSet<string>());
     }
     public async Task Save(VideoAddress address, HashSet<string> tags)
     {
         if (Format == "mp4")
+        {
             await SaveMp4(address, tags);
+        }
         else
             await SaveMjpeg(address, tags);
     }

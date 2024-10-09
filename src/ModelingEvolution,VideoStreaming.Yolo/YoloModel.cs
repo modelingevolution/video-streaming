@@ -21,6 +21,7 @@ using Microsoft.Extensions.Options;
 using ModelingEvolution.VideoStreaming.VectorGraphics;
 using Rectangle = System.Drawing.Rectangle;
 using Emgu.CV.Util;
+using ModelingEvolution.VideoStreaming.Buffers;
 
 namespace ModelingEvolution_VideoStreaming.Yolo
 {

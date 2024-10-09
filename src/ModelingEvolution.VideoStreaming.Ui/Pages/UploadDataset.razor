@@ -1,0 +1,80 @@
+﻿@page "/upload-dataset/{Id}"
+@rendermode InteractiveServer
+@inject UploadDatasetVm _vm
+@if (_vm != null)
+{
+    <MudStack Row="true">
+        <MudCard>
+            <MudForm Model="_vm">
+                <MudCardContent>
+                    <MudText Align="Align.Center">@_vm.Data.PublishState</MudText>
+
+                    <MudTextField @bind-Value="_vm.Command.Name"
+                                  For="@(() => _vm.Command.Name)"
+                                  Immediate="true"
+                                  Label="Name"/>
+
+                    <MudTextField @bind-Value="_vm.Command.Subset"
+                                  For="@(() => _vm.Command.Subset)"
+                                  Immediate="true"
+                                  Label="Subset"/>
+
+                    <MudNumericField @bind-Value="_vm.Command.ProjectId"
+                                     For="@(() => _vm.Command.ProjectId)"
+                                     Immediate="true"
+                                     Label="Project Id"/>
+
+                    <MudNumericField @bind-Value="_vm.Command.StartFrame"
+                                     For="@(() => _vm.Command.StartFrame)"
+                                     Immediate="true"
+                                     Label="Start Frame"/>
+
+                    <MudNumericField @bind-Value="_vm.Command.EndFrame"
+                                     For="@(() => _vm.Command.EndFrame)"
+                                     Immediate="true"
+                                     Label="End Frame"/>
+
+                    <MudNumericField @bind-Value="_vm.Command.Every"
+                                     For="@(() => _vm.Command.Every)"
+                                     Immediate="true"
+                                     Label="Every"/>
+                </MudCardContent>
+
+            </MudForm>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="@(async () => await _vm.Publish())">Publish</MudButton>
+            </MudCardActions>
+        </MudCard>
+        <MudCard>
+            <MudCardContent>
+                <MudText >Dataset information:</MudText>
+                <MudSimpleTable>
+                    <tbody>
+                    <SimpleTableProperty Label="Frame count" Value="@_vm.FrameCount"/>
+                    <SimpleTableProperty Label="Validation error" Value="@_vm.Error" Color="Color.Error"/>
+                    <SimpleTableProperty Label="Publis error" Value="@_vm.Data.PublishError" Color="Color.Error"/>
+                    </tbody>
+                </MudSimpleTable>
+            </MudCardContent>
+        </MudCard>
+    </MudStack>
+}
+
+@code {
+
+    private Guid? _id;
+
+    [Parameter]
+    public string? Id
+    {
+        get => _id?.ToString();
+        set => _id = Guid.Parse(value);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if(_id.HasValue)
+            _vm.Init(_id.Value);
+    }
+
+}

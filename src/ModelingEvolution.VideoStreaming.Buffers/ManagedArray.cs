@@ -1,7 +1,7 @@
 ﻿using System.Buffers;
 using System.Collections;
 
-namespace ModelingEvolution.VideoStreaming.VectorGraphics;
+namespace ModelingEvolution.VideoStreaming.Buffers;
 
 /// <summary>
 /// This collection uses ArrayPool for memory menagement.
@@ -43,6 +43,8 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
     {
         _buffer = Array.Empty<T>();
     }
+
+    public T[] GetBuffer() => _buffer;
     public ManagedArray(int capacity)
     {
         _buffer = capacity > 0 ? ArrayPool<T>.Shared.Rent(capacity) : Array.Empty<T>();
