@@ -42,7 +42,9 @@
 
             </MudForm>
             <MudCardActions>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="@(async () => await _vm.Publish())">Publish</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" 
+                           ButtonType="ButtonType.Submit" 
+                           OnClick="@(async () => await _vm.Publish())">Publish</MudButton>
             </MudCardActions>
         </MudCard>
         <MudCard>
