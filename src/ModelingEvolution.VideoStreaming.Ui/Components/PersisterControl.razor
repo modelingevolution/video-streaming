@@ -35,7 +35,7 @@
                                        Icon="@Icons.Material.Filled.Stop"
                                        OnClick="@(async () => await _persisterVm.Stop(context.Source.VideoAddress))">Stop</MudIconButton>
                     </MudButtonGroup>
-                    <MudToggleGroup Delimiters="true" Outline="true" Dense="true" Color="Color.Primary" @bind-Value="@_persisterVm.Format">
+                    <MudToggleGroup Delimiters="true"  Outlined="true" Size="Size.Small" Color="Color.Primary" @bind-Value="@_persisterVm.Format">
                         <MudToggleItem Value="@("mp4")"/>
                         <MudToggleItem Value="@("mjpeg")"/>
                     </MudToggleGroup>
@@ -54,22 +54,22 @@
                  Dense="false" EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual">
         <Columns>
             <PropertyColumn Property="x => x.DisplayName" Title="Source" />
-            <PropertyColumn Property="x => x.Started" Title="Created" IsEditable="false" />
-            <PropertyColumn Property="x => x.Duration" Title="Duration" IsEditable="false" />
-            <PropertyColumn Property="x => x.Size" Title="Size" IsEditable="false" />
-            <TemplateColumn CellClass="d-flex justify-end" IsEditable="false">
+            <PropertyColumn Property="x => x.Started" Title="Created" Editable="false" />
+            <PropertyColumn Property="x => x.Duration" Title="Duration" Editable="false" />
+            <PropertyColumn Property="x => x.Size" Title="Size" Editable="false" />
+            <TemplateColumn CellClass="d-flex justify-end" Editable="false">
                 <CellTemplate>
                     <MudStack Row>
-                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" Title="Play" Disabled="@(context.Item.FileName.EndsWith("mjpeg"))"
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" title="Play" Disabled="@(context.Item.FileName.EndsWith("mjpeg"))"
                                        OnClick="@(x=> _nm.NavigateTo($"/play/{context.Item.FileName}"))"></MudIconButton>
                         @if (_enableCameraSimulator)
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.LiveTv"
-                                           Style="padding:0" Title="Simulate"
+                                           Style="padding:0" title="Simulate"
                                            OnClick="@(async () => await _persisterVm.ConnectToVideoFile(context.Item.FileName))"></MudIconButton>
                         }
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Style="padding:0" Title="Edit" OnClick="@(async () => await context.Actions.StartEditingItemAsync())"></MudIconButton>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Style="padding:0" Title="Delete" OnClick="@context.Item.Delete"></MudIconButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Style="padding:0" title="Edit" OnClick="@(async () => await context.Actions.StartEditingItemAsync())"></MudIconButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Style="padding:0" title="Delete" OnClick="@context.Item.Delete"></MudIconButton>
                     </MudStack>
                 </CellTemplate>
             </TemplateColumn>

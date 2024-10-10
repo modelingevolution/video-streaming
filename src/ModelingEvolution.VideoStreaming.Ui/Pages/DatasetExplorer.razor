@@ -17,14 +17,14 @@
             <TemplateColumn CellClass="d-flex justify-end" Editable="false">
                 <CellTemplate>
                     <MudStack Row>
-                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" Title="Play" 
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Style="padding:0" title="Play" 
                                        OnClick="@(x=> _nm.NavigateTo(context.Item.InspectUrl))"></MudIconButton>
                         
-                        <MudIconButton Icon="@Icons.Material.Filled.Upload" Style="padding:0" Title="Upload"
+                        <MudIconButton Icon="@Icons.Material.Filled.Upload" Style="padding:0" title="Upload"
                                        OnClick="@(x=> _nm.NavigateTo(context.Item.UploadUrl))"></MudIconButton>
                         
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Style="padding:0" Title="Edit" OnClick="@(async () => await context.Actions.StartEditingItemAsync())"></MudIconButton>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Style="padding:0" Title="Delete" OnClick="@context.Item.Delete"></MudIconButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Style="padding:0" title="Edit" OnClick="@(async () => await context.Actions.StartEditingItemAsync())"></MudIconButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Style="padding:0" title="Delete" OnClick="@context.Item.Delete"></MudIconButton>
                     </MudStack>
                 </CellTemplate>
             </TemplateColumn>
