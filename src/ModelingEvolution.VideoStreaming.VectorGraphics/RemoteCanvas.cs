@@ -95,6 +95,10 @@ public class BufferWriter(ILoggerFactory loggerFactory)
                     //_logger.LogInformation($"Sending: {msg.Type}, {msg.Data.Length}B");
                     await _socket.SendAsync(msg.Data, WebSocketMessageType.Binary, true, default);
                 }
+                catch (ObjectDisposedException ex)
+                {
+                    _logger.LogInformation("WebSocket Connection Closed");
+                }
                 catch(Exception ex)
                 {
                     _logger.LogWarning(ex,"WebSocket Connection Closed");

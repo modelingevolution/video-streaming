@@ -71,7 +71,11 @@ internal sealed class HttpMjpegBufferedFrameChaser : IChaser
         try
         {
             //TestStream();
-            await OnWriteAsync(_dst,  _cancellationTokenSource.Token);
+            await OnWriteAsync(_dst, _cancellationTokenSource.Token);
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogInformation("Chaser operation canceled, disconnecting.");
         }
         catch (Exception ex)
         {
