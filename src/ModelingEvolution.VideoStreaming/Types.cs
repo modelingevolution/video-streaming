@@ -6,9 +6,12 @@ using System.Threading.Tasks;
 
 namespace ModelingEvolution.VideoStreaming
 {
+    [Flags]
     public enum VideoTransport : int
     {
-        Tcp, Udp, Shm
+        Tcp = 1,
+        Udp = 2, 
+        Shm = 4
     }
 
     public enum VideoSource

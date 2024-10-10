@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Channels;
 
 namespace ModelingEvolution.VideoStreaming.Buffers;
 
@@ -15,7 +16,7 @@ public static class StreamExtensions
         MemoryMarshal.Write(tmp.Memory.Span, in data);
         await stream.WriteAsync(tmp.Memory);
     }
-
+    
     public static async Task Copy2(this Stream stream, ConcurrentQueue<Memory<byte>> queue,
         int bufferSize = 16 * 1024 * 1024, bool throwOnEnd = true, CancellationToken token = default)
     {

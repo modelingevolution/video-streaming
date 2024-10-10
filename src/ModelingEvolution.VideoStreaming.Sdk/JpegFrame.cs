@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Buffers;
+using System.Text;
+using ModelingEvolution.VideoStreaming.Buffers;
 
 namespace ModelingEvolution.VideoStreaming.Player
 {
@@ -11,6 +13,26 @@ namespace ModelingEvolution.VideoStreaming.Player
         {
             Data = data;
             FrameNumber = frameNumber;
+        }
+    }
+    public readonly struct ManagedJpegFrame : IDisposable
+    {
+        private readonly ManagedArray<byte> _buffer;
+
+        public readonly byte[] Data => _buffer.GetBuffer();
+        public readonly ulong FrameNumber { get;  }
+
+        public ManagedJpegFrame(ulong frameNumber, ManagedArray<byte> buffer)
+        {
+            _buffer = buffer;
+
+            
+            FrameNumber = frameNumber;
+        }
+
+        public void Dispose()
+        {
+            _buffer.Dispose();
         }
     }
     public static class Extensions

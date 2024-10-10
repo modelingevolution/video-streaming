@@ -29,4 +29,12 @@ static class ConfigurationExtensions
     {
         return configuration.GetValue<string>("StreamName") ?? "default";
     }
+    public static string? RemoteHost(this IConfiguration configuration)
+    {
+        return configuration.GetValue<string>("RemoteHost") ?? null;
+    }
+    public static int RemotePort(this IConfiguration configuration)
+    {
+        return configuration.GetValue<int>("RemotePort", 7000);
+    }
 }

@@ -2,7 +2,7 @@
   "profiles": {
     "ModelingEvolution.VideoStreaming.OpenVidCam": {
       "commandName": "Project",
-      "commandLineArgs": " --Camera=0 --Width=1920 --Height=1080 --StreamName=default"
+      "commandLineArgs": "--Width=1920 --Height=1080 --StreamName=default_3 RemoteHost=pi-201"
     }
   }
 }

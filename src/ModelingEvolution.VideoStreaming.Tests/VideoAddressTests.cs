@@ -7,11 +7,11 @@ public class VideoAddressTests
     [Fact]
     public void ComplexUri()
     {
-        string url = "shm+mjpeg://localhost/a?tags=elo_melo&resolution=SubHd&file=e%3A%5C1.mp4&camera=1&video-api=OpenVidCam";
+        string url = "tcp+shm+mjpeg://localhost/a?tags=elo_melo&resolution=SubHd&file=e%3A%5C1.mp4&camera=1&video-api=OpenVidCam";
         VideoAddress va = VideoAddress.Parse(url);
         va.Port.Should().Be(0);
         va.Codec.Should().Be(VideoCodec.Mjpeg);
-        va.VideoTransport.Should().Be(VideoTransport.Shm);
+        va.VideoTransport.Should().Be(VideoTransport.Shm | VideoTransport.Tcp);
         va.Host.Should().Be("localhost");
         va.StreamName.Should().Be("a");
         va.Resolution.Should().Be(VideoResolution.SubHd);

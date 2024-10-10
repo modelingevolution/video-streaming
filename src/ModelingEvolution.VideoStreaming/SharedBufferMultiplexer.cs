@@ -2,10 +2,12 @@
 using System.Buffers;
 using System.Diagnostics;
 using System.Drawing;
+using System.Net.Sockets;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Threading.Channels;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Dai;
@@ -314,6 +316,39 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
     }
 }
 
+public static class StreamFrameExtensions
+{
+    private static readonly int HEADER_SIZE = Marshal.SizeOf<FrameMetadata>();
+
+    public static async Task StartCopyAsync(this Stream stream, Channel<JpegFrame> queue,
+        int bufferSize = 16 * 1024 * 1024, bool throwOnEnd = true, CancellationToken token = default)
+    {
+        // Runs Copy in a separate long running thread.
+        _ = Task.Factory.StartNew(async x =>
+        {
+            await stream.CopyAsync(queue, bufferSize, throwOnEnd, token);
+        }, TaskContinuationOptions.LongRunning, token);
+    }
+
+    public static async Task CopyAsync(this Stream stream, Channel<JpegFrame> queue,
+        int bufferSize = 16 * 1024 * 1024, bool throwOnEnd = true, CancellationToken token = default)
+    {
+        CyclicArrayBuffer b = new CyclicArrayBuffer(bufferSize);
+
+        while (!token.IsCancellationRequested)
+        {
+            await stream.ReadIfRequired(b, HEADER_SIZE, throwOnEnd, token);
+            // We have enough to read the header
+            var m = MemoryMarshal.AsRef<FrameMetadata>(b.Use(HEADER_SIZE).Span);
+            if (!m.IsOk)
+                throw new InvalidOperationException("Memory is corrupt or was overriden.");
+
+            await stream.ReadIfRequired(b, (int)m.FrameSize, throwOnEnd, token);
+            var frame = b.Use((int)m.FrameSize);
+            queue.Writer.TryWrite(new JpegFrame(m,frame));
+        }
+    }
+}
 public class StreamFrameChaser(Stream stream, string identifier, IBufferedFrameMultiplexer buffer, CancellationToken token) : IChaser
 {
     private DateTime _started;
