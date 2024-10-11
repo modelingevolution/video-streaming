@@ -40,12 +40,17 @@ public readonly struct VideoRecordingDevice : IParsable<VideoRecordingDevice>
     }
     public static VideoRecordingDevice Parse(string s, IFormatProvider? provider)
     {
-        if (string.IsNullOrEmpty(s)) throw new ArgumentNullException(nameof(s));
+        Console.WriteLine($"==> Parsing VideoRecordingDevice: {s}");
+        if (string.IsNullOrEmpty(s)) 
+            throw new ArgumentNullException(nameof(s));
 
         var parts = s.Split('/');
         if (parts.Length != 2)
+        {
             throw new FormatException(
                 "Invalid format. Expected format: {HostName}/cam-{CameraNumber} or {HostName}/file-{FileName}");
+            
+        }
 
         var hostName = HostName.Parse(parts[0], provider);
         var secondPart = parts[1];
