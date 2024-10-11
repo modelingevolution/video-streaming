@@ -43,7 +43,8 @@ public class UnmergedRecordingService : IPartialYuvFrameHandler, IDisposable, IU
     
     public async Task<VideoRecordingIdentifier> Start()
     {
-        if (ShouldRun) return _currentRecording;
+        if (ShouldRun) 
+            return _currentRecording;
         _logger.LogDebug("Start - 1");
         _outputDirectory = GetOutputDirectory(Address, Address.Tags, out var id);
         _logger.LogDebug("Start - 2");
