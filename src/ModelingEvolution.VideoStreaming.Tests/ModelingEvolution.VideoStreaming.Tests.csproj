@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\EventPi\src\EventPi.Services.Camera\EventPi.Services.Camera.csproj" />
     <ProjectReference Include="..\ModelingEvolution,VideoStreaming.Yolo\ModelingEvolution.VideoStreaming.Yolo.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.LibJpegTurbo\ModelingEvolution.VideoStreaming.LibJpegTurbo.csproj" />

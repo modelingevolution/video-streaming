@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace ModelingEvolution.VideoStreaming
 {
+    /// <summary>
+    /// Be carefull it's duplicated in 2 assemblies
+    /// </summary>
     [Flags]
     public enum VideoTransport : int
     {
@@ -14,12 +17,16 @@ namespace ModelingEvolution.VideoStreaming
         Shm = 4
     }
 
+    
     public enum VideoSource
     {
         Camera,
         File, 
         Stream
     }
+    /// <summary>
+    /// Be carefull it's duplicated in 2 assemblies
+    /// </summary>
     public enum VideoCodec : int
     {
         Mjpeg, H264
