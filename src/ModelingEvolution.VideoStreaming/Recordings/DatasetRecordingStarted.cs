@@ -6,5 +6,7 @@ namespace ModelingEvolution.VideoStreaming.Recordings;
 public class DatasetRecordingStarted
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public bool Failed { get; set; }
+    public string Error { get; set; }
 
 }

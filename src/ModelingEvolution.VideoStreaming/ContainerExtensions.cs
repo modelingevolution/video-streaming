@@ -56,7 +56,8 @@ namespace ModelingEvolution.VideoStreaming
 
             services.AddSingleton<VideoRecordingDeviceModel>();
             services.AddEventHandler<VideoRecordingDeviceModel>(start: FromRelativeStreamPosition.End);
-            
+
+            services.AddSingleton<DatasetRecordingCommandHandler>();
             services.AddCommandHandler<DatasetRecordingCommandHandler>();
             return services;
         }

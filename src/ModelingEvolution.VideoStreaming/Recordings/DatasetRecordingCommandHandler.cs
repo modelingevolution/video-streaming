@@ -15,13 +15,22 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
 
     public async Task Handle(VideoRecordingDevice dev, StartDatasetRecording cmd)
     {
-        var srv = manager.Get(dev);
-        if (srv != null)
+        try
         {
-            var id = await srv.Start();
-            var ev = new DatasetRecordingStarted();
-            await plumber.AppendEvent(ev, id);
-        } else logger.LogWarning("No device found: " + dev.ToString());
+            var srv = manager.Get(dev);
+            if (srv != null)
+            {
+                var id = await srv.Start();
+                var ev = new DatasetRecordingStarted();
+                await plumber.AppendEvent(ev, id);
+            }
+            else logger.LogWarning("No device found: " + dev.ToString());
+        }
+        catch (Exception ex)
+        {
+            var ev = new DatasetRecordingStarted() { Error = ex.Message, Failed = true };
+            await plumber.AppendEvent(ev, dev);
+        }
     }
     public async Task Handle(VideoRecordingIdentifier dev, RenameDatasetRecording cmd)
     {

@@ -3,6 +3,17 @@ using FluentAssertions;
 
 namespace ModelingEvolution.VideoStreaming.Tests;
 
+public class VideoRecordingDeviceTests
+{
+    [Fact]
+    public void CanDeserialize()
+    {
+        string tmp = "localhost/cam-0";
+        var result = VideoRecordingDevice.Parse(tmp, null);
+        result.HostName.ToString().Should().Be("localhost");
+        result.CameraNumber.Should().Be(0);
+    }
+}
 public class VideoAddressTests
 {
     [Fact]
@@ -56,54 +67,4 @@ public class VideoAddressTests
         va.ToString().Should().Be(url);
     }
 
-    [Fact]
-    public void Test()
-    {
-        string url = "shm+mjpeg://localhost/default?video-api=Libcamera";
-        VideoAddress e = VideoAddress.Parse(url);
-        if (e.Host != "localhost")
-        {
-            if (e.VideoSource == VideoSource.Stream)
-            {
-                //var p = sp.GetRequiredService<OpenVidCamProcess>();
-                //var r = (EventPi.Services.Camera.Resolution)((VideoResolution)e.Resolution);
-                //_ = p.Start(r,
-                //    true,
-                //    e.StreamName,
-                //    e.CameraNumber ?? 0,
-                //    e.Host,
-                //    e.Port);
-            }
-            else return;
-        }
-
-
-        if (e.VideoSource == VideoSource.Camera)
-        {
-            if (e.SourceApi == VideoSourceApi.Libcamera)
-            {
-                var p = sp.GetRequiredService<LibCameraProcess>();
-                var r = (EventPi.Services.Camera.Resolution)((VideoResolution)e.Resolution);
-                _ = p.Start((VideoCodec)e.Codec,
-                    (VideoTransport)e.VideoTransport,
-                    r,
-                    true,
-                    e.StreamName,
-                    e.CameraNumber ?? 0);
-            }
-            else if (e.SourceApi == VideoSourceApi.OpenVidCam)
-            {
-                //var p = sp.GetRequiredService<OpenVidCamProcess>();
-                //var r = (EventPi.Services.Camera.Resolution)((VideoResolution)e.Resolution);
-                //_ = p.Start(r,
-                //    true,
-                //    e.StreamName,
-                //    e.CameraNumber ?? 0,
-                //    e.Host,
-                //    e.Port);
-            }
-            else throw new NotImplementedException();
-        }
-
-    }
 }
