@@ -32,7 +32,7 @@ public readonly struct VideoRecordingDevice : IParsable<VideoRecordingDevice>
                 HostName = HostName.Parse(addr.Host),
                 FileName = Path.GetFileName(addr.File)
             }
-            : new VideoRecordingDevice { HostName = HostName.Parse(addr.Host), CameraNumber = addr.CameraNumber};
+            : new VideoRecordingDevice { HostName = HostName.Parse(addr.Host), CameraNumber = addr.CameraNumber ?? 0};
     }
     public static implicit operator VideoRecordingDevice(CameraAddress addr)
     {

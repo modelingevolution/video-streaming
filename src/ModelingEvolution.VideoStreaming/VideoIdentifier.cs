@@ -20,10 +20,12 @@ public readonly struct VideoRecordingIdentifier : IParsable<VideoRecordingIdenti
         if (string.IsNullOrEmpty(s)) throw new ArgumentNullException(nameof(s));
 
         var parts = s.Split('/');
-        if (parts.Length < 3) throw new FormatException("Invalid format for VideoSourceIdentifier.");
+        
+        if (parts.Length < 2) throw new FormatException("Invalid format for VideoSourceIdentifier.");
 
         var hostName = HostName.Parse(parts[0], provider);
-        var createdTime = DateTime.ParseExact(parts[^1], "yyyyMMdd_HHmmss", provider);
+        
+        var createdTime = parts.Length == 3 ? DateTime.ParseExact(parts[^1], "yyyyMMdd_HHmmss", provider) : DateTime.MinValue;
 
         if (parts[1].StartsWith("cam-"))
         {
@@ -73,14 +75,17 @@ public readonly struct VideoRecordingIdentifier : IParsable<VideoRecordingIdenti
         if (string.IsNullOrEmpty(s)) return false;
 
         var parts = s.Split('/');
-        if (parts.Length < 3) return false;
+        if (parts.Length < 2) return false;
 
         if (!HostName.TryParse(parts[0], provider, out var hostName)) return false;
 
-        if (!DateTime.TryParseExact(parts[^1], "yyyyMMdd_HHmmss", provider, System.Globalization.DateTimeStyles.None,
+        
+        if (parts.Length == 3 && !DateTime.TryParseExact(parts[^1], "yyyyMMdd_HHmmss", provider, System.Globalization.DateTimeStyles.None,
                 out var createdTime))
             return false;
-
+        
+        else createdTime = DateTime.MinValue;
+        
         if (parts[1].StartsWith("cam-"))
         {
             if (int.TryParse(parts[1].Substring(4), out var cameraNumber))
@@ -104,11 +109,10 @@ public readonly struct VideoRecordingIdentifier : IParsable<VideoRecordingIdenti
 
     public override string ToString()
     {
-        if (CameraNumber.HasValue)
-            return $"{HostName}/cam-{CameraNumber.Value}/{CreatedTime.ToString("yyyyMMdd_HHmmss")}";
-        else if (!string.IsNullOrEmpty(FileName))
+        
+        if (!string.IsNullOrEmpty(FileName))
             return $"{HostName}/file-{FileName}/{CreatedTime.ToString("yyyyMMdd_HHmmss")}";
-        else
-            throw new InvalidOperationException("VideoIdentifier must have either a CameraNumber or a FileName.");
+        return $"{HostName}/cam-{CameraNumber ?? 0}/{CreatedTime.ToString("yyyyMMdd_HHmmss")}";
+        
     }
 }
