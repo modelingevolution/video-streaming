@@ -17,12 +17,8 @@ public readonly struct VideoRecordingDevice : IParsable<VideoRecordingDevice>
 
     public override string ToString()
     {
-        if (CameraNumber.HasValue)
-            return $"{HostName}/cam-{CameraNumber.Value}";
-        else if (!string.IsNullOrEmpty(FileName))
-            return $"{HostName}/file-{FileName}";
-        else
-            throw new InvalidOperationException("VideoRecordingDevice must have either a CameraNumber or a FileName.");
+        return !string.IsNullOrEmpty(FileName) ? $"{HostName}/file-{FileName}" 
+            : $"{HostName}/cam-{CameraNumber ?? 0}";
     }
     public static implicit operator VideoRecordingDevice(VideoAddress addr)
     {

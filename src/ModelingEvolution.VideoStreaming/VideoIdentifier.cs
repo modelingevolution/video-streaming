@@ -110,10 +110,8 @@ public readonly struct VideoRecordingIdentifier : IParsable<VideoRecordingIdenti
 
     public override string ToString()
     {
-        
-        if (!string.IsNullOrEmpty(FileName))
-            return $"{HostName}/file-{FileName}/{CreatedTime.ToString("yyyyMMdd_HHmmss")}";
-        return $"{HostName}/cam-{CameraNumber ?? 0}/{CreatedTime.ToString("yyyyMMdd_HHmmss")}";
-        
+        var ct = CreatedTime.ToString("yyyyMMdd_HHmmss");
+        return !string.IsNullOrEmpty(FileName) ? $"{HostName}/file-{FileName}/{ct}" 
+            : $"{HostName}/cam-{CameraNumber ?? 0}/{ct}";
     }
 }
