@@ -7,6 +7,7 @@
 @inject VideoRecordingDeviceModel rm
 @inject IConfiguration _config
 @inject ICommandBus _bus
+@inject ISnackbar _snackBack
 @if (Address.HasValue)
 {
     if (_config.IsLabelingModeEnabled())
@@ -56,15 +57,22 @@
         }
     }
 
- 
+
     private async Task ToggleDatasetRecording()
     {
         if (!Address.HasValue) return;
 
-        if (!_vm.IsRecording)
-            await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StartDatasetRecording());
-        else
-            await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StopDatasetRecording());
+        try
+        {
+            if (!_vm.IsRecording)
+                await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StartDatasetRecording());
+            else
+                await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StopDatasetRecording());
+        }
+        catch (Exception ex)
+        {
+            _snackBack.Add("Unexpected error occured: " + ex.Message, Severity.Error);
+        }
 
     }
 
