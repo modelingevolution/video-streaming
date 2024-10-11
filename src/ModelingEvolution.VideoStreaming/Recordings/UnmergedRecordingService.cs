@@ -44,9 +44,12 @@ public class UnmergedRecordingService : IPartialYuvFrameHandler, IDisposable, IU
     public async Task<VideoRecordingIdentifier> Start()
     {
         if (ShouldRun) return _currentRecording;
+        _logger.LogDebug("Start - 1");
         _outputDirectory = GetOutputDirectory(Address, Address.Tags, out var id);
+        _logger.LogDebug("Start - 2");
         _cts = new CancellationTokenSource();
         ShouldRun = true;
+        _logger.LogDebug("Start - 3");
         _ = Task.Factory.StartNew(RunWriter, TaskCreationOptions.LongRunning);
         _currentRecording = id;
         return id;
@@ -54,6 +57,7 @@ public class UnmergedRecordingService : IPartialYuvFrameHandler, IDisposable, IU
 
     private async Task RunWriter()
     {
+        _logger.LogDebug("Run writter");
         await WriteFiles();
     }
 
