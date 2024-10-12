@@ -36,7 +36,6 @@ public readonly struct VideoRecordingDevice : IParsable<VideoRecordingDevice>
     }
     public static VideoRecordingDevice Parse(string s, IFormatProvider? provider)
     {
-        Console.WriteLine($"==> Parsing VideoRecordingDevice: {s}");
         if (string.IsNullOrEmpty(s)) 
             throw new ArgumentNullException(nameof(s));
 

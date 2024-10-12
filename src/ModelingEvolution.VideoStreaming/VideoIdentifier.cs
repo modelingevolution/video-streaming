@@ -17,7 +17,6 @@ public readonly struct VideoRecordingIdentifier : IParsable<VideoRecordingIdenti
     public required DateTime CreatedTime { get; init; }
     public static VideoRecordingIdentifier Parse(string s, IFormatProvider? provider)
     {
-        Console.WriteLine($"==> Parsing VideoRecordingIdentifier: {s}");
         if (string.IsNullOrEmpty(s)) throw new ArgumentNullException(nameof(s));
 
         var parts = s.Split('/');

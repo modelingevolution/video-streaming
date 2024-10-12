@@ -45,12 +45,11 @@ public class UnmergedRecordingService : IPartialYuvFrameHandler, IDisposable, IU
     {
         if (ShouldRun) 
             return _currentRecording;
-        _logger.LogDebug("Start - 1");
+        
         _outputDirectory = GetOutputDirectory(Address, Address.Tags, out var id);
-        _logger.LogDebug("Start - 2");
         _cts = new CancellationTokenSource();
         ShouldRun = true;
-        _logger.LogDebug("Start - 3");
+        
         _ = Task.Factory.StartNew(RunWriter, TaskCreationOptions.LongRunning);
         _currentRecording = id;
         return id;

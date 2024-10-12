@@ -17,15 +17,12 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
     {
         try
         {
-            logger.LogDebug("Start recording dataset - 1");
             var srv = manager.Get(dev);
-            logger.LogDebug("Start recording dataset - 2");
             if (srv != null)
             {
-                logger.LogDebug("Start recording dataset - 3");
                 var id = await srv.Start();
                 var ev = new DatasetRecordingStarted();
-                logger.LogDebug("Start recording dataset - 4");
+         
                 await plumber.AppendEvent(ev, id);
             }
             else logger.LogWarning("No device found: " + dev.ToString());
