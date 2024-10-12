@@ -7,8 +7,9 @@
         <MudCard>
             <MudForm Model="_vm">
                 <MudCardContent>
-                    <MudText Align="Align.Center">@_vm.Data.PublishState</MudText>
-
+                    <Observable Source="@_vm.Data">
+                        <MudText Align="Align.Center">@_vm.Data.PublishState</MudText>
+                    </Observable>
                     <MudTextField @bind-Value="_vm.Command.Name"
                                   For="@(() => _vm.Command.Name)"
                                   Immediate="true"
@@ -56,17 +57,23 @@
                     <tbody>
                     <SimpleTableProperty Label="Frame count" Value="@_vm.FrameCount"/>
                     <SimpleTableProperty Label="Validation error" Value="@_vm.Error" Color="Color.Error"/>
-                    <SimpleTableProperty Label="Publis error" Value="@_vm.Data.PublishError" Color="Color.Error"/>
+                    <Observable Source="@_vm.Data">
+                        <SimpleTableProperty Label="Publis error" Value="@_vm.Data.PublishError" Color="Color.Error"/>
+                    </Observable>
                     </tbody>
                 </MudSimpleTable>
             </MudCardContent>
         </MudCard>
+        <DatasetViewer ControlsEnabled="true" 
+                       Name="@_vm.Data.DirectoryName" 
+                       Number="@_vm.FrameSet.FirstOrDefault()" FrameSet="@_vm.FrameSet.ToArray()"></DatasetViewer>
     </MudStack>
 }
 
 @code {
 
     private Guid? _id;
+
 
     [Parameter]
     public string? Id

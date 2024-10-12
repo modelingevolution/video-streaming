@@ -22,6 +22,7 @@ namespace ModelingEvolution.VideoStreaming.Ui.Pages
             get => Command.CalculateSet(_frames.Keys).Count();
         }
 
+        public IEnumerable<ulong> FrameSet => Command.CalculateSet(_frames.Keys);
         public void Init(Guid id)
         {
             this._dataset = model.GetById(id);

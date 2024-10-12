@@ -1,0 +1,90 @@
+﻿@using ModelingEvolution.Controls.Blazor.AnchorPanelControl
+@using ModelingEvolution.VideoStreaming.Recordings
+@inject VideoImgFrameProvider _srv
+<AnchorPanel Id="@Id" >
+    <Dock>
+        <img src="@ImgSrc" class="anchor-dock" width="@_w" height="@_h"/>
+    </Dock>
+    <Anchors>
+        <AnchorLowerCenter>
+            <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center">
+                @if (ControlsEnabled)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowLeft" OnClick="OnLeft"></MudIconButton>
+                    <MudText>@_selectedFrame</MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowRight" OnClick="OnRight"></MudIconButton>
+                }
+            </MudStack>
+        </AnchorLowerCenter>
+    </Anchors>
+</AnchorPanel>
+
+@code {
+    private static int _idSec = 0;
+    private readonly int _id = _idSec++;
+    private string Id => $"dataset-viewer-{_id})";
+    private string _url;
+    private ulong _selectedFrame = 0;
+
+    private ulong _number;
+    private FramesJson _doc;
+    private int _w,_h;
+
+    private string ImgSrc => $"/video/{Name}/{SelectedFrame}";
+
+    private ulong SelectedFrame
+    {
+        get => _selectedFrame;
+        set => _selectedFrame = value;
+    }
+
+    [Parameter] public int Scale { get; set; } = 2;
+
+    [Parameter]
+    public bool ControlsEnabled { get; set; }
+
+    [Parameter]
+    public ulong Number
+    {
+        get => _number;
+        set => _number = value;
+    }
+    [Parameter]
+    public ulong[] FrameSet { get; set; }
+
+    [Parameter]
+    public string Name { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        SelectedFrame = _number;
+        _doc = _srv[Name];
+        _w = 1920 / Scale;
+        _h = 1080 / Scale;
+    }
+
+    private void OnLeft()
+    {
+        if (FrameSet.Length > 0)
+        {
+            var index = Array.IndexOf(FrameSet, _selectedFrame);
+            if (index > 0)
+                _selectedFrame = FrameSet[index - 1];
+        }
+        else 
+            _selectedFrame = _doc.GetPrevKey(_selectedFrame);
+    }
+
+    private void OnRight()
+    {
+        if (FrameSet.Length > 0)
+        {
+            var index = Array.IndexOf(FrameSet, _selectedFrame);
+            if (index < FrameSet.Length - 1)
+                _selectedFrame = FrameSet[index + 1];
+        }
+        else
+        _selectedFrame = _doc.GetNextKey(_selectedFrame);
+    }
+
+}
