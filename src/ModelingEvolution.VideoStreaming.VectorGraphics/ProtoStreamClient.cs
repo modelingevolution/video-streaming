@@ -224,7 +224,8 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Duplicated frame detected! FrameId: {header.FrameId}, LayerId: {header.LayerId}");
+                    // this can happen because same frame can be written from many parts.
+                    //throw new InvalidOperationException($"Duplicated frame detected! FrameId: {header.FrameId}, LayerId: {header.LayerId}");
                 }
             }
             else
