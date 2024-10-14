@@ -234,7 +234,6 @@ public unsafe readonly struct YuvFrame
             return Data + width * height + width / 4;
         }
     }
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public YuvPixel GetPixel(int x, int y)
     {
         int width = Info.Width;
@@ -242,19 +241,15 @@ public unsafe readonly struct YuvFrame
         // Check for valid coordinates
         if (x < 0 || x >= width || y < 0 || y >= height)
             throw new ArgumentOutOfRangeException(nameof(x), "x or y is out of range");
-        
-
         // Calculate offsets
         int yOffset = y * width + x;
         int uvWidth = width / 2;
         int uvHeight = height / 2;
         int uvOffset = (y / 2) * uvWidth + (x / 2);
-
         // Access Y, U, and V values
         byte yVal = Data[yOffset];
         byte uVal = Data[width * height + uvOffset];
-        byte vVal = Data[width * height + uvOffset + uvWidth / 2];
-
+        byte vVal = Data[width * height + uvOffset + uvWidth * uvHeight];
         return new YuvPixel(yVal, uVal, vVal);
     }
 

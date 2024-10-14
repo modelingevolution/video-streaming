@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -16,6 +17,7 @@ using ModelingEvolution.VideoStreaming.VectorGraphics;
 using Xunit.Abstractions;
 using Rectangle = System.Drawing.Rectangle;
 using Serializer = ProtoBuf.Serializer;
+using Emgu.CV.Structure;
 
 namespace ModelingEvolution.VideoStreaming.Tests
 {
@@ -58,6 +60,23 @@ namespace ModelingEvolution.VideoStreaming.Tests
             var mat = frame.ToMatFrame();
             mat.Data.Save("sports-resized.out.jpg");
         }
+
+        [Fact]
+        public void YuvConvert2()
+        {
+            var frame = FrameLoader.Load("sports-resized.jpg");
+            var bitmap = new Bitmap(frame.Info.Width, frame.Info.Height);
+
+            for (int y = 0; y < frame.Info.Width; y++)
+            for (int x = 0; x < frame.Info.Height; x++)
+            {
+                var pixel = (System.Drawing.Color)frame.GetPixel(x, y);
+                // set destination[x,y] = pixel; 
+                bitmap.SetPixel(x, y, pixel);
+            }
+            bitmap.Save("sports-resized_2.jpg");
+        }
+        
         [Fact]
         
         public unsafe void Process()
