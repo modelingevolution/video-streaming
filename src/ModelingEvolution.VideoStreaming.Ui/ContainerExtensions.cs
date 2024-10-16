@@ -11,6 +11,7 @@ public static class ContainerExtensions
         services.AddSingleton<ServerVm>();
         services.AddScoped<DatasetExplorerVm>();
         services.AddScoped<UploadDatasetVm>();
+        services.AddScoped<SwitchCameraButtonVm>();
         services.AddSingleton<FreeSpaceVmProvider>();
         return services;
     }

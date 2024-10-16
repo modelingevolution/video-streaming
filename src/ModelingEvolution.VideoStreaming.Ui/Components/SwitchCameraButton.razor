@@ -1,11 +1,9 @@
-﻿@using Microsoft.Extensions.Logging
-@inject VideoStreamingServer _srv
-@inject NavigationManager _nm
-@inject ILogger<SwitchCameraButton> logger
-@if (_srv.HasManySourceStreams)
+﻿
+@inject SwitchCameraButtonVm _vm
+@if (_vm.HasManyStreams)
 {
     <MudIconButton Style="padding:24px" Icon="@Icons.Material.Filled.Cameraswitch"
-                   OnClick="ToggleSource" />
+                   OnClick="@_vm.Switch" />
 }
 
 @code {
@@ -13,41 +11,5 @@
     [Parameter]
     public VideoAddress Address { get; set; }
 
-    static int i = 0;
 
-    private async Task ToggleSource()
-    {
-        try
-        {
-            logger.LogInformation($"Switching to nx camera from: {Address.ToString()}, available streams: {_srv.Streams.Count}");
-            //var i = _srv.Streams.IndexOf(x => x.VideoAddress == Address);
-            if (i == -1)
-            {
-                logger.LogError("Cannot switch camera, because current camera is not found.");
-                i = 0;
-            }
-            else
-                i = (i + 1) % _srv.Streams.Count;
-            
-
-            var url = new Uri(_nm.Uri);
-
-            var baseUrl = url.GetLeftPart(UriPartial.Path);
-            var lastSlashIndex = baseUrl.LastIndexOf('/');
-            var urlWithoutLastSegment = baseUrl.Substring(0, lastSlashIndex + 1);
-
-            if (i >= _srv.Streams.Count)
-            {
-                logger.LogError("No camera available to switch to.");
-                return;
-            }
-            var newUrl = $"{urlWithoutLastSegment}{_srv.Streams[i].VideoAddress.StreamName}";
-            
-            _nm.NavigateTo(newUrl);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,"Cannot change camera: " + ex.Message);
-        }
-    }
 }
