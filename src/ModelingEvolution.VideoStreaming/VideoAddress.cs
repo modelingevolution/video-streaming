@@ -246,7 +246,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
                SourceApi == address.SourceApi &&
                !Tags.Except(address.Tags).Any() &&
                File == address.File &&
-               CameraNumber == address.CameraNumber &&
+               (CameraNumber ?? 0) == (address.CameraNumber ?? 0) &&
                VideoSource == address.VideoSource;
     }
 }

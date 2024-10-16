@@ -1,5 +1,6 @@
 using EventPi.Services.Camera;
 using FluentAssertions;
+using System;
 
 namespace ModelingEvolution.VideoStreaming.Tests;
 
@@ -16,6 +17,15 @@ public class VideoRecordingDeviceTests
 }
 public class VideoAddressTests
 {
+    [Fact]
+    public void EqualsTest()
+    {
+        string url = "tcp+shm+mjpeg://localhost/a?camera=0";
+        string url2 = "tcp+shm+mjpeg://localhost/a";
+        VideoAddress va = VideoAddress.Parse(url);
+        VideoAddress va2 = VideoAddress.Parse(url2);
+        va.Should().BeEquivalentTo(va2);
+    }
     [Fact]
     public void ComplexUri()
     {
