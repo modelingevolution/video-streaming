@@ -7,7 +7,7 @@ public static class VideoStreamingModule
 {
     public static string[] GetConnections(this IConfiguration conf)
     {
-        return (conf.GetValue<string>("Connections") ?? String.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries);
+        return (conf.GetValue<string>("Connections") ?? String.Empty).Split(new [] {',',';',' '}, StringSplitOptions.RemoveEmptyEntries);
         
     }
 
