@@ -18,14 +18,22 @@ public class VideoRecordingDeviceTests
 public class VideoAddressTests
 {
     [Fact]
-    public void EqualsTest()
+    public void EqualsTest1()
     {
-        string url = "tcp+shm+mjpeg://localhost/a?camera=0";
-        string url2 = "tcp+shm+mjpeg://localhost/a";
+        string url = "shm+mjpeg://localhost/default";
+        string url2 = "shm+mjpeg://localhost/default_1?camera=1";
         VideoAddress va = VideoAddress.Parse(url);
+        VideoAddress va_roundTrip = VideoAddress.Parse(va.ToString());
+        
         VideoAddress va2 = VideoAddress.Parse(url2);
-        va.Should().BeEquivalentTo(va2);
+        VideoAddress va2_roundTrip = VideoAddress.Parse(va2.ToString());
+        
+        va.Should().NotBe(va2);
+        va_roundTrip.Should().Be(va);
+        va2_roundTrip.Should().Be(va2);
     }
+
+    
     [Fact]
     public void ComplexUri()
     {

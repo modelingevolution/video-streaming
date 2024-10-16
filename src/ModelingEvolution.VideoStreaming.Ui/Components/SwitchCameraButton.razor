@@ -13,12 +13,14 @@
     [Parameter]
     public VideoAddress Address { get; set; }
 
+    static int i = 0;
+
     private async Task ToggleSource()
     {
         try
         {
-            logger.LogInformation($"Switching to nx camera from: {Address}, available streams: {_srv.Streams.Count}");
-            var i = _srv.Streams.IndexOf(x => x.VideoAddress == Address);
+            logger.LogInformation($"Switching to nx camera from: {Address.ToString()}, available streams: {_srv.Streams.Count}");
+            //var i = _srv.Streams.IndexOf(x => x.VideoAddress == Address);
             if (i == -1)
             {
                 logger.LogError("Cannot switch camera, because current camera is not found.");

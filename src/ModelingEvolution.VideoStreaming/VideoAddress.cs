@@ -171,24 +171,29 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
         File = file;
         CameraNumber = cameraNr;
         VideoSource = vs;
+        _str = BuildStr();
+    }
+
+    private string BuildStr()
+    {
         StringBuilder sb = new($"{VideoTransport.FlagToString()}+{Codec}".ToLower());
         sb.Append($"://{Host}");
-        if (port > 0)
+        if (Port > 0)
             sb.Append($":{Port}");
         if (!string.IsNullOrWhiteSpace(StreamName))
             sb.Append($"/{StreamName}");
         var query = false;
-        if (tags.Any())
+        if (Tags.Any())
         {
-            string tagsParam = string.Join(',', tags);
+            string tagsParam = string.Join(',', Tags);
             sb.Append($"?tags={tagsParam}");
             query = true;
         }
 
-        if (resolution != VideoResolution.FullHd)
+        if (Resolution != VideoResolution.FullHd)
         {
             sb.Append(!query ? "?" : "&");
-            sb.Append($"resolution={resolution}");
+            sb.Append($"resolution={Resolution}");
             query = true;
         }
         if (!string.IsNullOrWhiteSpace(File))
@@ -198,23 +203,23 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
             query = true;
         }
         
-        if(cameraNr.HasValue && cameraNr > 0)
+        if(CameraNumber.HasValue && CameraNumber > 0)
         {
             sb.Append(!query ? "?" : "&");
-            sb.Append($"camera={cameraNr.Value}");
+            sb.Append($"camera={CameraNumber.Value}");
             query = true;
         }
 
-        if (vsapi.HasValue)
+        if (SourceApi.HasValue)
         {
             sb.Append(!query ? "?" : "&");
-            sb.Append($"video-api={vsapi.Value}");
+            sb.Append($"video-api={SourceApi.Value}");
             query = true;
         }
-        _str = sb.ToString();
+        return sb.ToString();
     }
 
-    public override string ToString() => _str;
+    public override string ToString() => _str ?? BuildStr();
     public static VideoAddress Parse(string s, IFormatProvider? provider = null)
     {
         return VideoAddress.CreateFrom(new System.Uri(s));
@@ -243,7 +248,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
                Port == address.Port &&
                VideoTransport == address.VideoTransport &&
                Codec == address.Codec &&
-               SourceApi == address.SourceApi &&
+               (VideoSource != VideoSource.Camera || SourceApi == address.SourceApi) &&
                !Tags.Except(address.Tags).Any() &&
                File == address.File &&
                (CameraNumber ?? 0) == (address.CameraNumber ?? 0) &&
