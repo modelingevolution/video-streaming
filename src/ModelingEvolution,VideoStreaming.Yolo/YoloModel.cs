@@ -92,7 +92,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo
 
         public void Dispose()
         {
-            if (_tensor == null) return;
+            if (_tensor == null) 
+                return;
             _tensor = null;
             owner.Dispose();
         }
@@ -287,7 +288,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             using var s = Performance.MeasurePostProcessing();
             
             var result = _parser.ProcessTensorToResult(output, *interestArea, threshold);
-
+            output.Dispose();
+            
             return new YoloResult<T>(result)
             {
                 ImageSize = frame->Info.Size
@@ -498,6 +500,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         }
         private SegmentationPolygon? ComputePolygon()
         {
+            var sw = Stopwatch.StartNew(); sw.Start();
+            
             var mat = Mask;
             using var thresholded = new Mat();
             CvInvoke.Threshold(mat, thresholded, Threshold * 255, 255, ThresholdType.Binary);
@@ -522,6 +526,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             Debug.Assert(points.Count > 2);
             
             var result = new SegmentationPolygon(points,mat.Size);
+            
+            Debug.WriteLine("Compute Polygon in: " + sw.ElapsedMilliseconds);
             
             return result;
         }
