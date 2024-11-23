@@ -7,10 +7,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo;
 
 public class AnnotationResult : IDisposable
 {
-    public readonly record struct AnnotationMask(Mat Mask, int ClassId)
-    {
-        
-    }
+    public readonly record struct AnnotationMask(Mat Mask, int ClassId);
     private IntPtr _nativePtr;
     private readonly int _dstW;
     private readonly int _dstH;

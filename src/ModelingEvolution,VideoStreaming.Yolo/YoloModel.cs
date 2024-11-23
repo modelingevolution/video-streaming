@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
+using System.Drawing;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using Emgu.CV.Dnn;
@@ -13,14 +14,25 @@ using Microsoft.Extensions.Options;
 
 namespace ModelingEvolution_VideoStreaming.Yolo
 {
-    public class YoloResult<TPrediction>(TPrediction[] predictions) : YoloResult, IDisposable, 
-        IEnumerable<TPrediction> where TPrediction : IYoloPrediction<TPrediction>
+    public interface ISegmentationResult<out T> : IEnumerable<T>, IDisposable where T : IDisposable
     {
-        public TPrediction this[int index] => predictions[index];
+        Size DestinationSize { get; }
+        int Count { get; }
+        Rectangle Roi { get; }
+        float Threshold { get; }
+        T this[int index] { get; }
+    }
+
+    public class SegmentationResult<T>(T[] predictions) : ISegmentationResult<T> where T:IDisposable
+        
+    {
+        public required Size ImageSize { get; init; }
+        public required Size DestinationSize { get; init; }
+        public T this[int index] => predictions[index];
 
         public int Count => predictions.Length;
-
-        public override string ToString() => TPrediction.Describe(predictions);
+        public required Rectangle Roi { get; init; }
+        public required float Threshold { get; init; }
         public void Dispose()
         {
             for (int i = 0; i < predictions.Length; i++)
@@ -31,7 +43,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
 
         #region Enumerator
 
-        public IEnumerator<TPrediction> GetEnumerator()
+        public IEnumerator<T> GetEnumerator()
         {
             foreach (var item in predictions)
             {
@@ -39,8 +51,12 @@ namespace ModelingEvolution_VideoStreaming.Yolo
             }
         }
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         #endregion
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 }

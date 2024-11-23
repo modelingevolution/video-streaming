@@ -1,5 +1,7 @@
 #include <arm_neon.h>
 #include <cstddef>
+
+#include "Frame.h"
 #pragma once
 
 class ArrayOperations {

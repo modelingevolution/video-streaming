@@ -2,7 +2,7 @@
 
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
-public class YoloConfiguration
+public class YoloOnnxConfiguration
 {
     /// <summary>
     /// Specify the minimum confidence value for including a result. Default is 0.3f.

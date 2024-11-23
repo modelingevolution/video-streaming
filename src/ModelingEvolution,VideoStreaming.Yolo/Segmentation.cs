@@ -7,12 +7,22 @@ using Rectangle = System.Drawing.Rectangle;
 
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
-public class Segmentation : Detection, IYoloPrediction<Segmentation>
+public interface ISegmentation : IDisposable
+{
+    Mat Mask { get;  }
+    
+    PolygonGraphics? Polygon { get; }
+    SegmentationClass Name { get; init; }
+    float Confidence { get;  }
+    Rectangle Bounds { get;  }
+}
+
+public class Segmentation : Detection, IYoloPrediction<Segmentation>, ISegmentation
 {
     public required Mat Mask { get; init; }
-    public required Rectangle InterestRegion { get; init; }
+    public required Rectangle Roi { get; init; }
     public required float Threshold { get; init; }
-    private SegmentationPolygon? _polygon;
+    private PolygonGraphics? _polygon;
     private bool _polygonComputed;
         
     protected override void Dispose(bool disposing)
@@ -23,7 +33,7 @@ public class Segmentation : Detection, IYoloPrediction<Segmentation>
             _polygon?.Dispose();
     }
 
-    public SegmentationPolygon? Polygon
+    public PolygonGraphics? Polygon
     {
         get
         {
@@ -36,7 +46,7 @@ public class Segmentation : Detection, IYoloPrediction<Segmentation>
             return _polygon;
         }
     }
-    private SegmentationPolygon? ComputePolygon()
+    private PolygonGraphics? ComputePolygon()
     {
         var sw = Stopwatch.StartNew(); sw.Start();
             
@@ -63,7 +73,7 @@ public class Segmentation : Detection, IYoloPrediction<Segmentation>
         var points = largestContour.ToArrayBuffer();
         Debug.Assert(points.Count > 2);
             
-        var result = new SegmentationPolygon(points,mat.Size);
+        var result = new PolygonGraphics(points,mat.Size);
             
         Debug.WriteLine("Compute Polygon in: " + sw.ElapsedMilliseconds);
             

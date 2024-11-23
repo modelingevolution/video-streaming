@@ -1,6 +1,7 @@
 #include "ArrayOperations.h"
 #include <cmath>
 #include <algorithm>
+#include <arm_neon.h>
 
 void ArrayOperations::ConvertToUint8(const float* inputBuffer, uint8_t* outputBuffer, size_t featureSize)
 {
@@ -57,3 +58,5 @@ bool ArrayOperations::ContainsGreaterThan(const float* buffer, size_t size, floa
 
     return false;
 }
+
+

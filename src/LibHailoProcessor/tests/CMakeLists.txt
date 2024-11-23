@@ -7,7 +7,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 enable_testing()
 # Add test executable
-add_executable(MyTests test_main.cpp) 
+add_executable(MyTests test_main.cpp "ArrayOperationsTest.cpp") 
 
 #target_link_libraries(MyTests PRIVATE HailoProcessor )
 target_link_libraries(MyTests PRIVATE HailoProcessor gtest_main gtest )

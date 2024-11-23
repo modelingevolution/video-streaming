@@ -1,13 +1,9 @@
 ﻿namespace ModelingEvolution_VideoStreaming.Yolo;
 
-public class YoloName(int id, string name)
+public readonly record struct SegmentationClass(int Id, string Name)
 {
-    public int Id { get; } = id;
-
-    public string Name { get; } = name;
-
     public override string ToString()
     {
-        return $"{Id}: '{Name}'";
+        return $"{Name}({Id})";
     }
 }

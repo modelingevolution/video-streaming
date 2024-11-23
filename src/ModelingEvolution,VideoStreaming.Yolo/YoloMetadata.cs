@@ -17,7 +17,7 @@ public class YoloMetadata
 
     public YoloTask Task { get; }
 
-    public YoloName[] Names { get; }
+    public SegmentationClass[] Names { get; }
 
     public YoloArchitecture Architecture { get; }
 
@@ -80,14 +80,14 @@ public class YoloMetadata
         return new Size(x, y);
     }
 
-    private static YoloName[] ParseNames(string text)
+    private static SegmentationClass[] ParseNames(string text)
     {
         text = text[1..^1];
 
         var split = text.Split(", ");
         var count = split.Length;
 
-        var names = new YoloName[count];
+        var names = new SegmentationClass[count];
 
         for (int i = 0; i < count; i++)
         {
@@ -98,7 +98,7 @@ public class YoloMetadata
             var id = int.Parse(valueSplit[0]);
             var name = valueSplit[1][1..^1].Replace('_', ' ');
 
-            names[i] = new YoloName(id, name);
+            names[i] = new SegmentationClass(id, name);
         }
 
         return names;

@@ -9,7 +9,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
     public static class DenseTensorExtensions
     {
         public static unsafe void CopyInputFromYuvFrame(this DenseTensor<float> tensor, 
-            YuvFrame* frame, Rectangle* interestRegion, Size* targetImgSz)
+            YuvFrame* frame, in Rectangle interestRegion,in Size targetImgSz)
         {
             TensorPreprocessor locals = new TensorPreprocessor(frame, 
                 interestRegion, 

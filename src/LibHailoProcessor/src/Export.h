@@ -3,7 +3,7 @@
 
 #define EXPORT_API __attribute__((visibility("default")))
 
-__thread static HailoError LAST_ERROR;
+static __thread HailoError* LAST_ERROR = nullptr;
 
 EXPORT_API uint8* annotation_result_get_mask(AnnotationResult* ptr, int index);
 EXPORT_API int    annotation_result_get_classid(AnnotationResult* ptr, int index);

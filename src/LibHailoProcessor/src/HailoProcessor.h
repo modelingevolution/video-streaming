@@ -26,6 +26,7 @@ class HailoException : public std::exception
 public:
 	HailoException(const hailo_status st);
 	HailoException(const string& str);
+	HailoException(const HailoException& c);
 	hailo_status GetStatus();
 	virtual const char* what() const noexcept override;
 private:
@@ -38,10 +39,10 @@ public:
 	HailoError();
 	void SetLastError(const HailoException& ex);
 	bool IsOk();
-	HailoException& LastException();
+	HailoException& LastException() const;
 private:
 	bool _isSet = false;
-	HailoException _hailoException;
+	HailoException* _hailoException;
 };
 
 class HailoProcessor {

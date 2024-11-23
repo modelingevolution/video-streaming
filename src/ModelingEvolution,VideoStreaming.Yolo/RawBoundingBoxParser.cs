@@ -4,7 +4,7 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
 internal class RawBoundingBoxParser(YoloMetadata metadata,
-    YoloConfiguration configuration,
+    YoloOnnxConfiguration onnxConfiguration,
     INonMaxSuppressionService nonMaxSuppression) : IRawBoundingBoxParser
 {
     private T[] ParseYoloV8<T>(DenseTensor<float> tensor) where T : IRawBoundingBox<T>
@@ -32,7 +32,7 @@ internal class RawBoundingBoxParser(YoloMetadata metadata,
             {
                 var confidence = tensorSpan[(nameIndex + 4) * stride1 + boxIndex];
 
-                if (confidence <= configuration.Confidence)
+                if (confidence <= onnxConfiguration.Confidence)
                 {
                     continue;
                 }
@@ -48,7 +48,7 @@ internal class RawBoundingBoxParser(YoloMetadata metadata,
             }
         }
 
-        return nonMaxSuppression.Suppress(boxesSpan[..boxesIndex], configuration.IoU);
+        return nonMaxSuppression.Suppress(boxesSpan[..boxesIndex], onnxConfiguration.IoU);
     }
 
     private T[] ParseYoloV10<T>(DenseTensor<float> tensor) where T : IRawBoundingBox<T>
@@ -75,7 +75,7 @@ internal class RawBoundingBoxParser(YoloMetadata metadata,
 
             var confidence = tensorSpan[boxOffset + 4 * stride2];
 
-            if (confidence <= configuration.Confidence)
+            if (confidence <= onnxConfiguration.Confidence)
             {
                 continue;
             }
@@ -91,7 +91,7 @@ internal class RawBoundingBoxParser(YoloMetadata metadata,
             boxesSpan[boxesIndex++] = box;
         }
 
-        return nonMaxSuppression.Suppress(boxesSpan[..boxesIndex], configuration.IoU);
+        return nonMaxSuppression.Suppress(boxesSpan[..boxesIndex], onnxConfiguration.IoU);
     }
 
     public T[] Parse<T>(DenseTensor<float> tensor) where T : IRawBoundingBox<T>

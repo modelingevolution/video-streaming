@@ -15,7 +15,7 @@ public class YoloPredictorOptions
 
     public SessionOptions? SessionOptions { get; init; }
 
-    public YoloConfiguration? Configuration { get; init; }
+    public YoloOnnxConfiguration? Configuration { get; init; }
 
     internal InferenceSession CreateSession(byte[] model)
     {

@@ -6,10 +6,14 @@ HailoException::HailoException(const hailo_status st) : std::exception(), _statu
 	this->_msg = hailo_get_status_message(st);
 }
 
-HailoException::HailoException(const string& str)
+HailoException::HailoException(const string& str) : _status(HAILO_SUCCESS)
 {
 	this->_msg = str.c_str();
-	this->_status = HAILO_SUCCESS;
+}
+
+HailoException::HailoException(const HailoException& c) : _status(c._status), _msg(c._msg)
+{
+
 }
 
 hailo_status HailoException::GetStatus()
@@ -22,13 +26,16 @@ const char* HailoException::what() const noexcept
 	return this->_msg;
 }
 
-HailoError::HailoError() : _hailoException(HAILO_SUCCESS)
+HailoError::HailoError() 
 {
+	_hailoException = nullptr;
 }
 
 void HailoError::SetLastError(const HailoException& ex)
 {
-	this->_hailoException = ex;
+	if (_hailoException != nullptr) 
+		delete _hailoException;
+	this->_hailoException = new HailoException(ex);
 }
 
 bool HailoError::IsOk()
@@ -36,9 +43,9 @@ bool HailoError::IsOk()
 	return !this->_isSet;
 }
 
-HailoException& HailoError::LastException() 
+HailoException& HailoError::LastException() const
 {
-	return this->_hailoException;
+	return *this->_hailoException;
 }
 
 HailoProcessor* HailoProcessor::Load(const string &hefFile)

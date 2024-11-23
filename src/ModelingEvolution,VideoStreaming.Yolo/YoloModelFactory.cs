@@ -1,17 +1,33 @@
 ﻿namespace ModelingEvolution_VideoStreaming.Yolo;
 
-public static class YoloModelFactory
+public static class ModelFactory
 {
-    public static IYoloModelRunner<Segmentation> LoadSegmentationModel(string segYoloModelFile)
+    public static ISegmentationModelRunner<ISegmentation> LoadSegmentationModel(string modelFullPath)
+    {
+        var extension = Path.GetExtension(modelFullPath);
+        if(extension == ".onnx")
+            return LoadOnnxSegmentationModel(modelFullPath);
+        else if (extension == ".hef")
+            return LoadHefSegmentationModel(modelFullPath);
+        throw new NotSupportedException($"{extension} is not supported.");
+    }
+
+    private static ISegmentationModelRunner<ISegmentation> LoadHefSegmentationModel(string modelFullPath)
+    {
+        if (File.Exists(modelFullPath))
+            return new HailoModelRunner(modelFullPath);
+        throw new FileNotFoundException("Model file was not found.", modelFullPath);
+    }
+
+    private static ISegmentationModelRunner<ISegmentation> LoadOnnxSegmentationModel(string segYoloModelFile)
     {
         var options = new YoloPredictorOptions();
-
         var model = File.ReadAllBytes(segYoloModelFile);
         var session = options.CreateSession(model);
         var metadata = new YoloMetadata(session);
-        YoloConfiguration configuration = new YoloConfiguration();
-        var bbParser = new RawBoundingBoxParser(metadata, configuration, new NonMaxSuppressionService());
+        YoloOnnxConfiguration onnxConfiguration = new YoloOnnxConfiguration();
+        var bbParser = new RawBoundingBoxParser(metadata, onnxConfiguration, new NonMaxSuppressionService());
         var segParser = new SegmentationParser(metadata, bbParser);
-        return new YoloModelRunner<Segmentation>(segParser, session, configuration);
+        return new YoloOnnxModelRunner(segParser, session, onnxConfiguration);
     }
 }

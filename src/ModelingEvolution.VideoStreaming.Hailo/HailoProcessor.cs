@@ -40,7 +40,11 @@ public class HailoProcessor : IDisposable
             throw new ArgumentNullException("ptr cannot be zero");
         _nativePtr = ptr;
     }
-
+    public unsafe AnnotationResult ProcessFrame(byte* frame, in Size frameSize, in Rectangle roi, in Size dst)
+    {
+        return ProcessFrame(frame, frameSize.Width, frameSize.Height, roi.X, roi.Y, roi.Width, roi.Height, dst.Width,
+            dst.Height);
+    }
     public AnnotationResult ProcessFrame(byte[] frame, in Size frameSize, in Rectangle roi, in Size dst)
     {
         return ProcessFrame(frame, frameSize.Width, frameSize.Height, roi.X, roi.Y, roi.Width, roi.Height, dst.Width,
@@ -53,11 +57,11 @@ public class HailoProcessor : IDisposable
         
         fixed (byte *ptr = frame)
         {
-            return AnnotationResult(ptr, frameW, frameH, roiX, roiY, roiW, roiH, dstW, dstH);
+            return ProcessFrame(ptr, frameW, frameH, roiX, roiY, roiW, roiH, dstW, dstH);
         }
     }
 
-    public unsafe AnnotationResult AnnotationResult(byte* ptr, int frameW, int frameH, int roiX, int roiY, int roiW,
+    public unsafe AnnotationResult ProcessFrame(byte* ptr, int frameW, int frameH, int roiX, int roiY, int roiW,
         int roiH, int dstW, int dstH)
     {
         IntPtr resultPtr = ProcessFrame(_nativePtr, ptr, frameW, frameH, roiX, roiY, roiW, roiH, dstW, dstH);

@@ -36,7 +36,7 @@ internal unsafe class SegmentationParser(YoloMetadata metadata,
                 Name = metadata.Names[box.NameIndex],
                 Bounds = bounds,
                 Confidence = box.Confidence,
-                InterestRegion = interestRegion,
+                Roi = interestRegion,
                 Threshold = threshold
             };
         }

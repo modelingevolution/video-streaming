@@ -44,11 +44,11 @@ namespace ModelingEvolution.VideoStreaming.Tests
             tmp2.Points.Should().BeEquivalentTo(tmp.Points);
         }
     }
-    public class YoloModelRunnerTests
+    public class YoloOnnxModelRunnerTests
     {
         private readonly ITestOutputHelper _testOutputHelper;
 
-        public YoloModelRunnerTests(ITestOutputHelper testOutputHelper)
+        public YoloOnnxModelRunnerTests(ITestOutputHelper testOutputHelper)
         {
             _testOutputHelper = testOutputHelper;
         }
@@ -96,11 +96,11 @@ namespace ModelingEvolution.VideoStreaming.Tests
 
         private unsafe StringBuilder RunAndGetAnnotations(string fileName, string modelPath)
         {
-            var runner = YoloModelFactory.LoadSegmentationModel(modelPath);
+            var runner = ModelFactory.LoadSegmentationModel(modelPath);
 
             var frame = FrameLoader.Load(fileName);
             var rect = new Rectangle(0, 0, 640, 640);
-            using var result = runner.Process(&frame, &rect, 0.6f);
+            using var result = runner.Process(&frame, rect, rect.Size, 0.6f);
             StringBuilder sb = new StringBuilder();
             
             foreach (var i in result)

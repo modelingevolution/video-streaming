@@ -3,11 +3,12 @@ using ModelingEvolution.VideoStreaming;
 
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
-public interface IYoloModelRunner<T> where T : IYoloPrediction<T>
+public interface ISegmentationModelRunner<out T> where T : IDisposable
 {
     ModelPerformance Performance { get; }
-    unsafe YoloResult<T> Process(
+    unsafe ISegmentationResult<T> Process(
         YuvFrame* frame, 
-        Rectangle* interestArea, 
+        in Rectangle roi,
+        in Size dstSize,
         float threshold);
 }

@@ -22,8 +22,9 @@ void annotation_result_dispose(AnnotationResult* ptr)
 
 const char* get_last_hailo_error()
 {
-	if (!LAST_ERROR.IsOk())
-		return LAST_ERROR.LastException().what();
+	if (LAST_ERROR == nullptr) return nullptr;
+	if (!LAST_ERROR->IsOk())
+		return LAST_ERROR->LastException().what();
 	return nullptr;
 }
 
@@ -35,7 +36,8 @@ HailoProcessor* hailo_processor_load_hef(const char* filename)
 	}
 	catch (const HailoException& ex)
 	{
-		LAST_ERROR.SetLastError(ex);
+		if (LAST_ERROR == nullptr) LAST_ERROR = new HailoError();
+		LAST_ERROR->SetLastError(ex);
 		return nullptr;
 	}
 }
@@ -54,7 +56,8 @@ AnnotationResult* hailo_processor_process_frame(HailoProcessor* ptr, uint8* fram
 	}
 	catch (const HailoException& ex)
 	{
-		LAST_ERROR.SetLastError(ex);
+		if (LAST_ERROR == nullptr) LAST_ERROR = new HailoError();
+		LAST_ERROR->SetLastError(ex);
 		return nullptr;
 	}
 }

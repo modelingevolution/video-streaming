@@ -14,8 +14,8 @@ public readonly unsafe ref struct TensorPreprocessor
     private readonly int _strideB;
 
     public TensorPreprocessor(YuvFrame* frame, 
-        Rectangle *interestRegion, 
-        Size *targetImgSz,
+        in Rectangle interestRegion, 
+        in Size targetImgSz,
         DenseTensor<float> tensor)
     {
         this.Frame = frame;
@@ -33,25 +33,25 @@ public readonly unsafe ref struct TensorPreprocessor
 
     public void Process()
     {
-        if (_interestRegion->Size == *this._targetImgSz)
+        if (_interestRegion.Size == this._targetImgSz)
         {
             // no need to resize.
-            int w = _targetImgSz->Width;
-            int h = _targetImgSz->Height;
+            int w = _targetImgSz.Width;
+            int h = _targetImgSz.Height;
             for (var y = 0; y < h; y++)
             for (var x = 0; x < w; x++)
             {
-                var pixel = Frame->GetPixel(_interestRegion->X + x,_interestRegion->Y + y);
+                var pixel = Frame->GetPixel(_interestRegion.X + x,_interestRegion.Y + y);
                 var tensorIndex = _strideR + _strideY * y + _strideX * x;
                 WritePixel(_tensorSpan, tensorIndex, pixel, _strideR, _strideG, _strideB);
             }
         }
         else
         {
-            using var targetFrame = Frame->Resize(*_interestRegion, * _targetImgSz);
+            using var targetFrame = Frame->Resize(_interestRegion,  _targetImgSz);
 
-            int w = _targetImgSz->Width;
-            int h = _targetImgSz->Height;
+            int w = _targetImgSz.Width;
+            int h = _targetImgSz.Height;
             for (var y = 0; y < h; y++)
             for (var x = 0; x < w; x++)
             {
@@ -71,8 +71,8 @@ public readonly unsafe ref struct TensorPreprocessor
     }
 
     public readonly YuvFrame* Frame;
-    private readonly Rectangle* _interestRegion;
-    private readonly Size* _targetImgSz;
+    private readonly Rectangle _interestRegion;
+    private readonly Size _targetImgSz;
     public readonly DenseTensor<float> Tensor;
     private readonly Span<float> _tensorSpan;
 }

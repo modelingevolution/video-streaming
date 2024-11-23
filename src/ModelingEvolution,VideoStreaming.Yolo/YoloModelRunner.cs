@@ -5,49 +5,55 @@ using ModelingEvolution.VideoStreaming;
 
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
-internal class YoloModelRunner<T> : IYoloModelRunner<T> where T : IYoloPrediction<T>
+internal class YoloOnnxModelRunner : ISegmentationModelRunner<ISegmentation>
 {
-    private readonly IParser<T> _parser;
-    private readonly YoloConfiguration _configuration;
+    private readonly IParser<Segmentation> _parser;
+    private readonly YoloOnnxConfiguration _onnxConfiguration;
     private readonly InferenceSession _session;
     private readonly SessionTensorInfo _tensorInfo;
     private readonly RunOptions _options = new();
     public ModelPerformance Performance { get; } = new();
 
-    public YoloModelRunner(IParser<T> parser,
+    public YoloOnnxModelRunner(IParser<Segmentation> parser,
         InferenceSession session,
-        YoloConfiguration? configuration = null)
+        YoloOnnxConfiguration? configuration = null)
     {
         _parser = parser;
-        _configuration = configuration ?? new YoloConfiguration();
+        _onnxConfiguration = configuration ?? new YoloOnnxConfiguration();
 
         _session = session;
             
         _tensorInfo = new SessionTensorInfo(_session);
     }
 
-    public unsafe YoloResult<T> Process(
+    public unsafe ISegmentationResult<ISegmentation> Process(
         YuvFrame* frame, 
-        Rectangle* interestArea, float threshold)
+        in Rectangle interestArea,
+        in Size dstSize, float threshold)
     {
         using var binding = PreProcess(frame, interestArea, out var output);
 
         ProcessInterference(binding);
 
-        return PostProcess(frame, interestArea, threshold, output);
+        return PostProcess(frame, interestArea, dstSize, threshold, output);
     }
 
-    private unsafe YoloResult<T> PostProcess(YuvFrame* frame, Rectangle* interestArea, float threshold, YoloRawOutput output)
+    private unsafe ISegmentationResult<ISegmentation> PostProcess(YuvFrame* frame, in Rectangle interestArea, 
+        in Size dstSize,
+        float threshold,  YoloRawOutput output)
     {
         // Now we have output we can process the output
         using var s = Performance.MeasurePostProcessing();
             
-        var result = _parser.ProcessTensorToResult(output, *interestArea, threshold);
+        var result = _parser.ProcessTensorToResult(output, interestArea, threshold);
         output.Dispose();
             
-        return new YoloResult<T>(result)
+        return new SegmentationResult<ISegmentation>(result)
         {
-            ImageSize = frame->Info.Size
+            ImageSize = frame->Info.Size,
+            Threshold = threshold,
+            Roi = interestArea,
+            DestinationSize = dstSize
         };
     }
 
@@ -58,7 +64,7 @@ internal class YoloModelRunner<T> : IYoloModelRunner<T> where T : IYoloPredictio
         _session.RunWithBinding(_options, binding);
     }
 
-    private unsafe OrtIoBinding PreProcess(YuvFrame* frame, Rectangle* interestArea, out YoloRawOutput output)
+    private unsafe OrtIoBinding PreProcess(YuvFrame* frame, in Rectangle interestArea, out YoloRawOutput output)
     {
         using var perf = Performance.MeasurePreProcessing();
         OrtIoBinding? binding = null;
@@ -69,9 +75,9 @@ internal class YoloModelRunner<T> : IYoloModelRunner<T> where T : IYoloPredictio
             
             using var input = MemoryPool<float>.Shared.AllocateTensor<float>(_tensorInfo.Input0, true);
                                     
-            var s = _configuration.ImageSize;
+            var s = _onnxConfiguration.ImageSize;
             var target = input.Tensor;
-            target.CopyInputFromYuvFrame(frame, interestArea, &s);
+            target.CopyInputFromYuvFrame(frame, interestArea, s);
 
             // Create ort values
             var ortInput = CreateOrtValue(target.Buffer, _tensorInfo.Input0.Dimensions64);

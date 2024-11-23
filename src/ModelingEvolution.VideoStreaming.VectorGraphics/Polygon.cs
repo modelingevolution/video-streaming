@@ -11,7 +11,7 @@ using ProtoBuf;
 
 namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 
-public record SegmentationPolygon : IDisposable
+public record PolygonGraphics : IDisposable
 {
     
     public Polygon Polygon { get; init; }
@@ -38,7 +38,7 @@ public record SegmentationPolygon : IDisposable
         return polygonF * ratio;
     }
     
-    public SegmentationPolygon(ManagedArray<VectorU16> points, in Size size)
+    public PolygonGraphics(ManagedArray<VectorU16> points, in Size size)
     {
         Debug.Assert(points.Count > 2);
         Polygon = new Polygon(points);
