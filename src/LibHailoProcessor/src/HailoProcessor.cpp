@@ -22,6 +22,25 @@ const char* HailoException::what() const noexcept
 	return this->_msg;
 }
 
+HailoError::HailoError() : _hailoException(HAILO_SUCCESS)
+{
+}
+
+void HailoError::SetLastError(const HailoException& ex)
+{
+	this->_hailoException = ex;
+}
+
+bool HailoError::IsOk()
+{
+	return !this->_isSet;
+}
+
+HailoException& HailoError::LastException() 
+{
+	return this->_hailoException;
+}
+
 HailoProcessor* HailoProcessor::Load(const string &hefFile)
 {
 	auto vdevice_exp = VDevice::create();

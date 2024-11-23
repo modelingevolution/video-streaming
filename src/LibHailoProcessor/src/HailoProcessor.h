@@ -18,6 +18,9 @@ using namespace std;
 using namespace cv;
 using namespace hailort;
 using namespace std::literals::chrono_literals;
+
+
+
 class HailoException : public std::exception
 {
 public:
@@ -26,9 +29,21 @@ public:
 	hailo_status GetStatus();
 	virtual const char* what() const noexcept override;
 private:
-	hailo_status _status;
+	const hailo_status _status;
 	const char* _msg;
 };
+class HailoError
+{
+public:
+	HailoError();
+	void SetLastError(const HailoException& ex);
+	bool IsOk();
+	HailoException& LastException();
+private:
+	bool _isSet = false;
+	HailoException _hailoException;
+};
+
 class HailoProcessor {
 public:
 	static HailoProcessor* Load(const string & fileName);
