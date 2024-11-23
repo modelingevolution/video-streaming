@@ -455,3 +455,5 @@ $RECYCLE.BIN/
 !.vscode/extensions.json
 /Source/TcpMultiplexer.Server/*.mp4
 *.mp4
+/src/LibHailoProcessor/out/-261662105/build/linux-debug/.cmake/api/v1
+/src/LibHailoProcessor/out
