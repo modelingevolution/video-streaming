@@ -5,9 +5,9 @@ namespace ModelingEvolution_VideoStreaming.Yolo;
 
 public static class Extensions
 {
-    public static string GetOnnxModel(this IConfiguration config)
+    public static string GetModelAiPath(this IConfiguration config)
     {
-        return config.GetValue<string>("OnnxPath");
+        return config.GetValue<string>("ModelAiPath");
     }
 
     public static float GetAiConfidenceThreshold(this IConfiguration config)
