@@ -3,6 +3,8 @@
 #include <opencv2/opencv.hpp>
 
 #include "ArrayPool.h"
+#include "FrameIdentifier.h"
+#include <cstdint>
 
 
 using namespace std;
@@ -76,7 +78,7 @@ struct Segment {
 	Mat Mask;
 	const int ClassId;
 	const Size Resolution;
-	const Rect Roi;
+	const Rect Bbox;
 	const float Confidence;
 	const string Label;
 	void SaveFile(const string &fileName) const;
@@ -97,9 +99,10 @@ public:
 	int GetClassId(int index)const;
 	int Count() const;
 	Segment& Get(int index) ;
-	void Add(const Mat &mask, int classid, const Size &size, const Rect &roi, float confidence, const string &label);
-
-
+	void Add(const Mat &mask, int classid, const Size &size, const Rect &bbox, float confidence, const string &label);
+	FrameIdentifier& Id();
 private:
 	vector<Segment> _items;
+	Rect _roi;
+	FrameIdentifier _id;
 };
