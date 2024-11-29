@@ -386,7 +386,7 @@ Segment& SegmentationResult::Get(int index)
 	return this->_items[index];
 }
 
-void SegmentationResult::Add(const Mat &mask, int classid, const Size &size, const Rect &bbox, float confidence, const string &label)
+void SegmentationResult::Add(const Mat &mask, int classid, const Size &size, const Rect2f &bbox, float confidence, const string &label)
 {
 	this->_items.emplace_back(mask, classid, size, bbox, confidence, label);
 }

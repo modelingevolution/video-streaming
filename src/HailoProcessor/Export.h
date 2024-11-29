@@ -26,7 +26,7 @@ EXPORT_API float segment_get_confidence(Segment *segment);
 EXPORT_API int segment_get_classid(Segment *segment);
 EXPORT_API const char* segment_get_label(Segment *segment);
 EXPORT_API float* segment_get_data(Segment *segment);
-EXPORT_API RECT_INT segment_get_bbox(Segment *segment);
+EXPORT_API cv::Rect2f segment_get_bbox(Segment *segment);
 EXPORT_API cv::Size segment_get_resolution(Segment *segment);
 EXPORT_API int segment_compute_polygon(Segment *segment, float threshod, int *buffer, int maxSize);
 

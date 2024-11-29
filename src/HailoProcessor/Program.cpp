@@ -44,6 +44,7 @@ void print_exports() {
     cout << "sizeof(FrameIdentifier): " << sizeof(FrameIdentifier) << endl;
     cout << "sizeof(Size/OpenCV): " << sizeof(cv::Size) << endl;
     cout << "sizeof(Rect/OpenCV): " << sizeof(cv::Rect) << endl;
+    cout << "sizeof(Rect2f/OpenCV): " << sizeof(cv::Rect2f) << endl;
     cout << "sizeof(Point/OpenCV): " << sizeof(cv::Point) << endl;
 }
 int main(int argc, char** argv)
