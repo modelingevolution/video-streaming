@@ -18,6 +18,7 @@ EXPORT_API float* segment_get_data(Segment* segment) {
 EXPORT_API RECT_INT segment_get_bbox(Segment *segment) {
 	if(segment) {
 		auto &r = segment->Bbox;
+		cout << "[" << r.x << ", " << r.y << ", " << r.width << ", " << r.height << "]" << endl;
 		return {r.x, r.y, r.width, r.height};
 	}
 	return {0,0,0,0};
