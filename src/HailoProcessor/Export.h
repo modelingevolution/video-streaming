@@ -13,7 +13,9 @@ class HailoError;
 
 static __thread HailoError* LAST_ERROR = nullptr;
 
-
+struct RECT_INT {
+    int x,y,w,h;
+};
 
 EXPORT_API Segment* segmentation_result_get(SegmentationResult* ptr, int index);
 EXPORT_API int    segmentation_result_count(SegmentationResult* ptr);
@@ -24,7 +26,7 @@ EXPORT_API float segment_get_confidence(Segment *segment);
 EXPORT_API int segment_get_classid(Segment *segment);
 EXPORT_API const char* segment_get_label(Segment *segment);
 EXPORT_API float* segment_get_data(Segment *segment);
-EXPORT_API cv::Rect segment_get_bbox(Segment *segment);
+EXPORT_API RECT_INT segment_get_bbox(Segment *segment);
 EXPORT_API cv::Size segment_get_resolution(Segment *segment);
 EXPORT_API int segment_compute_polygon(Segment *segment, float threshod, int *buffer, int maxSize);
 
