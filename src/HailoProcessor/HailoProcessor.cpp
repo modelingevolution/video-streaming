@@ -693,7 +693,7 @@ void HailoAsyncProcessor::PostProcess() {
 			cv::Mat& mask = filtered_masks[i];
 			auto &detection = detections[i];
 			HailoBBox bbox = detection->get_bbox();
-			Rect roiBox(bbox.xmin(), bbox.ymin(), bbox.width(), bbox.height());
+			Rect2f roiBox(bbox.xmin(), bbox.ymin(), bbox.width(), bbox.height());
 			result->Add(mask, detection->get_class_id(), mask.size(),roiBox, detection->get_confidence(), detection->get_label());
 
 		}
