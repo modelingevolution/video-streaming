@@ -15,9 +15,11 @@ EXPORT_API float* segment_get_data(Segment* segment) {
 	return (segment) ? segment->Data() : nullptr;
 }
 
-EXPORT_API cv::Rect segment_get_bbox(Segment *segment) {
-	if(segment)
-		return segment->Bbox;
+EXPORT_API RECT_INT segment_get_bbox(Segment *segment) {
+	if(segment) {
+		auto &r = segment->Bbox;
+		return {r.x, r.y, r.width, r.height};
+	}
 	return {0,0,0,0};
 }
 
