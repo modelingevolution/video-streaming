@@ -76,7 +76,6 @@ link_directories(${EXTERNAL_INSTALL_LOCATION}/lib)
 link_libraries(stdc++fs)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
-add_library(x${PROJECT_NAME} SHARED ${SOURCES})
 
 add_dependencies(${PROJECT_NAME} xtl-test xtensor-test xtensor-blas-test)
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -84,3 +83,7 @@ include_directories(${ONNXRUNTIME_INCLUDE_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS} -fconcepts)
 target_link_libraries(${PROJECT_NAME} HailoRT::libhailort ${CMAKE_THREAD_LIBS_INIT} ${OpenCV_LIBS})
 
+add_library(x${PROJECT_NAME} SHARED ${SOURCES})
+add_dependencies(x${PROJECT_NAME} xtl-test xtensor-test xtensor-blas-test)
+target_compile_options(x${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS} -fconcepts)
+target_link_libraries(x${PROJECT_NAME} HailoRT::libhailort ${CMAKE_THREAD_LIBS_INIT} ${OpenCV_LIBS})

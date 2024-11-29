@@ -39,8 +39,16 @@ void OnResult(SegmentationResult* res, void *ptr) {
         cv::imwrite(fn, image);
     }
 }
+void print_exports() {
+
+    cout << "sizeof(FrameIdentifier): " << sizeof(FrameIdentifier) << endl;
+    cout << "sizeof(Size/OpenCV): " << sizeof(cv::Size) << endl;
+    cout << "sizeof(Rect/OpenCV): " << sizeof(cv::Rect) << endl;
+    cout << "sizeof(Point/OpenCV): " << sizeof(cv::Point) << endl;
+}
 int main(int argc, char** argv)
 {
+    print_exports();
     cout << "HAILO TESTING..." << endl;
 
     auto frame = YuvFrame::LoadFile(input_path.c_str());

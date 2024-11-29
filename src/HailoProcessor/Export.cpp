@@ -14,6 +14,19 @@ EXPORT_API int segment_get_classid(Segment* segment) {
 EXPORT_API float* segment_get_data(Segment* segment) {
 	return (segment) ? segment->Data() : nullptr;
 }
+
+EXPORT_API cv::Rect segment_get_bbox(Segment *segment) {
+	if(segment)
+		return segment->Bbox;
+	return {0,0,0,0};
+}
+
+EXPORT_API cv::Size segment_get_resolution(Segment *segment) {
+	if(segment)
+		return segment->Resolution;
+	return {0,0};
+}
+
 EXPORT_API int segment_compute_polygon(Segment* segment,float threshod, int* buffer, int maxSize) {
 	if (!segment || !buffer || maxSize <= 0) {
 		return 0;
@@ -37,6 +50,10 @@ EXPORT_API void segmentation_result_dispose(SegmentationResult* ptr)
 	if (ptr) {
 		delete ptr;
 	}
+}
+
+EXPORT_API FrameIdentifier segmentation_result_id(SegmentationResult *ptr) {
+	return ptr->Id();
 }
 
 EXPORT_API const char* get_last_hailo_error()
