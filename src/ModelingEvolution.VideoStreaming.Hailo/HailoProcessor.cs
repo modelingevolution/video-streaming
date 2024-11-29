@@ -1,14 +1,19 @@
 ﻿using System.Buffers;
 using System.Collections;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
+using ModelingEvolution.Drawing;
 using ModelingEvolution.VideoStreaming.Buffers;
 
 
 namespace ModelingEvolution.VideoStreaming.Hailo
 {
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    delegate void NativeHandler(IntPtr results, IntPtr context);
+    
     public class HailoProcessor : IDisposable
     {
         private IntPtr _nativePtr;
@@ -24,10 +29,10 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         private static extern void StopProcessor(IntPtr ptr);
 
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_write_frame")]
-        private static extern void WriteFrame(IntPtr ptr, byte[] frame, int frameW, int frameH, int roiX, int roiY, int roiW, int roiH);
+        private static extern void WriteFrame(IntPtr ptr, IntPtr frame, int frameW, int frameH, int roiX, int roiY, int roiW, int roiH);
 
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_start_async")]
-        private static extern void StartAsyncProcessor(IntPtr ptr, [MarshalAs(UnmanagedType.FunctionPtr)] CallbackWithContext callback, IntPtr context);
+        private static extern void StartAsyncProcessor(IntPtr ptr, IntPtr fPtr, IntPtr context);
 
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_get_confidence")]
         private static extern float GetConfidence(IntPtr ptr);
@@ -56,7 +61,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             _nativePtr = ptr;
         }
 
-        public void WriteFrame(byte[] frame, in Size frameSize, in Rectangle roi)
+        public void WriteFrame(IntPtr frame, in Size frameSize, in Rectangle roi)
         {
             WriteFrame(_nativePtr, frame, frameSize.Width, frameSize.Height, roi.X, roi.Y, roi.Width, roi.Height);
         }
@@ -64,19 +69,28 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         public event EventHandler<SegmentationResult>? FrameProcessed; 
         private static void OnResult(IntPtr segmentationResult, IntPtr context)
         {
+            Console.WriteLine($"On result... segmentation result: {segmentationResult}, context: {context}");
             var sr = new SegmentationResult(segmentationResult);
             var handle = GCHandle.FromIntPtr(context);
-            HailoProcessor proc = (HailoProcessor) handle.Target;
-
+            HailoProcessor? proc = (HailoProcessor?) handle.Target;
+            if (proc == null)
+            {
+                Console.Error.WriteLine("Cannot find HailoProcessor Global Handle.");
+                sr.Dispose();
+                return;
+            }
             var handler = proc.FrameProcessed;
             if (handler != null)
                 handler(proc, sr);
             else sr.Dispose();
         }
-        public void StartAsync(CallbackWithContext callback, object context)
+        public void StartAsync()
         {
-            GCHandle contextHandle = GCHandle.Alloc(context);
-            StartAsyncProcessor(_nativePtr, callback, GCHandle.ToIntPtr(contextHandle));
+            GCHandle contextHandle = GCHandle.Alloc(this);
+            NativeHandler nhDelegate = OnResult;
+            GCHandle.Alloc(nhDelegate);
+            IntPtr fPtr = Marshal.GetFunctionPointerForDelegate(nhDelegate);
+            StartAsyncProcessor(_nativePtr, fPtr,GCHandle.ToIntPtr(contextHandle));
         }
 
         public void Stop()
@@ -115,6 +129,11 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         [DllImport(Lib.Name, EntryPoint = "segmentation_result_dispose")]
         private static extern void DisposeSegmentationResult(IntPtr ptr);
 
+        [DllImport(Lib.Name, EntryPoint = "segmentation_result_id")]
+        private static extern FrameIdentifier SegmentationResultId(IntPtr ptr);
+        
+       
+
         private ManagedArray<Segment>? _segments;
 
         public int Count => GetCount(_nativePtr);
@@ -124,6 +143,9 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             _nativePtr = nativePtr;
         }
 
+        public FrameIdentifier Id => SegmentationResultId(_nativePtr);
+
+        
         public Segment this[int index]
         {
             get
@@ -136,7 +158,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo
 
         private void LoadSegments()
         {
-            if (_segments == null) return;
+            if (_segments != null) return;
 
             _segments = new ManagedArray<Segment>(Count);
             for (int i = 0; i < Count; i++) 
@@ -183,6 +205,15 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         [DllImport(Lib.Name, EntryPoint = "segment_compute_polygon")]
         private static extern int ComputePolygon(IntPtr segment,float threshold, int[] buffer, int maxSize);
 
+        [DllImport(Lib.Name, EntryPoint = "segment_get_bbox")]
+        private static extern Rectangle SegmentGetBbox(IntPtr segment);
+
+        [DllImport(Lib.Name, EntryPoint = "segment_get_resolution")]
+        private static extern Size SegmentGetResolution(IntPtr segment);
+        
+        public Size Resolution => SegmentGetResolution(_nativePtr);
+        public Rectangle Bbox => SegmentGetBbox(this._nativePtr);
+        
         public Segment(IntPtr nativePtr)
         {
             _nativePtr = nativePtr;
@@ -191,6 +222,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         public float Confidence => GetConfidence(_nativePtr);
         public int ClassId => GetClassId(_nativePtr);
         public string Label => Marshal.PtrToStringAnsi(GetLabel(_nativePtr)) ?? string.Empty;
+        
 
         public Mat GetMask(int width, int height)
         {
@@ -198,27 +230,41 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             return new Mat(height, width, DepthType.Cv32F,1, dataPtr, width);
         }
 
-        public Point[] ComputePolygon(float threshold = 0.8f)
+        public Polygon<float>? ComputePolygon(float threshold = 0.8f)
         {
             int[] buffer = ArrayPool<int>.Shared.Rent(1024 * 128);
             int count = ComputePolygon(_nativePtr, threshold, buffer, buffer.Length);
-            if (count == 0) return Array.Empty<Point>();
+            if (count == 0) return null;
 
-            Point[] points = new Point[count];
-            for (int i = 0; i < count; i++) 
-                points[i] = new Point(buffer[i * 2], buffer[i * 2 + 1]);
+            Polygon<float> result = new Polygon<float>(buffer.ToPointList(count));
             ArrayPool<int>.Shared.Return(buffer);
-            return points;
+            return result;
         }
     }
 
+    static class ArrayToPointExtension
+    {
+        public static List<Point<float>> ToPointList(this int[] points, int size)
+        {
+            // Most likely should use some kind of ListPool?
+            List<Point<float>> result = new List<Point<float>>(size / 2); 
+            for (int i = 0; i < size; i += 2)
+                result.Add(new Point<float>(points[i], points[i + 1]));
+            return result;
+        }
+        public static IEnumerable<Point<float>> ToPoints(this int[] points, int size)
+        {
+            for (int i = 0; i < size; i += 2)
+                yield return new Point<float>(points[i], points[i + 1]);
+        }
+    }
     public class HailoException : Exception
     {
         public HailoException(string message) : base(message) { }
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate void CallbackWithContext(IntPtr segmentationResult, IntPtr context-);
+    public delegate void CallbackWithContext(IntPtr segmentationResult, IntPtr context);
 
 
 }

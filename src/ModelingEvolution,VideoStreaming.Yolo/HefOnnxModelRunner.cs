@@ -29,13 +29,8 @@ internal class HailoModelRunner : ISegmentationModelRunner<ISegmentation>
     {
         var frameSize = frame->Info.Size;
         _processor.Confidence = threshold;
-        var ret = _processor.ProcessFrame(frame->Data, frameSize, roi, dstSize);
-        return new HailoSegmentationResult(ret)
-        {
-            Roi = roi, 
-            Threshold = threshold,
-            DestinationSize = dstSize
-        };
+        _processor.WriteFrame(new IntPtr((void*)frame->Data), frameSize, roi);
+        return null;
     }
 }
 
@@ -114,11 +109,11 @@ class HailoSegmentationResult : ISegmentationResult<ISegmentation>
 
         public Rectangle Bounds => throw new NotImplementedException();
     }
-    private readonly AnnotationResult _ret;
+    private readonly SegmentationResult _ret;
     private readonly SegmentationItem[] _items;
     private readonly int _count;
     private bool _disposed;
-    public HailoSegmentationResult(AnnotationResult ret)
+    public HailoSegmentationResult(SegmentationResult ret)
     {
         _ret = ret;
         _items = ArrayPool<SegmentationItem>.Shared.Rent(ret.Count);
