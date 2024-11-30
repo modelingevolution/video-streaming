@@ -36,17 +36,11 @@ EXPORT_API const char* get_last_hailo_error();
 // can return nullptr, then check get_last_hailo_error
 EXPORT_API HailoAsyncProcessor*   hailo_processor_load_hef(const char* filename);
 
-// can return nullptr, then check get_last_hailo_error
-EXPORT_API SegmentationResult* hailo_processor_process_frame(HailoAsyncProcessor* ptr,
-                                                                           uint8* frame,
-                                                                           int frameW, int frameH, int roiX, int roiY,
-                                                                           int roiW, int roiH);
-
-
 EXPORT_API void hailo_processor_start_async(HailoAsyncProcessor *ptr, CallbackWithContext callback, void* context);
 
 EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor* ptr,
                                                                            uint8* frame,
+                                                                           FrameIdentifier frameId,
                                                                            int frameW, int frameH, int roiX, int roiY,
                                                                            int roiW, int roiH);
 

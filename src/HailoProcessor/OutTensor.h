@@ -7,8 +7,10 @@
 #include <hailo/vdevice.hpp>
 #include <hailo/infer_model.hpp>
 #include <hailo/quantization.hpp>
-
+#include <iostream>
+#include <memory>
 #include "Allocator.h"
+#include "common.h"
 typedef unsigned int uint;
 
 

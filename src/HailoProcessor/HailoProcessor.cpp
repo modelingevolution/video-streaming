@@ -20,33 +20,10 @@ using namespace xt::placeholders;
 #define IOU_THRESHOLD 0.7
 #define NUM_CLASSES 80
 
-HailoException::HailoException(const hailo_status st) : std::exception(), _status(st)
-{
-	this->_msg = hailo_get_status_message(st);
-}
-
-HailoException::HailoException(const string& str) : _status(HAILO_SUCCESS)
-{
-	this->_msg = str.c_str();
-}
-
-HailoException::HailoException(const HailoException& c) : _status(c._status), _msg(c._msg)
-{
 
 
-}
 
-hailo_status HailoException::GetStatus()
-{
-	return this->_status;
-}
-
-const char* HailoException::what() const noexcept
-{
-	return this->_msg;
-}
-
-HailoError::HailoError() 
+HailoError::HailoError()
 {
 	_hailoException = nullptr;
 }
@@ -63,68 +40,8 @@ bool HailoError::IsOk()
 {
 	return !this->_isSet;
 }
-// Constructor
-AiProcessorStats::AiProcessorStats() : _frames(0), _preprocessingTotal(0), _interferenceTotal(0),
-                                       _postProcessingTotal(0), _lastPreprocessing(0),
-                                       _lastInterference(0), _lastPostProcessing(0) {}
 
-// Stopper methods
-AiProcessorStats::Stopper::Stopper(std::chrono::nanoseconds& duration) : start(std::chrono::high_resolution_clock::now()), duration(duration) {}
 
-StopWatch::StopWatch() : start(std::chrono::high_resolution_clock::now()) {}
-std::chrono::milliseconds StopWatch::GetMs() {
-	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start);
-}
-AiProcessorStats::Stopper::~Stopper() {
-    duration += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - start);
-}
-
-// Measurement methods
-AiProcessorStats::Stopper AiProcessorStats::MeasurePreprocessing() {
-    _lastPreprocessing = std::chrono::nanoseconds::zero();
-    return Stopper(_lastPreprocessing);
-}
-
-AiProcessorStats::Stopper AiProcessorStats::MeasureInterference() {
-    _lastInterference = std::chrono::nanoseconds::zero();
-    return Stopper(_lastInterference);
-}
-
-AiProcessorStats::Stopper AiProcessorStats::MeasurePostProcessing() {
-    _lastPostProcessing = std::chrono::nanoseconds::zero();
-    return Stopper(_lastPostProcessing);
-}
-
-// Operator overloading
-AiProcessorStats AiProcessorStats::operator+(const AiProcessorStats& other) const {
-    AiProcessorStats result(*this);
-    result._frames += other._frames;
-    result._preprocessingTotal += other._preprocessingTotal;
-    result._interferenceTotal += other._interferenceTotal;
-    result._postProcessingTotal += other._postProcessingTotal;
-    return result;
-}
-
-AiProcessorStats& AiProcessorStats::operator++() {
-    ++_frames;
-    _preprocessingTotal += _lastPreprocessing;
-    _interferenceTotal += _lastInterference;
-    _postProcessingTotal += _lastPostProcessing;
-    return *this;
-}
-
-// Computed properties
-std::chrono::milliseconds AiProcessorStats::PreProcessingAvg() const {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(_preprocessingTotal) / (_frames ? _frames : 1);
-}
-
-std::chrono::milliseconds AiProcessorStats::InterferenceAvg() const {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(_interferenceTotal) / (_frames ? _frames : 1);
-}
-
-std::chrono::milliseconds AiProcessorStats::PostProcessingAvg() const {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(_postProcessingTotal) / (_frames ? _frames : 1);
-}
 HailoException& HailoError::LastException() const
 {
 	return *this->_hailoException;
@@ -134,13 +51,16 @@ void HailoAsyncProcessor::Stop() {
 	this->_isRunning = false;
 	// Triggers
 	_input_vstream->abort();
-	_readOpNotifier.EnqueueWork();
-	 _callbackArgs.TryWrite(nullptr);
+	//_readOpNotifier.EnqueueWork();
+	 _callbackChannel.TryWrite(nullptr);
 	for(auto & _thread : _threads)
 	 	_thread.join();
 	std::cout << "All threads stopped." << std::endl;
 }
 
+HailoProcessorStats & HailoAsyncProcessor::Stats() {
+	return  this->_stats;
+}
 
 
 std::shared_ptr<ConfiguredNetworkGroup> HailoAsyncProcessor::ConfigureNetworkGroup(
@@ -193,7 +113,14 @@ std::shared_ptr<FeatureData<uint8>> HailoAsyncProcessor::CreateFeature(const hai
 		vstream_info.quant_info.qp_scale, vstream_info.shape.width, vstream_info);
 
 }
-void HailoAsyncProcessor::Write(const cv::Mat &org_frame) {
+void HailoAsyncProcessor::OnWrite(const cv::Mat &org_frame, FrameContext *frameId) {
+	if(_stats.readInterferenceProcessing.Behind() >= 2) {
+		OnFrameDrop_OnWrite(frameId);
+		return;
+	}
+
+	frameId->Total.Start();
+	frameId->WriteWatch.Start();
 	auto input_shape = _input_vstream->get_info().shape;
 	int height = input_shape.height;
 	int width = input_shape.width;
@@ -205,22 +132,34 @@ void HailoAsyncProcessor::Write(const cv::Mat &org_frame) {
 		// we need to resize.
 		Mat dst(dstSize, 3, CV_8UC1);
 		cv::resize(org_frame, dst, dstSize);
-		_input_vstream->write(MemoryView(dst.data, frame_size)); // Writing height * width, 3 channels of uint8
+		OnWrite(dst,frame_size,frameId);
 	} else {
-		_input_vstream->write(MemoryView(org_frame.data, frame_size)); // Writing height * width, 3 channels of uint8
+		OnWrite(org_frame, frame_size, frameId); // Writing height * width, 3 channels of uint8
 	}
 }
+void HailoAsyncProcessor::OnWrite(const cv::Mat &org_frame,size_t frame_size, FrameContext *frameId) {
+	std::lock_guard<std::mutex> lock(this->_writeMx);
+	frameId->Iteration = this->_iteration++;
+	if(!this->_writeChannel.TryWrite(frameId)) {
+		this->OnFrameDrop(frameId);
+		return;
+	}
+	_input_vstream->write(MemoryView(org_frame.data, frame_size));
 
-void HailoAsyncProcessor::Write(const YuvFrame &frame) {
-	auto prep = this->_stats.MeasurePreprocessing();
-	const Rect r(0,0,frame.Width(), frame.Height());
-	Write(frame,r);
+	this->_stats.writeProcessing.FrameProcessed(frameId->WriteWatch.Stop(),frameId->Iteration);
+	frameId->InterferenceAndReadWatch.Restart();
 }
 
-void HailoAsyncProcessor::Write(const YuvFrame &frame, const cv::Rect &roi) {
+void HailoAsyncProcessor::Write(const YuvFrame &frame,const FrameIdentifier &frameId) {
+	const Rect r(0,0,frame.Width(), frame.Height());
+	Write(frame,r, frameId);
+}
+
+void HailoAsyncProcessor::Write(const YuvFrame &frame, const cv::Rect &roi, const FrameIdentifier &frameId) {
 	auto mat = frame.ToMatBgr(roi);
 	//PrintMatStat(mat);
-	Write(mat);
+	FrameContext* info = new FrameContext(frameId, roi);
+	OnWrite(mat, info);
 }
 
 void HailoAsyncProcessor::OnRead(int nr) {
@@ -254,8 +193,18 @@ void HailoAsyncProcessor::OnRead(int nr) {
 
 			if(prv == max-1) {
 				_readOutputCounter.fetch_sub(max);
-				std::cout << "Read: " << frame << std::endl;
-				_readOpNotifier.EnqueueWork();
+				//std::cout << "Read: " << frame << std::endl;
+				FrameContext* v;
+
+				if(_writeChannel.TryRead(v, 1s)) {
+					auto rt = v->InterferenceAndReadWatch.Stop();
+					_stats.readInterferenceProcessing.FrameProcessed(rt,v->Iteration);
+
+					if(!_postProcessingChannel.TryWrite(v)) {
+						_stats.postProcessing.FrameDropped(v->Iteration);
+					}
+				}
+				else throw std::runtime_error("Cannot read write channel.");
 			}
 		}
 	};
@@ -660,14 +609,13 @@ std::vector<cv::Mat> Filter(HailoROIPtr roi, int org_image_height, int org_image
 	return Yolov8(roi, org_image_height, org_image_width);
 }
 void HailoAsyncProcessor::PostProcess() {
-	unsigned long  iteration = 0;
 
-	for(;this->_readOpNotifier.Wait() && this->_isRunning; iteration++)
+	FrameContext *context;
+	while(this->_postProcessingChannel.TryRead(context, 10s))
 	{
-		StopWatch sw;
+		context->PostProcessingWatch.Start();
+		auto& iteration = context->Iteration;
 		auto result = make_unique<SegmentationResult>();
-
-		std::cout << "Post process iteration: " << iteration << endl;
 
 		std::sort(_features.begin(), _features.end(), &FeatureData<uint8>::sort_tensors_by_size);
 		HailoROIPtr roi = std::make_shared<HailoROI>(HailoROI(HailoBBox(0.0f, 0.0f, 1.0f, 1.0f)));
@@ -686,7 +634,6 @@ void HailoAsyncProcessor::PostProcess() {
 
 		std::vector<HailoDetectionPtr> detections = hailo_common::get_hailo_detections(roi);
 
-		std::cout << "Detections: " << detections.size() << " filtered_masks: " << filtered_masks.size() << endl;
 
 		for (size_t i = 0; i < filtered_masks.size(); ++i)
 		{
@@ -697,15 +644,55 @@ void HailoAsyncProcessor::PostProcess() {
 			result->Add(mask, detection->get_class_id(), mask.size(),roiBox, detection->get_confidence(), detection->get_label());
 
 		}
-		std::cout << "Post process iteration: " << iteration << " completed in " << sw.GetMs() << endl;
-		this->_callbackArgs.TryWrite(result.release());
+		auto t = context->PostProcessingWatch.Stop();
+		this->_stats.postProcessing.FrameProcessed(t, context->Iteration);
+		context->Result = result.release();
+		if(!this->_callbackChannel.TryWrite(context))
+			this->_stats.callbackProcessing.FrameDropped(context->Iteration);
 	};
 }
+void HailoAsyncProcessor::OnFrameDrop(FrameContext * ptr) {
+	if(ptr != nullptr) {
+		if(ptr->Result != nullptr)
+			delete ptr->Result;
+		delete ptr;
+	}
+}
+void HailoAsyncProcessor::OnFrameDrop_OnWrite(FrameContext * ptr) {
+	_stats.writeProcessing.FrameDropped(ptr->Iteration);
+	OnFrameDrop(ptr);
+}
+void HailoAsyncProcessor::OnFrameDrop_OnRead(FrameContext * ptr) {
+	_stats.readInterferenceProcessing.FrameDropped(ptr->Iteration);
+	OnFrameDrop(ptr);
+}
+void HailoAsyncProcessor::OnFrameDrop_OnPostProcess(FrameContext * ptr) {
+	_stats.postProcessing.FrameDropped(ptr->Iteration);
+	OnFrameDrop(ptr);
+}
+void HailoAsyncProcessor::OnFrameDrop_OnCallback(FrameContext * ptr) {
+	_stats.callbackProcessing.FrameDropped(ptr->Iteration);
+	OnFrameDrop(ptr);
+}
 
-
+using namespace boost::placeholders;
 HailoAsyncProcessor::HailoAsyncProcessor(std::unique_ptr<VDevice> &dev, std::shared_ptr<ConfiguredNetworkGroup> networkGroup) :
-_dev(std::move(dev)), _callbackArgs(2, DiscardPolicy::Oldest,[](SegmentationResult *ptr) { delete ptr; }), _callback(nullptr), _context(nullptr)
+_dev(std::move(dev)),
+_callbackChannel(2, DiscardPolicy::Oldest),
+_callback(nullptr),
+_context(nullptr),
+_postProcessingChannel(2, DiscardPolicy::Oldest),
+_readChannel(2, DiscardPolicy::Oldest),
+_writeChannel(2, DiscardPolicy::Oldest),
+_isRunning(false),
+_stats(1,1,1,1,4)
 {
+	_readChannel.connectDropped(boost::bind(&HailoAsyncProcessor::OnFrameDrop_OnRead, this, _1));
+	_writeChannel.connectDropped(boost::bind(&HailoAsyncProcessor::OnFrameDrop_OnWrite, this, _1));
+	_postProcessingChannel.connectDropped(boost::bind(&HailoAsyncProcessor::OnFrameDrop_OnPostProcess, this, _1));
+	_callbackChannel.connectDropped(boost::bind(&HailoAsyncProcessor::OnFrameDrop_OnCallback, this, _1));
+
+
 	Expected<std::pair<std::vector<InputVStream>, std::vector<OutputVStream> > > vstreams_exp =
 			VStreamsBuilder::create_vstreams(*networkGroup, QUANTIZED, FORMAT_TYPE);
 	if (!vstreams_exp) throw HailoException(vstreams_exp.status());
@@ -739,7 +726,8 @@ _dev(std::move(dev)), _callbackArgs(2, DiscardPolicy::Oldest,[](SegmentationResu
 	}
 
 }
-void HailoAsyncProcessor::StartAsync() {
+void HailoAsyncProcessor::StartAsync(unsigned int postProcessThreadCount)
+{
 	std::vector<OutputVStream>& output_vstreams = _vstreams.second;
 	auto output_vstreams_size = output_vstreams.size();
 	this->_isRunning = true;
@@ -748,21 +736,31 @@ void HailoAsyncProcessor::StartAsync() {
 		//std::thread(&HailoAsyncProcessor::OnRead, this, i).detach();
 		_threads.emplace_back(std::thread(&HailoAsyncProcessor::OnRead, this, i));
 	}
+	_stats.readInterferenceProcessing.SetThreadCount(output_vstreams_size);
 	// Create the postprocessing thread
 	//std::async(std::launch::async, &HailoAsyncProcessor::PostProcess, this);
-	_threads.emplace_back(std::thread( &HailoAsyncProcessor::PostProcess, this));
+	for(int i = 0; i < postProcessThreadCount; i++)
+		_threads.emplace_back(std::thread( &HailoAsyncProcessor::PostProcess, this));
+	_stats.postProcessing.SetThreadCount(postProcessThreadCount);
+
 	_threads.emplace_back(std::thread(&HailoAsyncProcessor::OnCallback, this));
+	_stats.callbackProcessing.SetThreadCount(1);
 	//std::thread( &HailoAsyncProcessor::PostProcess, this).detach();
 	//std::thread(&HailoAsyncProcessor::OnCallback, this).detach();
 }
 void HailoAsyncProcessor::OnCallback() {
 
 	while (_isRunning) {
-		SegmentationResult* value;
+		FrameContext* value;
 		//unique_ptr<SegmentationResult> value;
-		if (_callbackArgs.TryRead(value, 5s)) {
+		if (_callbackChannel.TryRead(value, 5s)) {
+			StopWatch sw = StopWatch::StartNew();
 			if (_callback && value != nullptr) // nullptr is important because of Dispose.
-				_callback(value, _context);
+			{
+				_callback(value->Result, _context);
+				_stats.callbackProcessing.FrameProcessed(sw.Stop(), value->Iteration);
+				_stats.totalProcessing.FrameProcessed(value->Total.Stop(),value->Iteration);
+			}
 			else if(value != nullptr)
 				delete value;
 		}
@@ -775,7 +773,8 @@ void HailoAsyncProcessor::OnCallback() {
 void HailoAsyncProcessor::StartAsync(CallbackWithContext callback, void *context) {
 	 _callback = callback;
 	 _context = context;
-	StartAsync();
+	unsigned int numCores = std::thread::hardware_concurrency();
+	StartAsync(numCores);
 }
 
 float HailoAsyncProcessor::ConfidenceThreshold() {
@@ -791,177 +790,4 @@ void HailoAsyncProcessor::Deallocate() {
 	this->_dev.release();
 }
 
-unique_ptr<HailoProcessor> HailoProcessor::Load(const string& hefFile)
-{
-	auto vdevice_exp = VDevice::create();
 
-	if (!vdevice_exp) 
-		throw HailoException(vdevice_exp.status());
-
-
-	auto vdevice = vdevice_exp.release();
-	auto infer_model_exp = vdevice->create_infer_model(hefFile);
-	if (!infer_model_exp) 
-		throw HailoException(infer_model_exp.status());
-	
-
-	auto infer_model = infer_model_exp.release();
-
-	infer_model->set_hw_latency_measurement_flags(HAILO_LATENCY_MEASURE);
-
-	auto outputStream = infer_model->output();
-	//outputStream->set_nms_score_threshold(0.5f);
-
-	int nnWidth = infer_model->inputs()[0].shape().width;
-	int nnHeight = infer_model->inputs()[0].shape().height;
-
-	auto configured_infer_model_exp = infer_model->configure();
-	if (!configured_infer_model_exp)
-		throw HailoException(configured_infer_model_exp.status());
-
-	auto configured_infer_model = std::make_shared<ConfiguredInferModel>(configured_infer_model_exp.release());
-	auto bindings_exp = configured_infer_model->create_bindings();
-	if (!bindings_exp)
-		throw HailoException(bindings_exp.status());
-
-	auto bindings = bindings_exp.release();
-
-	// Input preparation
-	const auto& input_name = infer_model->get_input_names()[0];
-	size_t input_frame_size = infer_model->input(input_name)->get_frame_size();
-
-
-	auto ret = new HailoProcessor(vdevice, infer_model, configured_infer_model, bindings, input_frame_size);
-	return unique_ptr<HailoProcessor>(ret);
-}
-
-unique_ptr<SegmentationResult> HailoProcessor::ProcessFrame(const YuvFrame& frame, const Rect& roi, const Size& dSize)
-{
-	Size dstSize = dSize;
-	const auto& input_name = this->_model->get_input_names()[0];
-	size_t input_frame_size = _model->input(input_name)->get_frame_size();
-	if (dstSize.width == 0 && dstSize.height == 0)
-		dstSize.width = dstSize.height = sqrt(input_frame_size / 3);
-
-	if (dstSize.width * dstSize.height * 3 != input_frame_size)
-		throw HailoException("Wrong destination size.");
-
-	auto dstMat = frame.ToMatRgb(roi, dstSize);
-
-	
-	auto iq = _model->input(input_name)->get_quant_infos()[0];
-	if (iq.qp_scale != 1.0f)
-		throw HailoException("Unexpected input quantization.");
-
-	// We don't need this, it seems that the quantization is basically wrong.
-	//auto normalizedDst = this->_floatPool.Rent(input_frame_size);
-	//auto quantizedDst = this->_bytePool.Rent(input_frame_size);
-	//ArrayOperations::ConvertToFloat(dstMat.data, normalizedDst.Data(), input_frame_size);
-	//Quantization::quantize_input_buffer(normalizedDst.Data(), quantizedDst.Data(), input_frame_size, iq);
-
-	auto status = _bindings.input(input_name)->set_buffer(MemoryView(dstMat.data, input_frame_size));
-
-	if (status != HAILO_SUCCESS) throw HailoException(status);
-
-	std::vector<OutTensor> outputNodes;
-	for (const auto& output_name : _model->get_output_names()) {
-		size_t output_size = _model->output(output_name)->get_frame_size();
-		
-		const auto& quant = _model->output(output_name)->get_quant_infos()[0];
-		const auto& shape = _model->output(output_name)->shape();
-		const auto& format = _model->output(output_name)->format();
-		OutTensor& t = outputNodes.emplace_back(_allocator, output_name, quant, shape, format, output_size);
-
-		status = _bindings.output(output_name)->set_buffer(MemoryView(t.data.get(), output_size));
-		if (status != HAILO_SUCCESS) throw HailoException(status);
-	}
-	status = this->_configured_infer_model->wait_for_async_ready(1s);
-	if (status != HAILO_SUCCESS) throw HailoException(status);
-
-	/*status = _configured_infer_model->activate();
-	if (status != HAILO_SUCCESS)
-		throw HailoException(status);*/
-	
-	status = _configured_infer_model->run(_bindings, 5s);
-	if (status != HAILO_SUCCESS)
-		throw HailoException(status);
-	/*auto job_exp = _configured_infer_model->run_async(_bindings);
-	if (!job_exp) 
-		throw HailoException(job_exp.status());
-
-	auto job = job_exp.release();
-	job.detach();*/
-
-	/*status = job.wait(3s);
-	if (status != HAILO_SUCCESS) throw HailoException(status);*/
-
-	auto r = make_unique<SegmentationResult>();
-	
-	for (auto& tensor : outputNodes) {
-		std::cout << "Tensor name:" << tensor.name;
-		
-		uint32_t featureSize = tensor.shape.width * tensor.shape.height;
-		auto rental = _floatPool.Rent(featureSize);
-		//auto floatBuffer = rental.Data();
-		// Process segmentation masks
-		int threshold = static_cast<int>(this->_confidenceThreshold * 255.0f);
-		cout << "Threshold is: " << threshold << endl;
-		for(int i = 0; i < tensor.shape.features; i++)
-		{
-			//auto ptr = tensor.GetFeature(i);
-
-			auto dst = new uint8[featureSize];
-			tensor.CopyTo(dst, i);
-			//Quantization::dequantize_output_buffer(ptr, floatBuffer, featureSize, tensor.quant_info);
-			/*ArrayOperations::ConvertToFloat(ptr, floatBuffer, featureSize);
-			if(ArrayOperations::ContainsGreaterThan(floatBuffer, featureSize, this->_confidenceThreshold))
-			{
-				auto byteRental = _bytePool.Rent(featureSize);
-				ArrayOperations::ConvertToUint8(floatBuffer, byteRental.Data(), featureSize);
-				r->Add(byteRental, i, tensor.ShapeSize());
-			}*/
-			//ArrayOperations::NegUint8(ptr, featureSize);
-			if (ArrayOperations::ContainsGreaterThan(dst, featureSize, threshold))
-			{
-				std::cout << "Not implemented" << endl;
-				//r->Add(dst, i, tensor.ShapeSize());
-			}
-		}
-		//r->AppendBuffer(tensor.data);
-	}
-	return r;
-
-}
-
-float HailoProcessor::ConfidenceThreshold() const
-{
-	return this->_confidenceThreshold;
-}
-
-void HailoProcessor::ConfidenceThreshold(float value)
-{
-	this->_confidenceThreshold = value;
-}
-
-
-cv::Size HailoProcessor::GetInputSize() const
-{
-	int nnWidth = this->_model->inputs()[0].shape().width;
-	int nnHeight = this->_model->inputs()[0].shape().height;
-	return Size(nnWidth, nnHeight);
-}
-
-void HailoProcessor::StartAsync(CallbackWithContext callback, void *context)
-{
-
-}
-
-
-HailoProcessor::HailoProcessor(unique_ptr<VDevice>& dev, 
-                               shared_ptr<InferModel>& infer_model,
-                               shared_ptr<ConfiguredInferModel>& configured_infer_model,
-                               const ConfiguredInferModel::Bindings& bindings, size_t input_frame_size) :
-	_dev(std::move(dev)), _model(std::move(infer_model)), _configured_infer_model(std::move(configured_infer_model)), _bindings(bindings), _input_frame_size(input_frame_size)
-{
-
-};
