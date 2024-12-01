@@ -15,8 +15,8 @@ struct HailoProcessorStatsDto {
         uint64_t dropped;
         uint64_t lastIteration;
         uint64_t behind;
-        int threadCount;
         int64_t totalProcessingTime; // Nanoseconds for C#
+        int threadCount;
     } writeProcessing, readInterferenceProcessing, postProcessing, callbackProcessing, totalProcessing;
 
     uint64_t inFlight;
