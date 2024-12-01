@@ -48,6 +48,12 @@
 #define BOLDCYAN "\033[1m\033[36m"    /* Bold Cyan */
 #define BOLDWHITE "\033[1m\033[37m"   /* Bold White */
 
+typedef uint8_t uint8;
+
+// forward declaration
+class SegmentationResult;
+typedef void (*CallbackWithContext)(SegmentationResult* value, void* context);
+
 template <typename T>
 class FeatureData {
 public:

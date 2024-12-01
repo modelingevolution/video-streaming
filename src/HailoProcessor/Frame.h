@@ -3,14 +3,31 @@
 #include <opencv2/opencv.hpp>
 
 #include "ArrayPool.h"
+#include "common.h"
 #include "FrameIdentifier.h"
 #include <cstdint>
+#include "StopWatch.h"
 
+class SegmentationResult;
 
 using namespace std;
 using namespace cv;
 
-typedef uint8_t uint8;
+
+
+
+struct FrameContext {
+	FrameContext(const FrameIdentifier &id, const Rect rect);
+	uint64_t Iteration;
+	SegmentationResult *Result;
+	const FrameIdentifier Id;
+	const Rect Roi;
+
+	StopWatch InterferenceAndReadWatch;
+	StopWatch WriteWatch;
+	StopWatch PostProcessingWatch;
+	StopWatch Total;
+};
 
 struct RgbColor {
 	uint8_t r;

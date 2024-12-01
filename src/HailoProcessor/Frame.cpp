@@ -3,6 +3,10 @@
 #include "ArrayPool.h"
 
 
+FrameContext::FrameContext(const FrameIdentifier &id, const Rect rect) : Result(nullptr), Iteration(0), Roi(rect), Id(id) {
+
+}
+
 RgbColor RgbColor::FromArgb(uint8_t r, uint8_t g, uint8_t b)
 {
 	return RgbColor{ r, g, b };

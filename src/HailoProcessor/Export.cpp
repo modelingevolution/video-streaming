@@ -1,5 +1,5 @@
 #include "Export.h"
-
+#include "HailoProcessorStatsDto.h"
 
 
 EXPORT_API float segment_get_confidence(Segment* segment) {
@@ -17,8 +17,6 @@ EXPORT_API float* segment_get_data(Segment* segment) {
 
 EXPORT_API cv::Rect2f segment_get_bbox(Segment *segment) {
 	if(segment) {
-		auto &r = segment->Bbox;
-		cout << "[" << r.x << ", " << r.y << ", " << r.width << ", " << r.height << "]" << endl;
 		return segment->Bbox;
 	}
 	return {0,0,0,0};
@@ -81,36 +79,22 @@ EXPORT_API HailoAsyncProcessor* hailo_processor_load_hef(const char* filename)
 	}
 }
 
-EXPORT_API SegmentationResult* hailo_processor_process_frame(HailoAsyncProcessor* ptr, uint8* frame, int frameW,
-                                                int frameH, int roiX, int roiY,
-                                                int roiW, int roiH)
-{
-	try
-	{
-		YuvFrame f(frameW, frameH, frame);
-		Rect roi(roiX, roiY, roiW, roiH);
-		ptr->Write(f, roi);
-	}
-	catch (const HailoException& ex)
-	{
-		if (LAST_ERROR == nullptr) LAST_ERROR = new HailoError();
-		LAST_ERROR->SetLastError(ex);
-
-	}
-	return nullptr;
-}
 
 EXPORT_API void hailo_processor_start_async(HailoAsyncProcessor *ptr, CallbackWithContext callback, void *context) {
 	ptr->StartAsync(callback, context);
 }
 
-EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor *ptr, uint8 *frame, int frameW, int frameH, int roiX, int roiY,
-                                 int roiW, int roiH) {
+EXPORT_API void hailo_processor_update_stats(HailoAsyncProcessor *ptr, HailoProcessorStatsDto *dto) {
+	dto->UpdateFrom(ptr->Stats());
+}
+
+EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor *ptr, uint8 *frame,FrameIdentifier frameId, int frameW, int frameH, int roiX, int roiY,
+                                            int roiW, int roiH) {
 	try
 	{
 		YuvFrame f(frameW, frameH, frame);
 		Rect roi(roiX, roiY, roiW, roiH);
-		ptr->Write(f, roi);
+		ptr->Write(f, roi, frameId);
 	}
 	catch (const HailoException& ex)
 	{

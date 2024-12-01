@@ -6,7 +6,7 @@ message("C++ compiler: ${CMAKE_CXX_COMPILER}")
 message("C compiler: ${CMAKE_C_COMPILER}")
 #set(COMPILE_OPTIONS -Wextra -Wconversion -O3 -Wno-reorder -Wno-ignored-qualifiers -Wno-extra -Wno-unused-local-typedefs -Wno-conversion -Wno-parentheses -Wno-array-bounds)
 set(COMPILE_OPTIONS
-
+        #-g -Og
         -Wextra
         -Wconversion
         -O3 -mcpu=cortex-a76 -ftree-vectorize -funsafe-math-optimizations -ffp-contract=fast -funroll-loops -fomit-frame-pointer
