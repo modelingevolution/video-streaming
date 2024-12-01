@@ -9,6 +9,7 @@
 // forward declaration.
 struct HailoProcessorStats;
 
+#pragma pack(push, 1)
 struct HailoProcessorStatsDto {
     struct StageStatsDto {
         uint64_t processed;
@@ -24,7 +25,7 @@ struct HailoProcessorStatsDto {
 
     void UpdateFrom(const HailoProcessorStats& stats);
 };
-
+#pragma pack(pop)
 
 
 #endif //HAILOPROCESSORSTATSDTO_H
