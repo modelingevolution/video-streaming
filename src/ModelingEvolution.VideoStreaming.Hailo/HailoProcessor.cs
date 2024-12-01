@@ -5,12 +5,94 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
+using Makaretu.Dns;
 using ModelingEvolution.Drawing;
 using ModelingEvolution.VideoStreaming.Buffers;
 
 
 namespace ModelingEvolution.VideoStreaming.Hailo
 {
+    [StructLayout(LayoutKind.Sequential, Pack=1)]
+    public struct HailoProcessorStats
+    {
+        [StructLayout(LayoutKind.Sequential, Pack=1)]
+        public struct StageStats
+        {
+            public readonly ulong Processed;
+            public readonly ulong Dropped;
+            public readonly ulong LastIteration;
+            public readonly ulong Behind;
+            private readonly long _totalProcessingTimeNanoseconds;
+            public readonly int ThreadCount;
+
+            public float Fps
+            {
+                get
+                {
+                    if (TotalProcessingTime.TotalSeconds <= double.Epsilon) return 0;
+                    
+                    var tmp = ThreadCount / TotalProcessingTime.TotalSeconds;
+                    return (float)tmp;
+                }
+            }
+            public TimeSpan TotalProcessingTime
+            {
+                get
+                {
+                    if(Processed == 0) return TimeSpan.Zero;
+                    var ns = _totalProcessingTimeNanoseconds;
+                    //Console.WriteLine("Nanoseconds: " + ns);
+                    //ns /= 1000; // microsecond;
+                    //ns /= 1000; // miliseconds;
+                    //ns /= (long)Processed;
+                    //return TimeSpan.FromMilliseconds(ns,0L);
+                    return TimeSpan.FromTicks(ns / 100 / (long)Processed);
+                }
+            }
+        }
+
+        public readonly StageStats WriteProcessing;
+        public readonly StageStats ReadInterferenceProcessing;
+        public readonly StageStats PostProcessing;
+        public readonly StageStats CallbackProcessing;
+        public readonly StageStats TotalProcessing;
+
+        public readonly ulong InFlight;
+        public readonly ulong DroppedTotal;
+
+        public void Print(TextWriter tx = null)
+        {
+            tx ??= Console.Out;
+            string header = "|-----------------------------------|-----------|---------|--------|---------|---------|----------------|";
+            string headerRow = "| Stage                             | Processed | Dropped | Behind | Threads |   FPS   |      Time      |";
+
+            tx.WriteLine(header);
+            tx.WriteLine(headerRow);
+            tx.WriteLine(header);
+
+            PrintStageStats(tx, "Write Processing", WriteProcessing);
+            PrintStageStats(tx, "Read Interference", ReadInterferenceProcessing);
+            PrintStageStats(tx, "Post Processing", PostProcessing);
+            PrintStageStats(tx, "Callback Processing", CallbackProcessing);
+            PrintStageStats(tx, "Total Processing", TotalProcessing);
+
+            tx.WriteLine(header);
+        }
+
+        private void PrintStageStats(TextWriter tx, string stageName, StageStats stats)
+        {
+            string format = "| {0,-33} | {1,9} | {2,7} | {3,6} | {4,7} | {5,7:F2} | {6,14} |";
+            tx.WriteLine(format,
+                stageName,
+                stats.Processed,
+                stats.Dropped,
+                stats.Behind,
+                stats.ThreadCount,
+                stats.Fps,
+                stats.TotalProcessingTime.WithTimeSuffix(0));
+        }
+    }
+    
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     delegate void NativeHandler(IntPtr results, IntPtr context);
     
@@ -18,7 +100,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo
     {
         private IntPtr _nativePtr;
         private bool _disposed = false;
-
+        private HailoProcessorStats _stats;
         [DllImport(Lib.Name, EntryPoint = "get_last_hailo_error")]
         private static extern IntPtr GetLastError();
 
@@ -29,7 +111,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         private static extern void StopProcessor(IntPtr ptr);
 
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_write_frame")]
-        private static extern void WriteFrame(IntPtr ptr, IntPtr frame, int frameW, int frameH, int roiX, int roiY, int roiW, int roiH);
+        private static extern void WriteFrame(IntPtr ptr, IntPtr frame, FrameIdentifier id, int frameW, int frameH, int roiX, int roiY, int roiW, int roiH);
 
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_start_async")]
         private static extern void StartAsyncProcessor(IntPtr ptr, IntPtr fPtr, IntPtr context);
@@ -40,6 +122,27 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_set_confidence")]
         private static extern void SetConfidence(IntPtr ptr, float value);
 
+        [DllImport(Lib.Name, EntryPoint = "hailo_processor_update_stats")]
+        private static extern void UpdateStats(IntPtr ptr, IntPtr stats);
+
+        
+        public ref HailoProcessorStats Stats
+        {
+            get
+            {
+                if(_stats.WriteProcessing.Processed == 0) 
+                    ReadHailoProcessorStats();
+                return ref _stats;
+            }
+        }
+
+        public unsafe void ReadHailoProcessorStats()
+        {
+            fixed (HailoProcessorStats* ptr = &this._stats)
+            {
+                UpdateStats(_nativePtr, (IntPtr)ptr);
+            }
+        }
         private static string GetLastErrorMessage()
         {
             IntPtr errorPtr = GetLastError();
@@ -61,9 +164,9 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             _nativePtr = ptr;
         }
 
-        public void WriteFrame(IntPtr frame, in Size frameSize, in Rectangle roi)
+        public void WriteFrame(IntPtr frame, in FrameIdentifier id, in Size frameSize, in Rectangle roi)
         {
-            WriteFrame(_nativePtr, frame, frameSize.Width, frameSize.Height, roi.X, roi.Y, roi.Width, roi.Height);
+            WriteFrame(_nativePtr, frame, id,frameSize.Width, frameSize.Height, roi.X, roi.Y, roi.Width, roi.Height);
         }
 
         public event EventHandler<SegmentationResult>? FrameProcessed; 
@@ -203,17 +306,35 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         [DllImport(Lib.Name, EntryPoint = "segment_get_data")]
         private static extern IntPtr GetData(IntPtr segment);
         [DllImport(Lib.Name, EntryPoint = "segment_compute_polygon")]
-        private static extern int ComputePolygon(IntPtr segment,float threshold, int[] buffer, int maxSize);
+        private static unsafe extern int ComputePolygon(IntPtr segment,float threshold, int* buffer, int maxSize);
 
         [DllImport(Lib.Name, EntryPoint = "segment_get_bbox")]
-        private static extern Rectangle SegmentGetBbox(IntPtr segment);
+        private static extern Rectangle<float> SegmentGetBbox(IntPtr segment);
 
         [DllImport(Lib.Name, EntryPoint = "segment_get_resolution")]
         private static extern Size SegmentGetResolution(IntPtr segment);
         
         public Size Resolution => SegmentGetResolution(_nativePtr);
-        public Rectangle Bbox => SegmentGetBbox(this._nativePtr);
-        
+
+        /// <summary>
+        /// Gets the bbox normalized to the resolution.
+        /// </summary>
+        /// <value>
+        /// The bbox normalized to resolution.
+        /// </value>
+        public Rectangle<float> Bbox
+        {
+            get
+            {
+                var tmp = SegmentGetBbox(this._nativePtr); 
+                tmp.X *= Resolution.Width;
+                tmp.Y *= Resolution.Height;
+                tmp.Width *= Resolution.Width;
+                tmp.Height *= Resolution.Height;
+                return tmp;
+            }
+        }
+
         public Segment(IntPtr nativePtr)
         {
             _nativePtr = nativePtr;
@@ -230,15 +351,18 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             return new Mat(height, width, DepthType.Cv32F,1, dataPtr, width);
         }
 
-        public Polygon<float>? ComputePolygon(float threshold = 0.8f)
+        public unsafe Polygon<float>? ComputePolygon(float threshold = 0.8f)
         {
             int[] buffer = ArrayPool<int>.Shared.Rent(1024 * 128);
-            int count = ComputePolygon(_nativePtr, threshold, buffer, buffer.Length);
-            if (count == 0) return null;
+            fixed (int* ptr = buffer)
+            {
+                int count = ComputePolygon(_nativePtr, threshold, ptr, buffer.Length);
+                if (count == 0) return null;
 
-            Polygon<float> result = new Polygon<float>(buffer.ToPointList(count));
-            ArrayPool<int>.Shared.Return(buffer);
-            return result;
+                Polygon<float> result = new Polygon<float>(buffer.ToPointList(count));
+                ArrayPool<int>.Shared.Return(buffer);
+                return result;
+            }
         }
     }
 

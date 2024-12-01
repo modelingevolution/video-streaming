@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing;
 using System.Numerics;
@@ -18,9 +19,18 @@ namespace ModelingEvolution_VideoStreaming.Yolo;
 internal class HailoModelRunner : ISegmentationModelRunner<ISegmentation>
 {
     private readonly HailoProcessor _processor;
+    private readonly ConcurrentDictionary<FrameIdentifier, TaskCompletionSource<SegmentationResult>> _pendingFrames;
+
     public HailoModelRunner(string modelFullPath)
     {
         _processor = HailoProcessor.Load(modelFullPath);
+        _processor.FrameProcessed += OnFrameProcessed;
+    }
+
+    private void OnFrameProcessed(object? sender, SegmentationResult e)
+    {
+        if (_pendingFrames.TryRemove(e.Id, out var tcs)) 
+            tcs.SetResult(e);
     }
 
     public ModelPerformance Performance { get; }
@@ -29,8 +39,16 @@ internal class HailoModelRunner : ISegmentationModelRunner<ISegmentation>
     {
         var frameSize = frame->Info.Size;
         _processor.Confidence = threshold;
-        _processor.WriteFrame(new IntPtr((void*)frame->Data), frameSize, roi);
-        return null;
+        FrameIdentifier id = new FrameIdentifier(frame->Metadata.FrameNumber,0);
+        
+        var tcs = new TaskCompletionSource<SegmentationResult>();
+        _pendingFrames.TryAdd(id, tcs);
+
+        _processor.WriteFrame(new IntPtr((void*)frame->Data), id, frameSize, roi);
+
+        var result = tcs.Task.Result;
+
+        return new HailoSegmentationResult(result);
     }
 }
 
@@ -85,28 +103,8 @@ class HailoSegmentationResult : ISegmentationResult<ISegmentation>
         public PolygonGraphics? Polygon => _polygon ??= ComputePolygon();
         public SegmentationClass Name { get; init; }
 
-        /// <summary>
-        /// Confidence is calculated as an average of confidence in area above the threshold.
-        /// </summary>
-        /// <value>
-        /// The confidence.
-        /// </value>
-        public unsafe float Confidence
-        {
-            get
-            {
-                if (_confidence != null) return _confidence.Value;
 
-                byte* ptr = (byte*)Mask.DataPointer;
-                byte threshold = (byte)(parent.Threshold * 255f);
-                int count = Mask.Rows * Mask.Cols;
-                var tmp = ArrayOperations.AvgGreaterThan(ptr, threshold, 0, count);
-                _confidence = tmp / 255f;
-
-                return _confidence.Value;
-            }
-        }
-
+        public float Confidence => parent[index].Confidence;
         public Rectangle Bounds => throw new NotImplementedException();
     }
     private readonly SegmentationResult _ret;

@@ -17,16 +17,26 @@ namespace ModelingEvolution.VideoStreaming.HailoCmd
             string hef = args[0];
             string jpg = args[1];
             
-            HailoProcessor p = HailoProcessor.Load(args[0]);
+            
+            HailoProcessor p = HailoProcessor.Load(hef);
             p.FrameProcessed += OnFrameProcessed;
+            Console.WriteLine($"{hef} loaded.");
+            
             p.StartAsync();
+            Console.WriteLine($"Hailo processor processing started.");
+            
             using Mat yuvFrame = new Mat();
             Mat src = CvInvoke.Imread(jpg);
             CvInvoke.CvtColor(src, yuvFrame, ColorConversion.Bgr2YuvI420);
+            Console.WriteLine("Jpg frame loaded.");
             
             _sw = Stopwatch.StartNew();
-            p.WriteFrame(yuvFrame.DataPointer, new Size(640,640), new Rectangle(0,0,640,640));
+            FrameIdentifier id = new FrameIdentifier();
+            p.WriteFrame(yuvFrame.DataPointer, id, new Size(640,640), new Rectangle(0,0,640,640));
             Console.WriteLine("Waiting for result...");
+            Thread.Sleep(350);
+            p.Stats.Print();
+            
             Console.ReadLine();
         }
 
