@@ -11,6 +11,7 @@
 #include "common.h"
 #include "common/hailo_objects.hpp"
 #include "Frame.h"
+#include "HailoProcessorStatsDto.h"
 
 using namespace std;
 using namespace hailort;
@@ -42,6 +43,8 @@ void OnResult(SegmentationResult* res, void *ptr) {
 void print_exports() {
 
     cout << "sizeof(FrameIdentifier): " << sizeof(FrameIdentifier) << endl;
+    cout << "sizeof(HailoProcessorStatsDto): " << sizeof(HailoProcessorStatsDto) << endl;
+    cout << "sizeof(StageStatsDto): " << sizeof(HailoProcessorStatsDto::StageStatsDto) << endl;
     cout << "sizeof(Size/OpenCV): " << sizeof(cv::Size) << endl;
     cout << "sizeof(Rect/OpenCV): " << sizeof(cv::Rect) << endl;
     cout << "sizeof(Rect2f/OpenCV): " << sizeof(cv::Rect2f) << endl;
