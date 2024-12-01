@@ -1,5 +1,5 @@
 #include "Export.h"
-
+#include "HailoProcessorStatsDto.h"
 
 
 EXPORT_API float segment_get_confidence(Segment* segment) {
@@ -84,8 +84,12 @@ EXPORT_API void hailo_processor_start_async(HailoAsyncProcessor *ptr, CallbackWi
 	ptr->StartAsync(callback, context);
 }
 
+EXPORT_API void hailo_processor_update_stats(HailoAsyncProcessor *ptr, HailoProcessorStatsDto *dto) {
+	dto->UpdateFrom(ptr->Stats());
+}
+
 EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor *ptr, uint8 *frame,FrameIdentifier frameId, int frameW, int frameH, int roiX, int roiY,
-                                 int roiW, int roiH) {
+                                            int roiW, int roiH) {
 	try
 	{
 		YuvFrame f(frameW, frameH, frame);

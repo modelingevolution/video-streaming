@@ -13,8 +13,8 @@ struct HailoProcessorStats {
     StageStats postProcessing;
     StageStats callbackProcessing;
     StageStats totalProcessing;
-    unsigned long InFlight();
-    unsigned long Dropped();
+    unsigned long InFlight() const;
+    unsigned long Dropped() const;
     void Print();
     void Print2();
 

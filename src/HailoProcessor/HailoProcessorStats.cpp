@@ -19,11 +19,11 @@ HailoProcessorStats::HailoProcessorStats(int writeThreadCount, int readInterfere
     totalProcessing.SetPrvStage(&readInterferenceProcessing);
 }
 
-unsigned long HailoProcessorStats::InFlight() {
+unsigned long HailoProcessorStats::InFlight() const {
      return this->totalProcessing.LastIteration() - this->writeProcessing.LastIteration();
 }
 
-unsigned long HailoProcessorStats::Dropped() {
+unsigned long HailoProcessorStats::Dropped()  const{
     return writeProcessing.Dropped() + readInterferenceProcessing.Dropped() + postProcessing.Dropped() + callbackProcessing.Dropped();
 }
 void HailoProcessorStats::Print2() {
