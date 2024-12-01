@@ -681,7 +681,7 @@ _dev(std::move(dev)),
 _callbackChannel(2, DiscardPolicy::Oldest),
 _callback(nullptr),
 _context(nullptr),
-_postProcessingChannel(2, DiscardPolicy::Oldest),
+_postProcessingChannel(4, DiscardPolicy::Oldest),
 _readChannel(2, DiscardPolicy::Oldest),
 _writeChannel(2, DiscardPolicy::Oldest),
 _isRunning(false),
@@ -743,8 +743,10 @@ void HailoAsyncProcessor::StartAsync(unsigned int postProcessThreadCount)
 		_threads.emplace_back(std::thread( &HailoAsyncProcessor::PostProcess, this));
 	_stats.postProcessing.SetThreadCount(postProcessThreadCount);
 
-	_threads.emplace_back(std::thread(&HailoAsyncProcessor::OnCallback, this));
-	_stats.callbackProcessing.SetThreadCount(1);
+	for(int i = 0; i < 2; i++)
+		_threads.emplace_back(std::thread(&HailoAsyncProcessor::OnCallback, this));
+	_stats.callbackProcessing.SetThreadCount(2);
+
 	//std::thread( &HailoAsyncProcessor::PostProcess, this).detach();
 	//std::thread(&HailoAsyncProcessor::OnCallback, this).detach();
 }
