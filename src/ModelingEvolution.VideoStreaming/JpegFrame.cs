@@ -31,4 +31,9 @@ public readonly record struct FrameIdentifier
     {
         
     }
+
+    public override string ToString()
+    {
+        return $"{CameraId}/{FrameId}";
+    }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using Emgu.CV;
@@ -8,6 +9,8 @@ using Emgu.CV.CvEnum;
 using Makaretu.Dns;
 using ModelingEvolution.Drawing;
 using ModelingEvolution.VideoStreaming.Buffers;
+using ModelingEvolution.VideoStreaming.VectorGraphics;
+using Rectangle = System.Drawing.Rectangle;
 
 
 namespace ModelingEvolution.VideoStreaming.Hailo
@@ -125,13 +128,14 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_update_stats")]
         private static extern void UpdateStats(IntPtr ptr, IntPtr stats);
 
-        
+        private readonly Stopwatch _sw = Stopwatch.StartNew();
         public ref HailoProcessorStats Stats
         {
             get
             {
-                if(_stats.WriteProcessing.Processed == 0) 
-                    ReadHailoProcessorStats();
+                if (_stats.WriteProcessing.Processed != 0 && _sw.ElapsedMilliseconds <= 500) return ref _stats;
+                _sw.Restart();
+                ReadHailoProcessorStats();
                 return ref _stats;
             }
         }
@@ -148,31 +152,38 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             IntPtr errorPtr = GetLastError();
             return Marshal.PtrToStringAnsi(errorPtr);
         }
-
+        public static HailoProcessor? Current { get; private set; }
         public static HailoProcessor Load(string fileName)
         {
+            if (Current != null && Current.FileName == fileName)
+                return Current;
+            if (Current != null) throw new ArgumentException("Cannot load new model when Hailo is already in use.");
+            
             var ptr = LoadHef(fileName);
             if (ptr == IntPtr.Zero)
                 throw new HailoException(GetLastErrorMessage());
-            return new HailoProcessor(ptr);
+            return Current = new HailoProcessor(ptr, fileName);
         }
-
-        private HailoProcessor(IntPtr ptr)
+        public string FileName { get; }
+        private HailoProcessor(IntPtr ptr, string fileName)
         {
             if (ptr == IntPtr.Zero)
                 throw new ArgumentNullException("ptr cannot be zero");
+            FileName = fileName;
             _nativePtr = ptr;
         }
 
         public void WriteFrame(IntPtr frame, in FrameIdentifier id, in Size frameSize, in Rectangle roi)
         {
+            if(!IsRunning)
+                StartAsync();
             WriteFrame(_nativePtr, frame, id,frameSize.Width, frameSize.Height, roi.X, roi.Y, roi.Width, roi.Height);
         }
 
         public event EventHandler<SegmentationResult>? FrameProcessed; 
         private static void OnResult(IntPtr segmentationResult, IntPtr context)
         {
-            Console.WriteLine($"On result... segmentation result: {segmentationResult}, context: {context}");
+            //Console.WriteLine($"On result... segmentation result: {segmentationResult}, context: {context}");
             var sr = new SegmentationResult(segmentationResult);
             var handle = GCHandle.FromIntPtr(context);
             HailoProcessor? proc = (HailoProcessor?) handle.Target;
@@ -187,6 +198,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo
                 handler(proc, sr);
             else sr.Dispose();
         }
+        public bool IsRunning { get; private set; }
         public void StartAsync()
         {
             GCHandle contextHandle = GCHandle.Alloc(this);
@@ -194,6 +206,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             GCHandle.Alloc(nhDelegate);
             IntPtr fPtr = Marshal.GetFunctionPointerForDelegate(nhDelegate);
             StartAsyncProcessor(_nativePtr, fPtr,GCHandle.ToIntPtr(contextHandle));
+            IsRunning = true;
         }
 
         public void Stop()
@@ -351,7 +364,7 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             return new Mat(height, width, DepthType.Cv32F,1, dataPtr, width);
         }
 
-        public unsafe Polygon<float>? ComputePolygon(float threshold = 0.8f)
+        public unsafe ManagedArray<VectorU16> ComputePolygonVectorU16(float threshold = 0.8f)
         {
             int[] buffer = ArrayPool<int>.Shared.Rent(1024 * 128);
             fixed (int* ptr = buffer)
@@ -359,6 +372,22 @@ namespace ModelingEvolution.VideoStreaming.Hailo
                 int count = ComputePolygon(_nativePtr, threshold, ptr, buffer.Length);
                 if (count == 0) return null;
 
+                ManagedArray<VectorU16> result = new ManagedArray<VectorU16>(count / 2);
+                for (int i = 0; i < count; i += 2)
+                    result[i / 2] = new VectorU16((ushort)buffer[i], (ushort)buffer[i + 1]);
+                
+                ArrayPool<int>.Shared.Return(buffer);
+                return result;
+            }
+        }
+        public unsafe Polygon<float>? ComputePolygon(float threshold = 0.8f)
+        {
+            int[] buffer = ArrayPool<int>.Shared.Rent(1024 * 128);
+            fixed (int* ptr = buffer)
+            {
+                int count = ComputePolygon(_nativePtr, threshold, ptr, buffer.Length);
+                if (count == 0) return null;
+                
                 Polygon<float> result = new Polygon<float>(buffer.ToPointList(count));
                 ArrayPool<int>.Shared.Return(buffer);
                 return result;

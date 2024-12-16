@@ -1,29 +1,94 @@
 ﻿using System.Buffers;
 using System.Drawing;
+using System.Threading.Channels;
 using Microsoft.ML.OnnxRuntime;
 using ModelingEvolution.VideoStreaming;
 
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
-internal class YoloOnnxModelRunner : ISegmentationModelRunner<ISegmentation>
+internal class YoloOnnxModelRunner : ISegmentationModelRunner<ISegmentation>, IAsyncSegmentationModelRunner<ISegmentation>
 {
     private readonly IParser<Segmentation> _parser;
     private readonly YoloOnnxConfiguration _onnxConfiguration;
     private readonly InferenceSession _session;
     private readonly SessionTensorInfo _tensorInfo;
     private readonly RunOptions _options = new();
-    public ModelPerformance Performance { get; } = new();
+    private readonly ModelPerformance _performance = new ModelPerformance();
+    private CancellationTokenSource _cts;
+    private ulong _iterations;
+    public event EventHandler<ISegmentationResult<ISegmentation>> FrameSegmentationPerformed;
+    public unsafe void AsyncProcess(YuvFrame* frame, in Rectangle roi, in Size dstSize, float threshold)
+    {
+        if (Interlocked.Increment(ref _iterations) == 1)
+            TryStartAsync();
+        _channel.Writer.TryWrite(new Arg(frame, roi, dstSize, threshold));
+    }
 
+    private void TryStartAsync()
+    {
+        _cts = new CancellationTokenSource();
+        Task.Factory.StartNew(OnRunAsync,  TaskContinuationOptions.LongRunning);
+    }
+
+    private async Task OnRunAsync(object? obj)
+    {
+        try
+        {
+            await foreach (var i in _channel.Reader.ReadAllAsync(_cts.Token))
+            {
+                var result = Process(i.Frame, i.InterestArea, i.DstSize, i.Threshold);
+                this.FrameSegmentationPerformed?.Invoke(this, result);
+            }
+        }
+
+        
+        catch(OperationCanceledException ex){}
+    }
+
+
+    public IModelPerformance Performance => _performance;
+
+    readonly struct Arg
+    {
+        public readonly IntPtr Frame;
+        public readonly Rectangle InterestArea;
+        public readonly Size DstSize;
+        public readonly float Threshold;
+        public unsafe Arg(YuvFrame* frame,
+            Rectangle interestArea,
+            Size dstSize,
+            float threshold)
+        {
+            // add all readonly fields
+            Frame = (IntPtr)frame;
+            InterestArea = interestArea;
+            DstSize = dstSize;
+            Threshold = threshold;
+
+        }
+    }
+
+    private readonly Channel<Arg> _channel;
+    
     public YoloOnnxModelRunner(IParser<Segmentation> parser,
         InferenceSession session,
         YoloOnnxConfiguration? configuration = null)
     {
         _parser = parser;
         _onnxConfiguration = configuration ?? new YoloOnnxConfiguration();
-
+        _channel = Channel.CreateBounded<Arg>(new BoundedChannelOptions(1));
         _session = session;
             
         _tensorInfo = new SessionTensorInfo(_session);
+    }
+
+    public unsafe ISegmentationResult<ISegmentation> Process(
+        IntPtr frame,
+        in Rectangle interestArea,
+        in Size dstSize, float threshold)
+    {
+        return Process((YuvFrame*)frame, in interestArea, in dstSize, threshold);
+
     }
 
     public unsafe ISegmentationResult<ISegmentation> Process(
@@ -38,12 +103,14 @@ internal class YoloOnnxModelRunner : ISegmentationModelRunner<ISegmentation>
         return PostProcess(frame, interestArea, dstSize, threshold, output);
     }
 
+    
+
     private unsafe ISegmentationResult<ISegmentation> PostProcess(YuvFrame* frame, in Rectangle interestArea, 
         in Size dstSize,
         float threshold,  YoloRawOutput output)
     {
         // Now we have output we can process the output
-        using var s = Performance.MeasurePostProcessing();
+        using var s = _performance.MeasurePostProcessing();
             
         var result = _parser.ProcessTensorToResult(output, interestArea, threshold);
         output.Dispose();
@@ -53,20 +120,21 @@ internal class YoloOnnxModelRunner : ISegmentationModelRunner<ISegmentation>
             ImageSize = frame->Info.Size,
             Threshold = threshold,
             Roi = interestArea,
-            DestinationSize = dstSize
+            DestinationSize = dstSize,
+            Id = new FrameIdentifier(frame->Metadata.FrameNumber, 0)
         };
     }
 
     private void ProcessInterference(OrtIoBinding binding)
     {
-        using var s = Performance.MeasureInterference();
+        using var s = _performance.MeasureInterference();
         // Do the interference
         _session.RunWithBinding(_options, binding);
     }
 
     private unsafe OrtIoBinding PreProcess(YuvFrame* frame, in Rectangle interestArea, out YoloRawOutput output)
     {
-        using var perf = Performance.MeasurePreProcessing();
+        using var perf = _performance.MeasurePreProcessing();
         OrtIoBinding? binding = null;
         try
         {
@@ -121,5 +189,11 @@ internal class YoloOnnxModelRunner : ISegmentationModelRunner<ISegmentation>
     private static OrtValue CreateOrtValue(Memory<float> buffer, long[] shape)
     {
         return OrtValue.CreateTensorValueFromMemory(OrtMemoryInfo.DefaultInstance, buffer, shape);
+    }
+
+    public void Dispose()
+    {
+        _session.Dispose();
+        _options.Dispose();
     }
 }

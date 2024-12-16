@@ -35,7 +35,7 @@ public interface IMultiplexingStats
 
     IReadOnlyList<IChaser> Chasers { get; }
 }
-public interface IBufferedFrameMultiplexer : IMultiplexingStats
+public interface IShmMultiplexer : IMultiplexingStats
 {
     IAsyncEnumerable<Frame> Read(int fps = 30, [EnumeratorCancellation] CancellationToken token = default);
     void Disconnect(IChaser chaser);

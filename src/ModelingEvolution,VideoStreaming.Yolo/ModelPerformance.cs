@@ -1,6 +1,15 @@
 ﻿namespace ModelingEvolution_VideoStreaming.Yolo;
 
-public record ModelPerformance
+public interface IModelPerformance
+{
+    TimeSpan PreProcessingTime { get; }
+    TimeSpan InterferenceTime { get; }
+    TimeSpan PostProcessingTime { get; }
+    TimeSpan SignalProcessingTime { get; }
+    TimeSpan Total { get; }
+}
+
+public record ModelPerformance : IModelPerformance
 {
     private TimeSpan _preProcessingTime;
     private TimeSpan _interferenceTime;
@@ -33,7 +42,7 @@ public record ModelPerformance
     }
 
     public TimeSpan PreProcessingTime => _preProcessingTime;
-
+    public TimeSpan SignalProcessingTime { get; set; }
     public TimeSpan InterferenceTime => _interferenceTime;
 
     public TimeSpan PostProcessingTime => _postProcessingTime;

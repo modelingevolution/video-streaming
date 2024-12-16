@@ -96,7 +96,7 @@ namespace ModelingEvolution.VideoStreaming.Tests
 
         private unsafe StringBuilder RunAndGetAnnotations(string fileName, string modelPath)
         {
-            var runner = ModelFactory.LoadSegmentationModel(modelPath);
+            var runner = ModelFactory.LoadOnnxSegmentationModel(modelPath);
 
             var frame = FrameLoader.Load(fileName);
             var rect = new Rectangle(0, 0, 640, 640);

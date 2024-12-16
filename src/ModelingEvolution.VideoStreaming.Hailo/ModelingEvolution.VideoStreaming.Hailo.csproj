@@ -8,12 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.34.26" />
+    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.35.26" />
+    <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.116.1" />
     
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj" />
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming.VectorGraphics\ModelingEvolution.VideoStreaming.VectorGraphics.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming\ModelingEvolution.VideoStreaming.csproj" />
   </ItemGroup>
 
