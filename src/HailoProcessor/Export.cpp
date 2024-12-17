@@ -93,6 +93,7 @@ EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor *ptr, uint8 *fra
                                             int roiW, int roiH) {
 	try
 	{
+		cout << "Processing frame: "<< frameId.CameraId << "/" << frameId.FrameId << std::endl;
 		YuvFrame f(frameW, frameH, frame);
 		Rect roi(roiX, roiY, roiW, roiH);
 		ptr->Write(f, roi, frameId);
