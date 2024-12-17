@@ -1,6 +1,6 @@
 #include "Export.h"
 #include "HailoProcessorStatsDto.h"
-
+#include <fstream>
 
 EXPORT_API float segment_get_confidence(Segment* segment) {
 	return (segment) ? segment->Confidence : 0.0f;
@@ -89,11 +89,18 @@ EXPORT_API void hailo_processor_update_stats(HailoAsyncProcessor *ptr, HailoProc
 	//ptr->Stats().Print2();
 }
 
+
 EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor *ptr, uint8 *frame,FrameIdentifier frameId, int frameW, int frameH, int roiX, int roiY,
                                             int roiW, int roiH) {
 	try
 	{
-		cout << "Processing frame: "<< frameId.CameraId << "/" << frameId.FrameId << std::endl;
+		std::ofstream logFile("log.txt", std::ios::app); // Open in append mode
+		if (logFile.is_open())
+		{
+			logFile << "Processing frame: " << frameId.CameraId << "/" << frameId.FrameId << std::endl;
+			logFile.close(); // Close the file explicitly
+		}
+
 		YuvFrame f(frameW, frameH, frame);
 		Rect roi(roiX, roiY, roiW, roiH);
 		ptr->Write(f, roi, frameId);
