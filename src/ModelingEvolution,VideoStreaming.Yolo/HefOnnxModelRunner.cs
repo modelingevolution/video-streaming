@@ -10,6 +10,7 @@ using System.Text;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Util;
+using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming;
 using ModelingEvolution.VideoStreaming.Hailo;
 using ModelingEvolution.VideoStreaming.VectorGraphics;
@@ -19,6 +20,8 @@ namespace ModelingEvolution_VideoStreaming.Yolo;
 
 internal class HailoModelRunner : IAsyncSegmentationModelRunner<ISegmentation>
 {
+    private readonly ILogger<HailoModelRunner> _logger;
+
     class ModelPerformanceProxy : IModelPerformance
     {
         private readonly HailoProcessor _processor;
@@ -70,11 +73,12 @@ internal class HailoModelRunner : IAsyncSegmentationModelRunner<ISegmentation>
         }
     }
     private static HailoProcessor _processor = null;
-    private readonly ConcurrentDictionary<FrameIdentifier, Args> _pendingFrames = new();
+    private readonly ConcurrentQueue<Args> _pendingFrames = new();
 
     readonly record struct Args(Rectangle Roi, Size DstSize, float Threshold);
-    public HailoModelRunner(string modelFullPath)
+    public HailoModelRunner(string modelFullPath, ILogger<HailoModelRunner> logger)
     {
+        _logger = logger;
         _processor ??= HailoProcessor.Load(modelFullPath);
         
         _processor.FrameProcessed += OnFrameProcessed;
@@ -83,7 +87,12 @@ internal class HailoModelRunner : IAsyncSegmentationModelRunner<ISegmentation>
 
     private void OnFrameProcessed(object? sender, SegmentationResult e)
     {
-        if (!_pendingFrames.TryRemove(e.Id, out var r)) return;
+        if (!_pendingFrames.TryDequeue(out var r))
+        {
+            _logger.LogError($"Cannot find pending frame {e.Id}.");
+            return;
+        }
+        
         HailoSegmentationResult result = new HailoSegmentationResult(e)
         {
             Threshold = r.Threshold,
@@ -102,7 +111,9 @@ internal class HailoModelRunner : IAsyncSegmentationModelRunner<ISegmentation>
         var frameSize = frame->Info.Size;
         _processor.Confidence = threshold;
         FrameIdentifier id = new FrameIdentifier(frame->Metadata.FrameNumber, 0);
-
+        _pendingFrames.Enqueue(new Args(roi, dstSize, threshold));
+        _logger.LogInformation($"Pending frame: {id}");
+        
         _processor.WriteFrame(new IntPtr((void*)frame->Data), id, frameSize, roi);
     }
 

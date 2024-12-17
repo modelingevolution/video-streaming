@@ -31,7 +31,7 @@ namespace ModelingEvolution.VideoStreaming.HailoCmd
             Console.WriteLine("Jpg frame loaded.");
             
             _sw = Stopwatch.StartNew();
-            FrameIdentifier id = new FrameIdentifier();
+            FrameIdentifier id = new FrameIdentifier(999,1);
             p.WriteFrame(yuvFrame.DataPointer, id, new Size(640,640), new Rectangle(0,0,640,640));
             Console.WriteLine("Waiting for result...");
             Thread.Sleep(350);

@@ -1,9 +1,18 @@
 ﻿using Emgu.CV.Util;
+using Microsoft.Extensions.DependencyInjection;
 using ModelingEvolution.VideoStreaming.Buffers;
 using ModelingEvolution.VideoStreaming.VectorGraphics;
 
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
+public static class ContainerExtensions
+{
+    public static IServiceCollection AddYolo(this IServiceCollection services)
+    {
+        services.AddSingleton<ModelFactory>();
+        return services;
+    }
+}
 public static class Ext
 {
     public static VectorU16[] ToVectorArray(this VectorOfPoint p)

@@ -23,6 +23,13 @@ public class StructMarshalTests
         statsSize.Should().Be(236);
     }
 
+    [Fact]
+    public void FrameIdentifier()
+    {
+        int size = Marshal.SizeOf<FrameIdentifier>();
+        size.Should().Be(16);
+    }
+    
     [Theory]
     [InlineData(1, "100,0 ns")] // 1 tick = 100 nanoseconds
     [InlineData(10, "1,0 μs")]  // 10 ticks = 1 microsecond

@@ -1,4 +1,7 @@
-﻿namespace ModelingEvolution.VideoStreaming;
+﻿using System.Drawing;
+using System.Globalization;
+
+namespace ModelingEvolution.VideoStreaming;
 
 #pragma warning disable CS4014
 
@@ -31,7 +34,7 @@ static class SizeExtensions
         return ((long)value).WithSizeSuffix(decimalPlaces);
     }
 
-
+    
     public static string WithSizeSuffix(this ulong value, int decimalPlaces = 1)
     {
         if (decimalPlaces < 0) { throw new ArgumentOutOfRangeException("decimalPlaces"); }
