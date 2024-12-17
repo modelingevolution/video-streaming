@@ -98,6 +98,7 @@ EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor *ptr, uint8 *fra
 		if (logFile.is_open())
 		{
 			logFile << "Processing frame: " << frameId.CameraId << "/" << frameId.FrameId << std::endl;
+			cout << "Processing frame: " << frameId.CameraId << "/" << frameId.FrameId << std::endl;
 			logFile.close(); // Close the file explicitly
 		}
 
