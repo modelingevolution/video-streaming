@@ -8,7 +8,29 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Emgu.CV" Version="4.9.0.5494" />
+    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.35.26" />
+    <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.116.1" />
+    
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj" />
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming.VectorGraphics\ModelingEvolution.VideoStreaming.VectorGraphics.csproj" />
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming\ModelingEvolution.VideoStreaming.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="libxHailoProcessor.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <!-- Linux and macOS -->
+    <Exec Command="cp ../HailoProcessor/build/aarch64/libxHailoProcessor.so ./" Condition=" '$(OS)' != 'Windows_NT' " />
+
+    <!-- Windows -->
+    <Exec Command="copy ..\HailoProcessor\build\aarch64\libxHailoProcessor.so .\" Condition=" '$(OS)' == 'Windows_NT' " />
+  </Target>
 
 </Project>

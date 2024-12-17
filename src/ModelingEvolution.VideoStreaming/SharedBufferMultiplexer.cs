@@ -20,7 +20,7 @@ using ModelingEvolution.VideoStreaming.Chasers;
 using ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
 namespace ModelingEvolution.VideoStreaming;
-public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
+public class SharedBufferMultiplexer :  IShmMultiplexer
 {
     public event EventHandler Disconnected;
     private Thread _worker;
@@ -307,8 +307,8 @@ public class SharedBufferMultiplexer :  IBufferedFrameMultiplexer
 
     public void Chase(Stream dst, string? identifier, CancellationToken token)
     {
-        Tuple<Stream, string, IBufferedFrameMultiplexer,CancellationToken> args =
-            new Tuple<Stream, string, IBufferedFrameMultiplexer,CancellationToken>(dst, identifier, this,token);
+        Tuple<Stream, string, IShmMultiplexer,CancellationToken> args =
+            new Tuple<Stream, string, IShmMultiplexer,CancellationToken>(dst, identifier, this,token);
 
         StreamFrameChaser c = new StreamFrameChaser(dst, identifier,this, token);
         _chasers.Add(c);
@@ -349,7 +349,7 @@ public static class StreamFrameExtensions
         }
     }
 }
-public class StreamFrameChaser(Stream stream, string identifier, IBufferedFrameMultiplexer buffer, CancellationToken token) : IChaser
+public class StreamFrameChaser(Stream stream, string identifier, IShmMultiplexer buffer, CancellationToken token) : IChaser
 {
     private DateTime _started;
     public int PendingBytes { get; private set; }

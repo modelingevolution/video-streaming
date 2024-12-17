@@ -1,6 +1,8 @@
 using ModelingEvolution.VideoStreaming.Chasers;
 using ModelingEvolution.VideoStreaming.Nal;
 using NSubstitute;
+using System.Reactive;
+using System;
 
 namespace ModelingEvolution.VideoStreaming.Tests;
 

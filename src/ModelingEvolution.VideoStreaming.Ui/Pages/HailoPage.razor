@@ -1,0 +1,64 @@
+﻿@page "/hailo"
+@rendermode InteractiveServer
+@using ModelingEvolution.VideoStreaming.Hailo
+@implements IDisposable
+@if (HailoProcessor.Current != null)
+{
+    <MudTable Items="@GetStageStats()">
+        <HeaderContent>
+            <MudTh>Stage</MudTh>
+            <MudTh>Processed</MudTh>
+            <MudTh>Dropped</MudTh>
+            <MudTh>Behind</MudTh>
+            <MudTh>Threads</MudTh>
+            <MudTh>FPS</MudTh>
+            <MudTh>Total Processing Time</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTr>
+                <MudTd>@context.Item1</MudTd>
+                <MudTd>@context.Item2.Processed</MudTd>
+                <MudTd>@context.Item2.Dropped</MudTd>
+                <MudTd>@context.Item2.Behind</MudTd>
+                <MudTd>@context.Item2.ThreadCount</MudTd>
+                <MudTd>@context.Item2.Fps</MudTd>
+                <MudTd>@context.Item2.TotalProcessingTime.WithTimeSuffix(0)</MudTd>
+            </MudTr>
+            
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private System.Threading.Timer? _timer;
+    protected override void OnInitialized()
+    {
+        _timer = new Timer(OnRefresh, null, 500, 500);
+        
+    }
+    private IEnumerable<ValueTuple<string, HailoProcessorStats.StageStats>> GetStageStats()
+    {
+        
+        var stats = HailoProcessor.Current.Stats;
+        yield return ValueTuple.Create("Write Processing", stats.WriteProcessing);
+        yield return ValueTuple.Create("Read Interference", stats.ReadInterferenceProcessing);
+        yield return ValueTuple.Create("Post Processing", stats.PostProcessing);
+        yield return ValueTuple.Create("Callback Processing", stats.CallbackProcessing);
+        yield return ValueTuple.Create("Total Processing", stats.TotalProcessing);
+    }
+    private void OnRefresh(object? state)
+    {
+        this.InvokeAsync(this.StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_timer != null) await _timer.DisposeAsync();
+    }
+
+}

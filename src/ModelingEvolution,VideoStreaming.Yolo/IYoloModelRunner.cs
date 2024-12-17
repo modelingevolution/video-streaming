@@ -3,12 +3,25 @@ using ModelingEvolution.VideoStreaming;
 
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
-public interface ISegmentationModelRunner<out T> where T : IDisposable
+public interface ISegmentationModelRunner<out T> : IDisposable where T : IDisposable
 {
-    ModelPerformance Performance { get; }
+    IModelPerformance Performance { get; }
+    
     unsafe ISegmentationResult<T> Process(
         YuvFrame* frame, 
         in Rectangle roi,
         in Size dstSize,
         float threshold);
+}
+public interface IAsyncSegmentationModelRunner<out T> : IDisposable where T : IDisposable
+{
+    IModelPerformance Performance { get; }
+    event EventHandler<ISegmentationResult<ISegmentation>> FrameSegmentationPerformed;
+
+    unsafe void AsyncProcess(
+        YuvFrame* frame,
+        in Rectangle roi,
+        in Size dstSize,
+        float threshold);
+    
 }

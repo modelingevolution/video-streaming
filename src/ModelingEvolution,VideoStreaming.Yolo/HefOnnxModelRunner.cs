@@ -1,10 +1,12 @@
 ﻿using System.Buffers;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing;
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Text;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Util;
@@ -15,27 +17,100 @@ using Rectangle = System.Drawing.Rectangle;
 
 namespace ModelingEvolution_VideoStreaming.Yolo;
 
-internal class HailoModelRunner : ISegmentationModelRunner<ISegmentation>
+internal class HailoModelRunner : IAsyncSegmentationModelRunner<ISegmentation>
 {
-    private readonly HailoProcessor _processor;
+    class ModelPerformanceProxy : IModelPerformance
+    {
+        private readonly HailoProcessor _processor;
+        public ModelPerformanceProxy(HailoProcessor processor)
+        {
+            _processor = processor;
+        }
+
+        public TimeSpan PreProcessingTime
+        {
+            get
+            {
+                var statsWriteProcessing = _processor.Stats.WriteProcessing;
+                return statsWriteProcessing.TotalProcessingTime / statsWriteProcessing.Processed;
+            }
+        }
+
+        public TimeSpan InterferenceTime { get
+        {
+            var statsInference = _processor.Stats.ReadInterferenceProcessing;
+            return statsInference.TotalProcessingTime / statsInference.Processed;
+        } }
+
+        public TimeSpan PostProcessingTime
+        {
+            get
+            {
+                var statsPostProcessing = _processor.Stats.PostProcessing;
+                return statsPostProcessing.TotalProcessingTime / statsPostProcessing.Processed;
+            }
+        }
+
+        public TimeSpan SignalProcessingTime
+        {
+            get
+            {
+                var c = _processor.Stats.CallbackProcessing;
+                return c.TotalProcessingTime / c.Processed;
+            }
+        }
+
+        public TimeSpan Total
+        {
+            get
+            {
+                var s = _processor.Stats.TotalProcessing;
+                return s.TotalProcessingTime / s.Processed;
+            }
+        }
+    }
+    private static HailoProcessor _processor = null;
+    private readonly ConcurrentDictionary<FrameIdentifier, Args> _pendingFrames = new();
+
+    readonly record struct Args(Rectangle Roi, Size DstSize, float Threshold);
     public HailoModelRunner(string modelFullPath)
     {
-        _processor = HailoProcessor.Load(modelFullPath);
+        _processor ??= HailoProcessor.Load(modelFullPath);
+        
+        _processor.FrameProcessed += OnFrameProcessed;
+        Performance = new ModelPerformanceProxy(_processor);
     }
 
-    public ModelPerformance Performance { get; }
-    public unsafe ISegmentationResult<ISegmentation> Process(YuvFrame* frame, 
-        in Rectangle roi,in Size dstSize, float threshold)
+    private void OnFrameProcessed(object? sender, SegmentationResult e)
+    {
+        if (!_pendingFrames.TryRemove(e.Id, out var r)) return;
+        HailoSegmentationResult result = new HailoSegmentationResult(e)
+        {
+            Threshold = r.Threshold,
+            Roi = r.Roi,
+            DestinationSize = r.DstSize,
+            Id = e.Id
+        };
+
+        FrameSegmentationPerformed?.Invoke(this, result);
+    }
+
+    public IModelPerformance Performance { get; }
+    public event EventHandler<ISegmentationResult<ISegmentation>>? FrameSegmentationPerformed;
+    public unsafe void AsyncProcess(YuvFrame* frame, in Rectangle roi, in Size dstSize, float threshold)
     {
         var frameSize = frame->Info.Size;
         _processor.Confidence = threshold;
-        var ret = _processor.ProcessFrame(frame->Data, frameSize, roi, dstSize);
-        return new HailoSegmentationResult(ret)
-        {
-            Roi = roi, 
-            Threshold = threshold,
-            DestinationSize = dstSize
-        };
+        FrameIdentifier id = new FrameIdentifier(frame->Metadata.FrameNumber, 0);
+
+        _processor.WriteFrame(new IntPtr((void*)frame->Data), id, frameSize, roi);
+    }
+
+    
+
+    public void Dispose()
+    {
+        _processor.FrameProcessed -= OnFrameProcessed;
     }
 }
 
@@ -52,35 +127,8 @@ class HailoSegmentationResult : ISegmentationResult<ISegmentation>
 
         private PolygonGraphics? ComputePolygon()
         {
-            var sw = Stopwatch.StartNew(); sw.Start();
-
-            var mat = Mask;
-            using var threshold = new Mat();
-            
-            CvInvoke.Threshold(mat, threshold, parent.Threshold * 255, 255, ThresholdType.Binary);
-
-            using var contours = new VectorOfVectorOfPoint();
-            CvInvoke.FindContours(threshold, contours, null, RetrType.External, ChainApproxMethod.ChainApproxSimple);
-
-            if (contours.Size <= 0)
-                return null;
-            
-            var largestContour = contours[0];
-            for (int i = 1; i < contours.Size; i++)
-                if (CvInvoke.ContourArea(contours[i]) > CvInvoke.ContourArea(largestContour))
-                    largestContour = contours[i];
-            
-            //using var hullIndices = new VectorOfPoint();
-            //CvInvoke.ConvexHull(largestContour, hullIndices);
-            //var points = hullIndices.ToVectorList();
-            if (largestContour.Length == 0) return null;
-
-            var points = largestContour.ToArrayBuffer();
-            Debug.Assert(points.Count > 2);
-
-            var result = new PolygonGraphics(points, mat.Size);
-
-            Debug.WriteLine("Compute Polygon in: " + sw.ElapsedMilliseconds);
+            var points= parent._ret[index].ComputePolygonVectorU16(parent.Threshold);
+            var result = new PolygonGraphics(points, parent.DestinationSize);
 
             return result;
         }
@@ -90,39 +138,20 @@ class HailoSegmentationResult : ISegmentationResult<ISegmentation>
         public PolygonGraphics? Polygon => _polygon ??= ComputePolygon();
         public SegmentationClass Name { get; init; }
 
-        /// <summary>
-        /// Confidence is calculated as an average of confidence in area above the threshold.
-        /// </summary>
-        /// <value>
-        /// The confidence.
-        /// </value>
-        public unsafe float Confidence
-        {
-            get
-            {
-                if (_confidence != null) return _confidence.Value;
 
-                byte* ptr = (byte*)Mask.DataPointer;
-                byte threshold = (byte)(parent.Threshold * 255f);
-                int count = Mask.Rows * Mask.Cols;
-                var tmp = ArrayOperations.AvgGreaterThan(ptr, threshold, 0, count);
-                _confidence = tmp / 255f;
-
-                return _confidence.Value;
-            }
-        }
-
-        public Rectangle Bounds => throw new NotImplementedException();
+        public float Confidence => parent._ret[index].Confidence;
+        public Rectangle Bounds => parent._ret[index].Bbox ;
     }
-    private readonly AnnotationResult _ret;
+    private readonly SegmentationResult _ret;
     private readonly SegmentationItem[] _items;
     private readonly int _count;
     private bool _disposed;
-    public HailoSegmentationResult(AnnotationResult ret)
+    public HailoSegmentationResult(SegmentationResult ret)
     {
         _ret = ret;
         _items = ArrayPool<SegmentationItem>.Shared.Rent(ret.Count);
         _count = ret.Count;
+        
         for (int i = 0; i < ret.Count; i++)
             _items[i] = new SegmentationItem(this, i);
     }
@@ -147,10 +176,25 @@ class HailoSegmentationResult : ISegmentationResult<ISegmentation>
         _ret.Dispose();
     }
 
-    public Size DestinationSize { get; init; }
+    public required Size DestinationSize { get; init; }
     public int Count => _ret.Count;
-    public Rectangle Roi { get; init; }
-    public float Threshold { get; init; }
+    public required Rectangle Roi { get; init; }
+    public required float Threshold { get; init; }
+    public FrameIdentifier Id { get; set; }
 
     public ISegmentation this[int index] => _items[index];
+    public override string ToString()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine($"DestinationSize: {DestinationSize}");
+        sb.AppendLine($"Roi: {Roi}");
+        sb.AppendLine($"Threshold: {Threshold}");
+        sb.AppendLine($"Count: {Count}");
+        foreach (var i in this)
+        {
+            sb.AppendLine($"Segment: {i.Name} {i.Bounds}");
+        }
+
+        return sb.ToString();
+    }
 }

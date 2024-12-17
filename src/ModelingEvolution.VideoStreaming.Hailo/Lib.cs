@@ -2,6 +2,6 @@
 
 static class Lib
 {
-    public const string Name = "libHailoProcessor.so";
+    public const string Name = "libxHailoProcessor.so";
         
 }

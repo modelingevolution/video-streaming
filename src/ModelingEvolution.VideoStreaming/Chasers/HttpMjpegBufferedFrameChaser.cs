@@ -10,7 +10,7 @@ internal sealed class HttpMjpegBufferedFrameChaser : IChaser
     private readonly HttpContext _dst;
     private readonly ILogger<HttpMjpegBufferedFrameChaser> _logger;
     private readonly CancellationTokenSource _cancellationTokenSource;
-    private readonly IBufferedFrameMultiplexer _multiplexer;
+    private readonly IShmMultiplexer _multiplexer;
     private ulong _frameCounter = 0;
     private ulong _written;
     private readonly DateTime _started;
@@ -49,7 +49,7 @@ internal sealed class HttpMjpegBufferedFrameChaser : IChaser
     
 
     
-    public HttpMjpegBufferedFrameChaser(IBufferedFrameMultiplexer multiplexer,
+    public HttpMjpegBufferedFrameChaser(IShmMultiplexer multiplexer,
         HttpContext dst,
         string identifier = null,
         ILogger<HttpMjpegBufferedFrameChaser> logger = null,

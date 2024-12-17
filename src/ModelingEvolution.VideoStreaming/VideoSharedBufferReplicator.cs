@@ -10,7 +10,7 @@ namespace ModelingEvolution.VideoStreaming;
 public class VideoSharedBufferReplicator : IVideoStreamReplicator
 {
     private SharedCyclicBuffer? _buffer;
-    private SharedBufferMultiplexer2? _multiplexer;
+    private ShmMultiplexer? _multiplexer;
     private readonly VideoStreamEventSink _evtSink;
     private readonly ILogger<VideoSharedBufferReplicator> _logger;
     private readonly ILoggerFactory _loggerFactory;
@@ -54,7 +54,7 @@ public class VideoSharedBufferReplicator : IVideoStreamReplicator
         foreach(var i in _matPartialProcessors)
             i.Init(VideoAddress);
 
-        _multiplexer = new SharedBufferMultiplexer2(_buffer, 
+        _multiplexer = new ShmMultiplexer(_buffer, 
             VideoAddress.VideoSource == VideoSource.File ?
                 
             FrameProcessingHandlers.OnProcess:

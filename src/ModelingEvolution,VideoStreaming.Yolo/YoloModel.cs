@@ -11,11 +11,13 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using Emgu.CV.Dnn;
 using Microsoft.Extensions.Options;
+using ModelingEvolution.VideoStreaming;
 
 namespace ModelingEvolution_VideoStreaming.Yolo
 {
     public interface ISegmentationResult<out T> : IEnumerable<T>, IDisposable where T : IDisposable
     {
+        FrameIdentifier Id { get; }
         Size DestinationSize { get; }
         int Count { get; }
         Rectangle Roi { get; }
@@ -27,6 +29,7 @@ namespace ModelingEvolution_VideoStreaming.Yolo
         
     {
         public required Size ImageSize { get; init; }
+        public required FrameIdentifier Id { get; init; }
         public required Size DestinationSize { get; init; }
         public T this[int index] => predictions[index];
 
