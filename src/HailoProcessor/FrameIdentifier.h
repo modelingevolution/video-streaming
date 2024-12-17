@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <utility> // for std::pair
-
+#pragma pack(push, 1)
 struct alignas(1) FrameIdentifier {
     const uint64_t FrameId;
     const uint32_t CameraId;
@@ -39,7 +39,7 @@ struct alignas(1) FrameIdentifier {
     // Utility function for string representation
     std::string toString() const;
 };
-
+#pragma pack(pop)
 
 // Hash function for use with unordered containers
 namespace std {
