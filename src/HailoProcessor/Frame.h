@@ -17,11 +17,12 @@ using namespace cv;
 
 
 struct FrameContext {
-	FrameContext(const FrameIdentifier &id, const Rect rect);
+	FrameContext(const FrameIdentifier &id, const Rect rect, float threshold);
 	uint64_t Iteration;
 	SegmentationResult *Result;
 	const FrameIdentifier Id;
 	const Rect Roi;
+	const float Threshold;
 
 	StopWatch InterferenceAndReadWatch;
 	StopWatch WriteWatch;
@@ -110,16 +111,23 @@ private:
 
 class SegmentationResult {
 public:
-	
+	SegmentationResult(const FrameIdentifier &id, const Rect &roi, float threshold);
 	float* GetMask(int index)const;
 	Size GetResolution(int index) const;
 	int GetClassId(int index)const;
 	int Count() const;
+	int UncertainCounter() const;
+	float Threshold() const;
+	Rect Roi() const;
 	Segment& Get(int index) ;
 	void Add(const Mat &mask, int classid, const Size &size, const Rect2f &bbox, float confidence, const string &label);
-	FrameIdentifier& Id();
+	void IncrementUncertainCounter();
+
+	FrameIdentifier Id() const;
 private:
 	vector<Segment> _items;
 	Rect _roi;
 	FrameIdentifier _id;
+	float _threshold;
+	int _uncertainCounter;
 };

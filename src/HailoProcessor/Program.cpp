@@ -162,7 +162,7 @@ int main(int argc, char** argv)
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
             StopWatch sw;
             FrameIdentifier id(1,0);
-            hailo_processor_write_frame(p, frame->GetData(), id, frame->Width(), frame->Height(), 0, 0, frame->Width(), frame->Height());
+            hailo_processor_write_frame(p, frame->GetData(), id.CameraId, id.FrameId, frame->Width(), frame->Height(), 0, 0, frame->Width(), frame->Height(), 0);
         }
     };
     std::future<void> futureWriter = std::async(std::launch::async, writer_loop);

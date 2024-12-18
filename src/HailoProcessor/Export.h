@@ -19,8 +19,11 @@ struct RECT_INT {
 struct HailoProcessorStatsDto;
 EXPORT_API Segment* segmentation_result_get(SegmentationResult* ptr, int index);
 EXPORT_API int    segmentation_result_count(SegmentationResult* ptr);
+EXPORT_API float  segmentation_result_threshold(SegmentationResult* ptr);
+EXPORT_API int    segmentation_result_uncertainCounter(SegmentationResult* ptr);
 EXPORT_API void   segmentation_result_dispose(SegmentationResult* ptr);
 EXPORT_API FrameIdentifier segmentation_result_id(SegmentationResult* ptr);
+EXPORT_API cv::Rect segmentation_result_roi(SegmentationResult* ptr);
 
 EXPORT_API float segment_get_confidence(Segment *segment);
 EXPORT_API int segment_get_classid(Segment *segment);
@@ -40,9 +43,9 @@ EXPORT_API void hailo_processor_start_async(HailoAsyncProcessor *ptr, CallbackWi
 EXPORT_API void hailo_processor_update_stats(HailoAsyncProcessor *ptr, HailoProcessorStatsDto *dto);
 EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor* ptr,
                                                                            uint8* frame,
-                                                                           FrameIdentifier frameId,
+                                                                           uint32_t cameraId, uint64_t frameId,
                                                                            int frameW, int frameH, int roiX, int roiY,
-                                                                           int roiW, int roiH);
+                                                                           int roiW, int roiH, float threshold);
 
 EXPORT_API void hailo_processor_stop(HailoAsyncProcessor* ptr);
 EXPORT_API float             hailo_processor_get_confidence(HailoAsyncProcessor* ptr);

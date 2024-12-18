@@ -56,7 +56,7 @@ public:
 	// this method would push mat object on the queue.
 
 	void Write(const YuvFrame &frame, const FrameIdentifier &frameId);
-	void Write(const YuvFrame &frame, const cv::Rect &roi, const FrameIdentifier &frameId);
+	void Write(const YuvFrame &frame, const cv::Rect &roi, const FrameIdentifier &frameId, float threshold);
 	void StartAsync(unsigned int postProcessThreadCount);
 	void StartAsync(CallbackWithContext callback, void * context);
 
@@ -94,7 +94,7 @@ private:
 	//std::atomic_int _readOutputCounter;
 	std::mutex _writeMx;
 	uint64_t _iteration;
-
+	float _threshold = 0.8f;
 	HailoProcessorStats _stats;
 	unique_ptr<VDevice> _dev;
 	pair<vector<InputVStream>, vector<OutputVStream>> _vstreams;

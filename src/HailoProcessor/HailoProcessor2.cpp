@@ -104,7 +104,7 @@ unique_ptr<SegmentationResult> HailoProcessor::ProcessFrame(const YuvFrame& fram
 	/*status = job.wait(3s);
 	if (status != HAILO_SUCCESS) throw HailoException(status);*/
 
-	auto r = make_unique<SegmentationResult>();
+	auto r = make_unique<SegmentationResult>(FrameIdentifier(0,0), roi,0);
 
 	for (auto& tensor : outputNodes) {
 		std::cout << "Tensor name:" << tensor.name;
