@@ -3,7 +3,7 @@
 #include "ArrayPool.h"
 
 
-FrameContext::FrameContext(const FrameIdentifier &id, const Rect rect) : Result(nullptr), Iteration(0), Roi(rect), Id(id) {
+FrameContext::FrameContext(const FrameIdentifier &id, const Rect rect, float threshold) : Result(nullptr), Iteration(0), Roi(rect), Id(id), Threshold(threshold) {
 
 }
 
@@ -367,6 +367,9 @@ Segment::~Segment() {
 	Mask.release();
 }
 
+SegmentationResult::SegmentationResult(const FrameIdentifier &id,const Rect &roi, float threshold) : _id(id), _roi(roi), _uncertainCounter(0), _threshold(threshold) {
+}
+
 float* SegmentationResult::GetMask(int index) const {
 	return this->_items[index].Data();
 }
@@ -385,6 +388,18 @@ int SegmentationResult::Count() const
 	return this->_items.size();
 }
 
+int SegmentationResult::UncertainCounter() const {
+	return this->_uncertainCounter;
+}
+
+float SegmentationResult::Threshold() const {
+	return this->_threshold;
+}
+
+Rect SegmentationResult::Roi() const {
+	return this->_roi;
+}
+
 Segment& SegmentationResult::Get(int index)
 {
 	return this->_items[index];
@@ -395,7 +410,11 @@ void SegmentationResult::Add(const Mat &mask, int classid, const Size &size, con
 	this->_items.emplace_back(mask, classid, size, bbox, confidence, label);
 }
 
-FrameIdentifier & SegmentationResult::Id() {
+void SegmentationResult::IncrementUncertainCounter() {
+	this->_uncertainCounter ++;
+}
+
+FrameIdentifier SegmentationResult::Id() const {
 	return this->_id;
 }
 

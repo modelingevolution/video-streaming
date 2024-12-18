@@ -46,6 +46,14 @@ EXPORT_API int segmentation_result_count(SegmentationResult* ptr)
 	return (ptr) ? ptr->Count() : 0;
 }
 
+float segmentation_result_threshold(SegmentationResult *ptr) {
+	return (ptr) ? ptr->Threshold() : -1;
+}
+
+int segmentation_result_uncertainCounter(SegmentationResult *ptr) {
+	return (ptr) ? ptr->UncertainCounter() : -1;
+}
+
 EXPORT_API void segmentation_result_dispose(SegmentationResult* ptr)
 {
 	if (ptr) {
@@ -54,7 +62,12 @@ EXPORT_API void segmentation_result_dispose(SegmentationResult* ptr)
 }
 
 EXPORT_API FrameIdentifier segmentation_result_id(SegmentationResult *ptr) {
+	cout << ptr->Id().CameraId << "/" << ptr->Id().FrameId << endl;
 	return ptr->Id();
+}
+
+cv::Rect segmentation_result_roi(SegmentationResult *ptr) {
+	return ptr->Roi();
 }
 
 EXPORT_API const char* get_last_hailo_error()
@@ -90,21 +103,28 @@ EXPORT_API void hailo_processor_update_stats(HailoAsyncProcessor *ptr, HailoProc
 }
 
 
-EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor *ptr, uint8 *frame,FrameIdentifier frameId, int frameW, int frameH, int roiX, int roiY,
-                                            int roiW, int roiH) {
+EXPORT_API void hailo_processor_write_frame(HailoAsyncProcessor *ptr, uint8 *frame, unsigned int cameraId, unsigned long frameId, int frameW, int frameH, int roiX, int roiY,
+                                            int roiW, int roiH, float threshold) {
 	try
 	{
-		std::ofstream logFile("log.txt", std::ios::app); // Open in append mode
-		if (logFile.is_open())
-		{
-			logFile << "Processing frame: " << frameId.CameraId << "/" << frameId.FrameId << std::endl;
-			cout << "Processing frame: " << frameId.CameraId << "/" << frameId.FrameId << std::endl;
-			logFile.close(); // Close the file explicitly
-		}
+		FrameIdentifier id(cameraId, frameId);
+
+		cout << "Processing frame-identifier: " << id.CameraId << "/" << id.FrameId <<  std::endl;
+		cout << "C++" << endl;
+		std::cout << "ptr: " << ptr
+		  << ", frame: " << static_cast<void*>(frame)
+		  << ", cameraId: " << cameraId
+		  << ", frameId: " << frameId
+		  << ", frameW: " << frameW
+		  << ", frameH: " << frameH
+		  << ", roiX: " << roiX
+		  << ", roiY: " << roiY
+		  << ", roiW: " << roiW
+		  << ", roiH: " << roiH << std::endl;
 
 		YuvFrame f(frameW, frameH, frame);
 		Rect roi(roiX, roiY, roiW, roiH);
-		ptr->Write(f, roi, frameId);
+		ptr->Write(f, roi, id, threshold);
 	}
 	catch (const HailoException& ex)
 	{

@@ -152,13 +152,13 @@ void HailoAsyncProcessor::OnWrite(const cv::Mat &org_frame,size_t frame_size, Fr
 
 void HailoAsyncProcessor::Write(const YuvFrame &frame,const FrameIdentifier &frameId) {
 	const Rect r(0,0,frame.Width(), frame.Height());
-	Write(frame,r, frameId);
+	Write(frame,r, frameId, this->ConfidenceThreshold());
 }
 
-void HailoAsyncProcessor::Write(const YuvFrame &frame, const cv::Rect &roi, const FrameIdentifier &frameId) {
+void HailoAsyncProcessor::Write(const YuvFrame &frame, const cv::Rect &roi, const FrameIdentifier &frameId, float threshold) {
 	auto mat = frame.ToMatBgr(roi);
 	//PrintMatStat(mat);
-	FrameContext* info = new FrameContext(frameId, roi);
+	FrameContext* info = new FrameContext(frameId, roi, threshold);
 	OnWrite(mat, info);
 }
 
@@ -615,8 +615,10 @@ void HailoAsyncProcessor::PostProcess() {
 	{
 		context->PostProcessingWatch.Start();
 		auto& iteration = context->Iteration;
-		auto result = make_unique<SegmentationResult>();
 
+		//auto *s = new SegmentationResult(context->Id, context->Roi);
+		auto result = make_unique<SegmentationResult>(context->Id, context->Roi, context->Threshold);
+		//auto result = unique_ptr<SegmentationResult>(s);
 		std::sort(_features.begin(), _features.end(), &FeatureData<uint8>::sort_tensors_by_size);
 		HailoROIPtr roi = std::make_shared<HailoROI>(HailoROI(HailoBBox(0.0f, 0.0f, 1.0f, 1.0f)));
 
@@ -639,9 +641,12 @@ void HailoAsyncProcessor::PostProcess() {
 		{
 			cv::Mat& mask = filtered_masks[i];
 			auto &detection = detections[i];
-			HailoBBox bbox = detection->get_bbox();
-			Rect2f roiBox(bbox.xmin(), bbox.ymin(), bbox.width(), bbox.height());
-			result->Add(mask, detection->get_class_id(), mask.size(),roiBox, detection->get_confidence(), detection->get_label());
+			if(detection->get_confidence() >= context->Threshold) {
+				HailoBBox bbox = detection->get_bbox();
+				Rect2f roiBox(bbox.xmin(), bbox.ymin(), bbox.width(), bbox.height());
+				result->Add(mask, detection->get_class_id(), mask.size(),roiBox, detection->get_confidence(), detection->get_label());
+			}
+			else result->IncrementUncertainCounter();
 
 		}
 		auto t = context->PostProcessingWatch.Stop();
@@ -780,11 +785,11 @@ void HailoAsyncProcessor::StartAsync(CallbackWithContext callback, void *context
 }
 
 float HailoAsyncProcessor::ConfidenceThreshold() {
-	return 0;
+	return _threshold;
 }
 
 void HailoAsyncProcessor::ConfidenceThreshold(float value) {
-
+	_threshold = value;
 }
 
 void HailoAsyncProcessor::Deallocate() {
