@@ -10,7 +10,13 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 
-public class RemoteCanvasStreamPool(ILoggerFactory loggerFactory)
+public interface IRemoteCanvasStreamPool
+{
+    ICanvas GetCanvas(VideoAddress va);
+}
+
+
+public class RemoteCanvasStreamPool(ILoggerFactory loggerFactory) : IRemoteCanvasStreamPool
 {
     private record Item(ICanvas Canvas, BufferWriter Writer);
     private readonly ConcurrentDictionary<VideoAddress, Item> _items = new ConcurrentDictionary<VideoAddress, Item>();
@@ -168,7 +174,13 @@ public class BufferWriter(ILoggerFactory loggerFactory)
 
 public class RemoteCanvas(Action<ulong, byte> onBegin, Action<IRenderOp, byte> onPush, Action<byte> onEnd) : ICanvas
 {
+    public object Sync { get; } = new object();
     // implement DrawRectange(Rectangle rect, RgbColor? color, byte? layerId) with the use of DrawPolygon
+    //public DrawingBatchScope BeginScope(ulong frameNr, byte? layerId)
+    //{
+    //    return new DrawingBatchScope(this, layerId ?? LayerId, frameNr);
+    //}
+
     public void DrawRectangle(System.Drawing.Rectangle rect, RgbColor? color, byte? layerId)
     {
         var points = new VectorU16[]
@@ -177,18 +189,22 @@ public class RemoteCanvas(Action<ulong, byte> onBegin, Action<IRenderOp, byte> o
             new((ushort)(rect.X + rect.Width), (ushort)rect.Y),
             new((ushort)(rect.X + rect.Width), (ushort)(rect.Y + rect.Height)),
             new((ushort)rect.X, (ushort)(rect.Y + rect.Height)),
+            //new((ushort)rect.X, (ushort)rect.Y),
         };
-        DrawPolygon(points, color, layerId);
+        DrawPolygon(points, color,1, layerId);
     }
 
-    public void DrawPolygon(IEnumerable<VectorU16> points, RgbColor? color = null, byte? layerId = null)
+    public void DrawPolygon(IEnumerable<VectorU16> points, RgbColor? color = null,ushort width = 1, byte? layerId = null)
     {
+        var polygon = Polygon.From(points);
+        
         var renderOp = new Draw<Polygon>
         {
-            Value = Polygon.From(points),
+            Value = polygon,
             Context = new DrawContext
             {
-             Stroke = color ?? RgbColor.Black
+                 Stroke = color ?? RgbColor.Black,
+                 Thickness = width,
             }
         };
         onPush(renderOp, layerId ?? LayerId);

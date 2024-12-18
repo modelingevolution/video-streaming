@@ -70,6 +70,7 @@ public class SkiaCanvas : ICanvas
         for (byte il = 0; il < ls.Length; il++)
         {
             var layer = GetLayer(il);
+            Console.WriteLine($"Layer: {il}");
             var ops = layer.RenderBuffer;
             for (var index = 0; index < ops.Count; index++)
             {
@@ -88,6 +89,8 @@ public class SkiaCanvas : ICanvas
         _writer.WriteLine($"Render frame: {frameNr}");
     }
 
+    
+
     public void DrawRectangle(System.Drawing.Rectangle rect, RgbColor? color, byte? layerId)
     {
         throw new NotImplementedException();
@@ -100,38 +103,57 @@ public class SkiaCanvas : ICanvas
         using var paint = new SKPaint
         {
             TextSize = size,
-            Color = color ?? RgbColor.Black
+            Color = color ?? RgbColor.Black,
         };
         using var font = new SKFont(SKTypeface.Default, size);
         _canvas.DrawText(text, x,y,font, paint);
     }
 
-    public void DrawPolygon(IEnumerable<VectorU16> points, RgbColor? color = null, byte? layerId=null)
+    public byte LayerId { get; set; }
+
+    public object Sync { get; } = new object();
+
+    public void DrawPolygon(IEnumerable<VectorU16> points, RgbColor? color = null, ushort width=1,  byte? layerId=null)
     {
         
         using var paint = new SKPaint
         {
             Color = color ?? RgbColor.Black,
             Style = SKPaintStyle.Stroke,
-            StrokeWidth = 1
+            StrokeWidth = width
         };
-        using SKPath p = new SKPath();
-        bool isFirstPoint = true;
-        // implement
-        foreach (var point in points)
-        {
-            if (isFirstPoint)
-            {
-                p.MoveTo(point.X, point.Y);
-                isFirstPoint = false;
-            }
-            else
-            {
-                p.LineTo(point.X, point.Y);
-            }
-        }
-        p.Close();
-        //Console.WriteLine($"Points: {p.Points.Length}");
+        using var p = PointsToPath(points);
+        Console.WriteLine($"Points: {p.Points.Length}");
         _canvas.DrawPath(p,paint);
+    }
+
+    private static SKPath PointsToPath(IEnumerable<VectorU16> points)
+    {
+        SKPath? p = null;
+        try
+        {
+            p = new SKPath();
+            bool isFirstPoint = true;
+            // implement
+            foreach (var point in points)
+            {
+                if (isFirstPoint)
+                {
+                    p.MoveTo(point.X, point.Y);
+                    isFirstPoint = false;
+                }
+                else
+                {
+                    p.LineTo(point.X, point.Y);
+                }
+            }
+            p.Close();
+            return p;
+        }
+        catch
+        {
+            p?.Dispose();
+            throw;
+        }
     }
 }

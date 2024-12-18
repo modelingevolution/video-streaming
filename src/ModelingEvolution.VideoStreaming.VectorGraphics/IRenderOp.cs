@@ -2,7 +2,7 @@
 
 public interface IRenderOp
 {
-    void Render(ICanvas canvas);
+    void Render(ICanvas canvasChannel);
     ushort Id { get; }
     
 }

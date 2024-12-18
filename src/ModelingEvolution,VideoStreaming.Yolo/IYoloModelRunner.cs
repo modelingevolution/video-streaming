@@ -23,5 +23,6 @@ public interface IAsyncSegmentationModelRunner<out T> : IDisposable where T : ID
         in Rectangle roi,
         in Size dstSize,
         float threshold);
-    
+
+    void StartAsync();
 }

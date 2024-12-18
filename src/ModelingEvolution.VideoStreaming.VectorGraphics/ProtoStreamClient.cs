@@ -27,7 +27,8 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
     public readonly record struct Frame : IEnumerable<object>, IReadOnlyList<object>
     {
         public readonly ulong Number;
-        internal readonly IList<object> Objects;
+        internal readonly IList<object> Objects = null!;
+        internal bool IsInitialized => Objects != null;
         public Frame(ulong nr, byte layerId)
         {
             this.Number = nr;
@@ -166,7 +167,7 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
         }
         catch(Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine("ReceiveLoop:" + ex.Message);
         }
     }
 
@@ -218,7 +219,7 @@ public class ProtoStreamClient(ISerializer serializer, ILogger<ProtoStreamClient
 
                 // Initialize the current frame if it's a new frame.
                 var f = _currentFrames[header.LayerId];
-                if ((f.Number == 0 && f.LayerId == 0) || f.Number != header.FrameId)
+                if ((!f.IsInitialized) || f.Number != header.FrameId)
                 {
                     _currentFrames[header.LayerId] = new Frame(header.FrameId, header.LayerId);
                 }

@@ -16,7 +16,7 @@ namespace ModelingEvolution.VideoStreaming.HailoCmd
         {
             string hef = args[0];
             string jpg = args[1];
-            
+            float threshold = args.Length > 2 ? float.Parse(args[2]) : 0f;
             
             HailoProcessor p = HailoProcessor.Load(hef);
             p.FrameProcessed += OnFrameProcessed;
@@ -32,7 +32,7 @@ namespace ModelingEvolution.VideoStreaming.HailoCmd
             
             _sw = Stopwatch.StartNew();
             FrameIdentifier id = new FrameIdentifier(999,1);
-            p.WriteFrame(yuvFrame.DataPointer, id, new Size(640,640), new Rectangle(0,0,640,640));
+            p.WriteFrame(yuvFrame.DataPointer, id, new Size(640,640), new Rectangle(0,0,640,640), threshold);
             Console.WriteLine("Waiting for result...");
             Thread.Sleep(350);
             p.Stats.Print();
@@ -43,7 +43,7 @@ namespace ModelingEvolution.VideoStreaming.HailoCmd
         private static void OnFrameProcessed(object? sender, SegmentationResult e)
         {
             Console.WriteLine($"Frame processed, found: {e.Count} objects in total: {_sw.ElapsedMilliseconds}ms.");
-            Console.WriteLine($"Frame id: {e.Id.FrameId}, camera id: {e.Id.CameraId}");
+            Console.WriteLine($"Results: {e}");
             foreach (Segment segment in e)
             {
                 Console.WriteLine($"Segment class-id: {segment.ClassId}, label: {segment.Label} has {segment.Confidence} confidence.");

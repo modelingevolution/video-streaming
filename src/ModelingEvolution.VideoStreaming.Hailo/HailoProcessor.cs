@@ -114,7 +114,17 @@ namespace ModelingEvolution.VideoStreaming.Hailo
         private static extern void StopProcessor(IntPtr ptr);
 
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_write_frame")]
-        private static extern void WriteFrame(IntPtr ptr, IntPtr frame, FrameIdentifier id, int frameW, int frameH, int roiX, int roiY, int roiW, int roiH);
+        private static extern void WriteFrame(IntPtr ptr, 
+            IntPtr frame, 
+            uint cameraId, 
+            ulong frameId, 
+            int frameW, 
+            int frameH,
+            int roiX,
+            int roiY, 
+            int roiW, 
+            int roiH,
+            float threshold);
 
         [DllImport(Lib.Name, EntryPoint = "hailo_processor_start_async")]
         private static extern void StartAsyncProcessor(IntPtr ptr, IntPtr fPtr, IntPtr context);
@@ -173,11 +183,26 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             _nativePtr = ptr;
         }
 
-        public void WriteFrame(IntPtr frame, in FrameIdentifier id, in Size frameSize, in Rectangle roi)
+        public void WriteFrame(IntPtr frame, 
+            in FrameIdentifier id, 
+            in Size frameSize, 
+            in Rectangle roi, float threshold = 0.8f)
         {
-            if(!IsRunning)
-                StartAsync();
-            WriteFrame(_nativePtr, frame, id,frameSize.Width, frameSize.Height, roi.X, roi.Y, roi.Width, roi.Height);
+
+            //Console.WriteLine("CSharp");
+            //Console.WriteLine($"ptr: {_nativePtr:x}, " +
+            //                  $"frame: {frame:x}, " +
+            //                  $"cameraId: {id.CameraId}, " +
+            //                  $"frameId: {id.FrameId}, " +
+            //                  $"frameW: {frameSize.Width}, " +
+            //                  $"frameH: {frameSize.Height}, " +
+            //                  $"roiX: {roi.X}, " +
+            //                  $"roiY: {roi.Y}, " +
+            //                  $"roiW: {roi.Width}, " +
+            //                  $"roiH: {roi.Height}");
+            //Console.WriteLine();
+
+            WriteFrame(_nativePtr, frame, id.CameraId, id.FrameId,frameSize.Width, frameSize.Height, roi.X, roi.Y, roi.Width, roi.Height, threshold);
         }
 
         public event EventHandler<SegmentationResult>? FrameProcessed; 
@@ -247,8 +272,15 @@ namespace ModelingEvolution.VideoStreaming.Hailo
 
         [DllImport(Lib.Name, EntryPoint = "segmentation_result_id")]
         private static extern FrameIdentifier SegmentationResultId(IntPtr ptr);
-        
-       
+
+        [DllImport(Lib.Name, EntryPoint = "segmentation_result_roi")]
+        private static extern Rectangle SegmentationResultRoi(IntPtr segment);
+
+        [DllImport(Lib.Name, EntryPoint = "segmentation_result_threshold")]
+        private static extern float SegmentationResultThreshold(IntPtr segment);
+
+        [DllImport(Lib.Name, EntryPoint = "segmentation_result_uncertainCounter")]
+        private static extern int SegmentationResultUncertainCounter(IntPtr segment);
 
         private ManagedArray<Segment>? _segments;
 
@@ -259,9 +291,11 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             _nativePtr = nativePtr;
         }
 
+        public Rectangle Roi => SegmentationResultRoi(_nativePtr);
         public FrameIdentifier Id => SegmentationResultId(_nativePtr);
+        public float Threshold => SegmentationResultThreshold(_nativePtr);
+        public int UncertainCount => SegmentationResultUncertainCounter(_nativePtr);
 
-        
         public Segment this[int index]
         {
             get
@@ -291,6 +325,11 @@ namespace ModelingEvolution.VideoStreaming.Hailo
             }
             _segments?.Dispose();
             _disposed = true;
+        }
+
+        public override string ToString()
+        {
+            return $"Id: {Id}, Roi: {Roi}, Threshold: {Threshold}, UncertainCount: {UncertainCount}, Count: {Count}";
         }
 
         public IEnumerator<Segment> GetEnumerator()
@@ -323,6 +362,8 @@ namespace ModelingEvolution.VideoStreaming.Hailo
 
         [DllImport(Lib.Name, EntryPoint = "segment_get_bbox")]
         private static extern Rectangle<float> SegmentGetBbox(IntPtr segment);
+
+
 
         [DllImport(Lib.Name, EntryPoint = "segment_get_resolution")]
         private static extern Size SegmentGetResolution(IntPtr segment);

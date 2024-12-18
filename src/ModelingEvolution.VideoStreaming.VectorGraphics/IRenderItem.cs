@@ -2,6 +2,6 @@
 
 public interface IRenderItem
 {
-    void Render(ICanvas canvas, DrawContext? context);
+    void Render(ICanvas canvasChannel, DrawContext? context);
     ushort Id { get; }
 }

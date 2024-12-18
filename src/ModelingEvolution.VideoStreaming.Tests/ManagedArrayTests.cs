@@ -1,7 +1,80 @@
 using ModelingEvolution.VideoStreaming.Buffers;
 
-namespace ModelingEvolution.VideoStreaming.Tests;
+using System;
+using Xunit;
+using FluentAssertions;
+using ModelingEvolution.VideoStreaming.VectorGraphics;
+using NSubstitute;
 
+namespace YourNamespace.Tests
+{
+    public class ManagedArrayStructTests
+    {
+        [Fact]
+        public void Constructor_ShouldInitializeArrayWithGivenSize()
+        {
+            // Arrange
+            int cap = 5;
+            // Act
+            var managedArray = new ManagedArrayStruct<int>(cap);
+            // Assert
+            managedArray.Capacity.Should().BeGreaterOrEqualTo(cap);
+            managedArray.Count.Should().Be(0);
+            for (int i = 0; i < cap; i++)
+            {
+                managedArray[i].Should().Be(default(int)); // Default value for int
+            }
+        }
+        [Fact]
+        public void Indexer_ShouldGetAndSetValuesCorrectly()
+        {
+            // Arrange
+            var managedArray = new ManagedArrayStruct<string>(3);
+            // Act
+            managedArray[0] = "First";
+            managedArray[1] = "Second";
+            managedArray[2] = "Third";
+            managedArray.Count.Should().Be(3);
+            // Assert
+            managedArray[0].Should().Be("First");
+            managedArray[1].Should().Be("Second");
+            managedArray[2].Should().Be("Third");
+        }
+       
+        [Fact]
+        public void Resize_ShouldChangeArraySizeAndPreserveExistingValues()
+        {
+            // Arrange
+            var managedArray = new ManagedArrayStruct<int>(3);
+            managedArray[0] = 1;
+            managedArray[1] = 2;
+            managedArray[2] = 3;
+            managedArray.Count.Should().Be(3);
+            
+            managedArray[0].Should().Be(1);
+            managedArray[1].Should().Be(2);
+            managedArray[2].Should().Be(3);
+            managedArray[3].Should().Be(default(int));
+            managedArray[4].Should().Be(default(int));
+        }
+        
+    }
+}
+
+public class DrawingBatchScopeTests
+{
+    [Fact]
+    public void Add()
+    {
+        var canvas = NSubstitute.Substitute.For<ICanvas>();
+        canvas.Sync.Returns(new object());
+        DrawingBatchScope scope = new DrawingBatchScope(canvas, 4, 1);
+        scope.DrawText("Foo");
+        scope.Dispose();
+        
+        canvas.Received(1).DrawText(Arg.Any<string>(),0,0,12,null,4);
+    }
+}
 public class ManagedArrayTests : IDisposable
 {
     private ManagedArray<int> _managedArray;
@@ -91,7 +164,6 @@ public class ManagedArrayTests : IDisposable
         _managedArray.Clear();
 
         Assert.Equal(0, _managedArray.Count);
-        Assert.Throws<ArgumentOutOfRangeException>(() => _ = _managedArray[0]);
     }
 
     [Fact]

@@ -66,8 +66,15 @@ public class StreamingCanvasEngine
 
                 Frame = i.Number;
                 Lps = (float)sw++.Value;
-                foreach (var o in i.OfType<IRenderOp>())
+                if(i.IsInitialized)
+                {
+                    foreach (var o in i.OfType<IRenderOp>())
                     _canvas.Add(o, i.LayerId);
+                }
+                else
+                {
+                    Console.WriteLine($"Frame is not initialized: Id {i.Number} in layer {i.LayerId}");
+                }
 
                 _canvas.End(i.LayerId);
             }
@@ -76,7 +83,8 @@ public class StreamingCanvasEngine
         catch (Exception ex)
         {
             Error = ex.Message;
-            Console.WriteLine(ex.Message);
+            Console.WriteLine("OnStartStreaming: "+ ex.Message);
+            Console.WriteLine(ex.StackTrace);
         }
         IsRunning = false;
         _cts = null;

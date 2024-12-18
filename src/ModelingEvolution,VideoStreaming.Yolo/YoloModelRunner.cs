@@ -24,6 +24,11 @@ internal class YoloOnnxModelRunner : ISegmentationModelRunner<ISegmentation>, IA
         _channel.Writer.TryWrite(new Arg(frame, roi, dstSize, threshold));
     }
 
+    public void StartAsync()
+    {
+        
+    }
+
     private void TryStartAsync()
     {
         _cts = new CancellationTokenSource();

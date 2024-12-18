@@ -73,7 +73,7 @@ internal class HailoModelRunner : IAsyncSegmentationModelRunner<ISegmentation>
         }
     }
     private static HailoProcessor _processor = null;
-    private readonly ConcurrentQueue<Args> _pendingFrames = new();
+    
 
     readonly record struct Args(Rectangle Roi, Size DstSize, float Threshold);
     public HailoModelRunner(string modelFullPath, ILogger<HailoModelRunner> logger)
@@ -87,17 +87,11 @@ internal class HailoModelRunner : IAsyncSegmentationModelRunner<ISegmentation>
 
     private void OnFrameProcessed(object? sender, SegmentationResult e)
     {
-        if (!_pendingFrames.TryDequeue(out var r))
-        {
-            _logger.LogError($"Cannot find pending frame {e.Id}.");
-            return;
-        }
         
         HailoSegmentationResult result = new HailoSegmentationResult(e)
         {
-            Threshold = r.Threshold,
-            Roi = r.Roi,
-            DestinationSize = r.DstSize,
+            
+            DestinationSize = new Size(640,640),// for now.
             Id = e.Id
         };
 
@@ -111,13 +105,16 @@ internal class HailoModelRunner : IAsyncSegmentationModelRunner<ISegmentation>
         var frameSize = frame->Info.Size;
         _processor.Confidence = threshold;
         FrameIdentifier id = new FrameIdentifier(frame->Metadata.FrameNumber, 0);
-        _pendingFrames.Enqueue(new Args(roi, dstSize, threshold));
-        _logger.LogInformation($"Pending frame: {id}");
+        //_logger.LogInformation($"Pending frame: {id}");
         
-        _processor.WriteFrame(new IntPtr((void*)frame->Data), id, frameSize, roi);
+        _processor.WriteFrame(new IntPtr((void*)frame->Data), id, frameSize, roi, threshold);
     }
 
-    
+    public void StartAsync()
+    {
+        _processor.StartAsync();
+    }
+
 
     public void Dispose()
     {
@@ -138,7 +135,7 @@ class HailoSegmentationResult : ISegmentationResult<ISegmentation>
 
         private PolygonGraphics? ComputePolygon()
         {
-            var points= parent._ret[index].ComputePolygonVectorU16(parent.Threshold);
+            var points= parent._interferenceResults[index].ComputePolygonVectorU16(parent.Threshold);
             var result = new PolygonGraphics(points, parent.DestinationSize);
 
             return result;
@@ -150,20 +147,20 @@ class HailoSegmentationResult : ISegmentationResult<ISegmentation>
         public SegmentationClass Name { get; init; }
 
 
-        public float Confidence => parent._ret[index].Confidence;
-        public Rectangle Bounds => parent._ret[index].Bbox ;
+        public float Confidence => parent._interferenceResults[index].Confidence;
+        public Rectangle Bounds => parent._interferenceResults[index].Bbox ;
     }
-    private readonly SegmentationResult _ret;
+    private readonly SegmentationResult _interferenceResults;
     private readonly SegmentationItem[] _items;
     private readonly int _count;
     private bool _disposed;
-    public HailoSegmentationResult(SegmentationResult ret)
+    public HailoSegmentationResult(SegmentationResult interferenceResults)
     {
-        _ret = ret;
-        _items = ArrayPool<SegmentationItem>.Shared.Rent(ret.Count);
-        _count = ret.Count;
+        _interferenceResults = interferenceResults;
+        _items = ArrayPool<SegmentationItem>.Shared.Rent(interferenceResults.Count);
+        _count = interferenceResults.Count;
         
-        for (int i = 0; i < ret.Count; i++)
+        for (int i = 0; i < interferenceResults.Count; i++)
             _items[i] = new SegmentationItem(this, i);
     }
 
@@ -184,13 +181,14 @@ class HailoSegmentationResult : ISegmentationResult<ISegmentation>
         _disposed = true;
         foreach (var i in this) i.Dispose();
         ArrayPool<SegmentationItem>.Shared.Return(_items);
-        _ret.Dispose();
+        _interferenceResults.Dispose();
     }
 
     public required Size DestinationSize { get; init; }
-    public int Count => _ret.Count;
-    public required Rectangle Roi { get; init; }
-    public required float Threshold { get; init; }
+    public int Count => _interferenceResults.Count;
+    public Rectangle Roi => this._interferenceResults.Roi;
+    public float Threshold => this._interferenceResults.Threshold;
+    public int UncertainCount => _interferenceResults.UncertainCount;
     public FrameIdentifier Id { get; set; }
 
     public ISegmentation this[int index] => _items[index];

@@ -3,7 +3,7 @@
 namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 
 [ProtoContract]
-public class DrawContext
+public record DrawContext
 {
     [ProtoMember(1)]
     public VectorU16? Offset { get; init; }

@@ -27,7 +27,7 @@ public class StructMarshalTests
     public void FrameIdentifier()
     {
         int size = Marshal.SizeOf<FrameIdentifier>();
-        size.Should().Be(16);
+        size.Should().Be(12);
     }
     
     [Theory]

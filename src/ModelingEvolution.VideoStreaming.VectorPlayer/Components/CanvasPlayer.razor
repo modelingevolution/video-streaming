@@ -52,7 +52,8 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine("OnParametersSet: " + ex.Message);
+            Console.WriteLine(ex.StackTrace);
         }
 
     }
@@ -96,7 +97,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine("OnPaintSurface: " + ex.Message);
             Console.WriteLine(ex.StackTrace);
         }
     }

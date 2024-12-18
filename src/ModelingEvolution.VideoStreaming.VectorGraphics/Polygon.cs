@@ -124,7 +124,6 @@ public record class Polygon : IRenderItem, IDisposable
     [ProtoMember(1)] 
     public ManagedArray<VectorU16> Points { get; init; }
 
-    
 
     public static Polygon GenerateRandom(int count)
     {
@@ -138,9 +137,10 @@ public record class Polygon : IRenderItem, IDisposable
         return new Polygon() { Points = tmp };
     }
 
-    public void Render(ICanvas canvas, DrawContext? context)
+    public void Render(ICanvas canvasChannel, DrawContext? context)
     {
-        canvas.DrawPolygon(Points,context.Stroke);
+        Console.WriteLine($"Drawing polygon: [{this}], context: {context}");
+        canvasChannel.DrawPolygon(Points, context.Stroke, context.Thickness);
     }
 
     public ushort Id => 2;
