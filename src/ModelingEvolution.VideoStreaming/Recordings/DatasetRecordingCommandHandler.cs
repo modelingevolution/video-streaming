@@ -1,18 +1,66 @@
-﻿using Emgu.CV.Dnn;
-using MicroPlumberd;
+﻿using MicroPlumberd;
 using MicroPlumberd.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming.CVat;
+using System.Text.Json;
+using EventPi.Abstractions;
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
 [CommandHandler]
-public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager manager, IPlumber plumber, IConfiguration configuraiton,
+public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager manager, IPlumber plumber, IConfiguration config,
+    IWebHostingEnv env, IEnvironment host,
     ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, VideoImgFrameProvider frameProvider, ICVatClient cvat)
 {
-    
 
+    public async Task Handle(VideoRecordingDevice dev, FindMissingDatasetRecordings cmd)
+    {
+        var directories = Directory.GetDirectories(config.VideoStorageDir(env.WwwRoot));
+        foreach (var directory in directories)
+        {
+            var folder = Path.GetFileName(directory);
+
+            if (model.Items.Any(x => x.DirectoryName == folder))
+                return;
+            
+            var dataFile = Path.Combine(directory, "stream.mjpeg");
+            var indexFile = Path.Combine(directory, "index.json");
+
+            if (!File.Exists(dataFile) || !File.Exists(indexFile))
+            {
+                logger.LogWarning($"Found a folder that should not be there. No relevant files were found. Skipping: {folder}");
+                continue;
+            }
+
+            try
+            {
+                var readAllTextAsync = await File.ReadAllTextAsync(indexFile);
+                var ix = JsonSerializer.Deserialize<FramesJson>(readAllTextAsync);
+                var lastFrame = ix.Values.Last();
+                var firstFrame = ix.Values.First();
+                var duration = lastFrame.Created.Subtract(firstFrame.Created);
+
+                VideoRecordingIdentifier vri = new VideoRecordingIdentifier()
+                {
+                    CameraNumber= int.MaxValue,
+                    CreatedTime = firstFrame.Created,
+                    HostName = host.HostName
+                };
+                var ev = new DatasetRecordingFound()
+                {
+                    Duration = duration, 
+                    Folder = folder, 
+                    FrameCount = (ulong)ix.Keys.Count
+                };
+                await plumber.AppendEvent(ev, vri);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, $"Could not index folder {folder}.");
+            }
+        }
+    }
     public async Task Handle(VideoRecordingDevice dev, StartDatasetRecording cmd)
     {
         try
@@ -60,7 +108,7 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
         var doc = frameProvider[set.DirectoryName];
         try
         {
-            var baseUrl = new Uri(configuraiton.PublicUrl());
+            var baseUrl = new Uri(config.PublicUrl());
             var urls = cmd.CalculateSet(doc.Keys).Select(x => new Uri(baseUrl, $"/video/{set.DirectoryName}/{x}.jpeg").ToString()).ToArray();
             
             var id = await cvat.CreateTask(cmd.Name ?? set.Name, cmd.Subset, cmd.ProjectId);

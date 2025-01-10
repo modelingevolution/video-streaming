@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.35.26" />
+    <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.116.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Hailo\ModelingEvolution.VideoStreaming.Hailo.csproj" />
+    
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming\ModelingEvolution.VideoStreaming.csproj" />
+  </ItemGroup>
+
+</Project>

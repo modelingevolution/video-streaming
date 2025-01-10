@@ -143,7 +143,7 @@ public readonly struct VideoAddress : IParsable<VideoAddress>
     public VideoTransport VideoTransport { get; init; } = VideoTransport.Tcp;
     public VideoCodec Codec { get; init; }
     public HashSet<string>? Tags { get; init; }
-    public Uri Uri => new Uri(_str);
+    public Uri? Uri => _str != null ? new Uri(_str) : null;
     public string? File { get; init; }
     public VideoSource VideoSource { get; init; }
     

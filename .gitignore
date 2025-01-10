@@ -32,7 +32,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
-
+src/HailoProcessor/build
 # Visual Studio 2015/2017 cache/options directory
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot
@@ -455,3 +455,5 @@ $RECYCLE.BIN/
 !.vscode/extensions.json
 /Source/TcpMultiplexer.Server/*.mp4
 *.mp4
+/src/LibHailoProcessor/out/-261662105/build/linux-debug/.cmake/api/v1
+/src/LibHailoProcessor/out

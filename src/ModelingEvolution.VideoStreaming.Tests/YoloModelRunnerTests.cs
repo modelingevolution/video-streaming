@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using Castle.Core.Logging;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using FluentAssertions;
@@ -44,13 +45,14 @@ namespace ModelingEvolution.VideoStreaming.Tests
             tmp2.Points.Should().BeEquivalentTo(tmp.Points);
         }
     }
-    public class YoloModelRunnerTests
+    public class YoloOnnxModelRunnerTests
     {
         private readonly ITestOutputHelper _testOutputHelper;
-
-        public YoloModelRunnerTests(ITestOutputHelper testOutputHelper)
+        private readonly ModelFactory _modelFactory;
+        public YoloOnnxModelRunnerTests(ITestOutputHelper testOutputHelper)
         {
             _testOutputHelper = testOutputHelper;
+            _modelFactory = new ModelFactory(NSubstitute.Substitute.For<Microsoft.Extensions.Logging.ILoggerFactory>());
         }
 
         [Fact]
@@ -96,11 +98,11 @@ namespace ModelingEvolution.VideoStreaming.Tests
 
         private unsafe StringBuilder RunAndGetAnnotations(string fileName, string modelPath)
         {
-            var runner = YoloModelFactory.LoadSegmentationModel(modelPath);
+            var runner = _modelFactory.LoadOnnxSegmentationModel(modelPath);
 
             var frame = FrameLoader.Load(fileName);
             var rect = new Rectangle(0, 0, 640, 640);
-            using var result = runner.Process(&frame, &rect, 0.6f);
+            using var result = runner.Process(&frame, rect, rect.Size, 0.6f);
             StringBuilder sb = new StringBuilder();
             
             foreach (var i in result)

@@ -47,7 +47,8 @@ namespace ModelingEvolution.VideoStreaming.Mp4ToYuv420
             byte[] data = File.ReadAllBytes(file);
             int h = 1080;
             int w = 1920;
-            Mat m = new Mat(h, w, MatType.CV_8U, data, 0);
+            var m = Mat.FromPixelData(w, h, MatType.CV_8U, data);
+            
             m.SaveImage($"{file}.jpg");
         }
 

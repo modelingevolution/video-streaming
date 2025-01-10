@@ -9,6 +9,22 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ModelingEvolution.VideoStre
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ModelingEvolution.VideoStreaming.Ui", "ModelingEvolution.VideoStreaming.Ui\ModelingEvolution.VideoStreaming.Ui.csproj", "{A2D55EA8-C6F9-4964-9D29-4EB34FFBDCB0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelingEvolution.VideoStreaming.Yolo", "ModelingEvolution,VideoStreaming.Yolo\ModelingEvolution.VideoStreaming.Yolo.csproj", "{7C8111BC-4FCC-8C36-8C2D-9EBBC1A37DD5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelingEvolution.VideoStreaming.VectorGraphics", "ModelingEvolution.VideoStreaming.VectorGraphics\ModelingEvolution.VideoStreaming.VectorGraphics.csproj", "{417F97D2-719E-86FA-2BEE-715A004B7C2B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelingEvolution.VideoStreaming.Buffers", "ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj", "{C84920B0-8C34-F22B-D7CE-495EA59B4A06}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelingEvolution.VideoStreaming.CVat", "ModelingEvolution.VideoStreaming.CVat\ModelingEvolution.VideoStreaming.CVat.csproj", "{09CA6F5F-C1E2-D087-E2BC-3A86B7075F60}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelingEvolution.VideoStreaming.LibJpegTurbo", "ModelingEvolution.VideoStreaming.LibJpegTurbo\ModelingEvolution.VideoStreaming.LibJpegTurbo.csproj", "{4B400860-8AB1-1FB2-CD57-A4280872C500}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelingEvolution.VideoStreaming.Hailo", "ModelingEvolution.VideoStreaming.Hailo\ModelingEvolution.VideoStreaming.Hailo.csproj", "{7B492219-6785-4FA0-B1C8-C8BD9258D023}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelingEvolution.VideoStreaming.Player", "ModelingEvolution.VideoStreaming.Player\ModelingEvolution.VideoStreaming.Player.csproj", "{B40CE197-3EF9-F899-5834-3D5AEFA891EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelingEvolution.VideoStreaming.VectorPlayer", "ModelingEvolution.VideoStreaming.VectorPlayer\ModelingEvolution.VideoStreaming.VectorPlayer.csproj", "{0E3E3B2A-1EFA-453C-0614-CA97C798AC16}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +43,38 @@ Global
 		{A2D55EA8-C6F9-4964-9D29-4EB34FFBDCB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2D55EA8-C6F9-4964-9D29-4EB34FFBDCB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2D55EA8-C6F9-4964-9D29-4EB34FFBDCB0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C8111BC-4FCC-8C36-8C2D-9EBBC1A37DD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C8111BC-4FCC-8C36-8C2D-9EBBC1A37DD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C8111BC-4FCC-8C36-8C2D-9EBBC1A37DD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C8111BC-4FCC-8C36-8C2D-9EBBC1A37DD5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{417F97D2-719E-86FA-2BEE-715A004B7C2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{417F97D2-719E-86FA-2BEE-715A004B7C2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{417F97D2-719E-86FA-2BEE-715A004B7C2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{417F97D2-719E-86FA-2BEE-715A004B7C2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C84920B0-8C34-F22B-D7CE-495EA59B4A06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C84920B0-8C34-F22B-D7CE-495EA59B4A06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C84920B0-8C34-F22B-D7CE-495EA59B4A06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C84920B0-8C34-F22B-D7CE-495EA59B4A06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09CA6F5F-C1E2-D087-E2BC-3A86B7075F60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09CA6F5F-C1E2-D087-E2BC-3A86B7075F60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09CA6F5F-C1E2-D087-E2BC-3A86B7075F60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09CA6F5F-C1E2-D087-E2BC-3A86B7075F60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B400860-8AB1-1FB2-CD57-A4280872C500}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B400860-8AB1-1FB2-CD57-A4280872C500}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B400860-8AB1-1FB2-CD57-A4280872C500}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B400860-8AB1-1FB2-CD57-A4280872C500}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B492219-6785-4FA0-B1C8-C8BD9258D023}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B492219-6785-4FA0-B1C8-C8BD9258D023}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B492219-6785-4FA0-B1C8-C8BD9258D023}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B492219-6785-4FA0-B1C8-C8BD9258D023}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B40CE197-3EF9-F899-5834-3D5AEFA891EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B40CE197-3EF9-F899-5834-3D5AEFA891EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B40CE197-3EF9-F899-5834-3D5AEFA891EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B40CE197-3EF9-F899-5834-3D5AEFA891EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E3E3B2A-1EFA-453C-0614-CA97C798AC16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E3E3B2A-1EFA-453C-0614-CA97C798AC16}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E3E3B2A-1EFA-453C-0614-CA97C798AC16}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E3E3B2A-1EFA-453C-0614-CA97C798AC16}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

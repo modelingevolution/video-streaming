@@ -15,9 +15,9 @@ public class Draw<TObject> : IRenderOp, IDisposable
     //[ProtoMember(3)]
     //public byte ContextId { get; set; }
     
-    public void Render(ICanvas canvas)
+    public void Render(ICanvas canvasChannel)
     {
-        Value.Render(canvas,Context);
+        Value.Render(canvasChannel,Context);
     }
 
     public ushort Id => Value.Id;

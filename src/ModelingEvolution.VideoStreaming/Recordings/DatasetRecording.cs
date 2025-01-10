@@ -17,7 +17,7 @@ public record DatasetRecording : INotifyPropertyChanged
         DirectoryFullPath = folder;
         Duration = duration;
         FrameCount = frameCount;
-        _name = id.ToString(); 
+        _name = id.CameraNumber == int.MaxValue ? "External" : id.ToString();
     }
 
     public DateTime? PublishedDate

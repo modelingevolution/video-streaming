@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
@@ -12,33 +12,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.10" />
-    <PackageReference Include="ModelingEvolution.Controls.Blazor.AnchorPanelControl" Version="0.0.4.15" />
-    <PackageReference Include="ModelingEvolution.Controls.Blazor.HistogramControl" Version="0.0.8.17" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
+    <PackageReference Include="ModelingEvolution.Controls.Blazor.AnchorPanelControl" Version="0.0.10.17" />
+    <PackageReference Include="ModelingEvolution.Controls.Blazor.HistogramControl" Version="0.0.10.17" />
     <PackageReference Include="ModelingEvolution.Observable" Version="0.0.5.4" />
     <PackageReference Include="ModelingEvolution.Observable.Blazor" Version="0.0.5.4" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
-    <PackageReference Include="MudBlazor" Version="8.0.0-preview.4" />
-    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.76.125" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+    <PackageReference Include="MudBlazor" Version="7.15.0" />
+    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.77.125" />
     <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
+    <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.116.1" />
     <PackageReference Include="xFFmpeg.NET" Version="7.2.0" />
     <PackageReference Include="Zeroconf" Version="3.6.11" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.CVat\ModelingEvolution.VideoStreaming.CVat.csproj" />
+    <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Hailo\ModelingEvolution.VideoStreaming.Hailo.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.VectorPlayer\ModelingEvolution.VideoStreaming.VectorPlayer.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming\ModelingEvolution.VideoStreaming.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Update="Components\PersisterControl.razor">
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
-    <Content Update="Components\RecordingButton.razor">
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
-  </ItemGroup>
+
 
 </Project>
