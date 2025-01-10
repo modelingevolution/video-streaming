@@ -5,6 +5,7 @@ using Emgu.CV;
 using ModelingEvolution.VideoStreaming.Buffers;
 using System.Drawing;
 using System.Runtime.CompilerServices;
+using System.Collections;
 
 namespace ModelingEvolution.VideoStreaming;
 public readonly struct MatFrame
@@ -81,6 +82,13 @@ internal static class MemPoolExtensions
     {
         int s = size.Width * size.Height;
         return memoryPool.Rent(s + s / 2);
+    }
+}
+public record MatYuvFrame(Mat Src, in YuvFrame Frame) : IDisposable
+{
+    public void Dispose()
+    {
+        Src.Dispose();
     }
 }
 

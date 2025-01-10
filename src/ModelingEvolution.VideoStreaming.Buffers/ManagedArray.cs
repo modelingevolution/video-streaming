@@ -76,6 +76,17 @@ public class ManagedArray<T> : ICollection<T>, IDisposable
         _buffer[_size++] = item;
     }
 
+    public bool TryPop(out T result)
+    {
+        if (_size <= 0)
+        {
+            result = default;
+            return false;
+        }
+
+        result = _buffer[--_size];
+        return true;
+    }
     public void Clear()
     {
         if (_buffer.Length > 0)

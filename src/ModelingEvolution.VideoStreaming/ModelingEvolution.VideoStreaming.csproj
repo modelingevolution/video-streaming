@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CliWrap" Version="3.6.6" />
+    <PackageReference Include="CliWrap" Version="3.6.7" />
     <PackageReference Include="Emgu.CV" Version="4.9.0.5494" />
     <PackageReference Include="Emgu.CV.runtime.debian-arm64" Version="4.9.0.5494" />
     <PackageReference Include="Emgu.CV.runtime.ubuntu-x64" Version="4.9.0.5494" />
@@ -23,7 +23,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Primitives" Version="8.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
-    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.75.125" />
+    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.76.125" />
     <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="xFFmpeg.NET" Version="7.2.0" />
