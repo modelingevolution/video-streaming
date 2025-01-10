@@ -5,13 +5,15 @@ using Microsoft.Extensions.Logging;
 using ModelingEvolution.VideoStreaming.CVat;
 using System.Text.Json;
 using EventPi.Abstractions;
+using System.IO;
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
+
 [CommandHandler]
 public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager manager, IPlumber plumber, IConfiguration config,
-    IWebHostingEnv env, IEnvironment host,
-    ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, VideoImgFrameProvider frameProvider, ICVatClient cvat)
+IWebHostingEnv env, IEnvironment host,
+ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, VideoImgFrameProvider frameProvider, ICVatClient cvat)
 {
 
     public async Task Handle(VideoRecordingDevice dev, FindMissingDatasetRecordings cmd)
@@ -23,7 +25,7 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
 
             if (model.Items.Any(x => x.DirectoryName == folder))
                 return;
-            
+
             var dataFile = Path.Combine(directory, "stream.mjpeg");
             var indexFile = Path.Combine(directory, "index.json");
 
@@ -49,8 +51,8 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
                 };
                 var ev = new DatasetRecordingFound()
                 {
-                    Duration = duration, 
-                    Folder = folder, 
+                    Duration = duration,
+                    Folder = folder,
                     FrameCount = (ulong)ix.Keys.Count
                 };
                 await plumber.AppendEvent(ev, vri);
@@ -70,7 +72,7 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
             {
                 var id = await srv.Start();
                 var ev = new DatasetRecordingStarted();
-         
+
                 await plumber.AppendEvent(ev, id);
             }
             else logger.LogWarning("No device found: " + dev.ToString());
@@ -89,18 +91,18 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
     {
         try
         {
-            
+
             var i = model.GetById(dev);
             frameProvider.Close(Path.GetFileName(i.DirectoryFullPath));
-            var dir = i.DirectoryFullPath; 
+            var dir = i.DirectoryFullPath;
             Directory.Delete(dir, true);
             await plumber.AppendEvent(new DatasetRecordingDeleted() { Successfuly = true }, dev);
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
-            await plumber.AppendEvent(new DatasetRecordingDeleted() { Successfuly = false, Error = ex.Message}, dev);
+            await plumber.AppendEvent(new DatasetRecordingDeleted() { Successfuly = false, Error = ex.Message }, dev);
         }
-        
+
     }
     public async Task Handle(VideoRecordingIdentifier dev, PublishDatasetRecording cmd)
     {
@@ -110,7 +112,7 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
         {
             var baseUrl = new Uri(config.PublicUrl());
             var urls = cmd.CalculateSet(doc.Keys).Select(x => new Uri(baseUrl, $"/video/{set.DirectoryName}/{x}.jpeg").ToString()).ToArray();
-            
+
             var id = await cvat.CreateTask(cmd.Name ?? set.Name, cmd.Subset, cmd.ProjectId);
             await cvat.AttachTaskData(id.Id, 80, true, urls);
 
@@ -118,10 +120,10 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
         }
         catch (Exception ex)
         {
-            await plumber.AppendEvent(new DatasetRecordingPublished() { Successfuly = false, Error = ex.Message}, dev);
+            await plumber.AppendEvent(new DatasetRecordingPublished() { Successfuly = false, Error = ex.Message }, dev);
         }
 
-        
+
     }
     public async Task Handle(VideoRecordingDevice dev, StopDatasetRecording cmd)
     {
@@ -129,7 +131,7 @@ public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager ma
         if (srv != null)
         {
             var r = await srv.Stop();
-            var ev = new DatasetRecordingStopped() { Duration = r.Duration, Folder = r.Folder, FrameCount = r.FrameCount};
+            var ev = new DatasetRecordingStopped() { Duration = r.Duration, Folder = r.Folder, FrameCount = r.FrameCount };
             await plumber.AppendEvent(ev, r.Id);
         }
         else
