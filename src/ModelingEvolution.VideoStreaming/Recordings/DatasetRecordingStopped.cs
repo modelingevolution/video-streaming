@@ -11,6 +11,7 @@ public class DatasetRecordingStopped
     public string Folder { get; set; }
     
 }
+
 [OutputStream("Dataset")]
 public class DatasetRecordingFound
 {
