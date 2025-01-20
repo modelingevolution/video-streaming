@@ -1,4 +1,5 @@
 ﻿using System.Net.WebSockets;
+using EventPi.Abstractions;
 using EventPi.SharedMemory;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;

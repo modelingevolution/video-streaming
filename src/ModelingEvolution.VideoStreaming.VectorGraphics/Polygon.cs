@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Numerics;
 using System.Reflection;
 using System.Text;
+using EventPi.Abstractions;
 using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using ModelingEvolution.Drawing;
 using ModelingEvolution.VideoStreaming.Buffers;

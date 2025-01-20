@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
+using EventPi.Abstractions;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using static System.Net.Mime.MediaTypeNames;

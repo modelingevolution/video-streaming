@@ -1,4 +1,6 @@
-﻿namespace ModelingEvolution.VideoStreaming;
+﻿using EventPi.Abstractions;
+
+namespace ModelingEvolution.VideoStreaming;
 
 public interface IPartialMatFrameHandler
 {
