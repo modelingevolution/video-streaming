@@ -12,12 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.1" />
     <PackageReference Include="ModelingEvolution.Controls.Blazor.AnchorPanelControl" Version="0.0.10.17" />
     <PackageReference Include="ModelingEvolution.Controls.Blazor.HistogramControl" Version="0.0.10.17" />
     <PackageReference Include="ModelingEvolution.Observable" Version="0.0.5.4" />
     <PackageReference Include="ModelingEvolution.Observable.Blazor" Version="0.0.5.4" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.1" />
     <PackageReference Include="MudBlazor" Version="7.15.0" />
     <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.77.125" />
     <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
