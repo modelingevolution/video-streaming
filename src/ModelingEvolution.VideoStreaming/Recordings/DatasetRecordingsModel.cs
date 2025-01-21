@@ -10,7 +10,7 @@ using Microsoft.Extensions.Configuration;
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
 
-[EventHandler]
+    [EventHandler]
 public partial class DatasetRecordingsModel
 {
     private readonly ObservableCollection<DatasetRecording> _index = new();
