@@ -43,12 +43,9 @@ ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, Vi
                 var firstFrame = ix.Values.First();
                 var duration = lastFrame.Created.Subtract(firstFrame.Created);
 
-                VideoRecordingIdentifier vri = new VideoRecordingIdentifier()
-                {
-                    CameraNumber= int.MaxValue,
-                    CreatedTime = firstFrame.Created,
-                    HostName = host.HostName
-                };
+                VideoRecordingIdentifier vri =
+                    new VideoRecordingIdentifier(host.HostName, int.MaxValue, firstFrame.Created);
+
                 var ev = new DatasetRecordingFound()
                 {
                     Duration = duration,

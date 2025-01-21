@@ -136,7 +136,7 @@ public class UnmergedRecordingService : IPartialYuvFrameHandler, IDisposable, IU
         _logger.LogInformation("Labeling will be saved at: " + outputFilePath);
 
         VideoRecordingIdentifier tmp = address;
-        id = tmp with { CreatedTime = n };
+        id = new VideoRecordingIdentifier(tmp.HostName, tmp.CameraNumber??0, n);
         
         return outputFilePath;
     }
