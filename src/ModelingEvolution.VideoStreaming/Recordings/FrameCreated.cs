@@ -8,7 +8,7 @@ namespace ModelingEvolution.VideoStreaming.Recordings;
 public class CreateFrame
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public FrameId FrameId { get; set; }
+    
 
 }
 
@@ -16,7 +16,7 @@ public class CreateFrame
 public class FrameCreated
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public FrameId FrameId { get; set; }
+    
 
 }
 
