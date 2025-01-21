@@ -50,7 +50,7 @@ public record DatasetRecording : INotifyPropertyChanged
         set => SetField(ref _name, value);
     }
 
-    public DateTime Started => Id.CreatedTime;
+    public DateTimeOffset Started => Id.CreatedTime;
     public TimeSpan Duration { get; init; }
     public ulong FrameCount { get; }
 

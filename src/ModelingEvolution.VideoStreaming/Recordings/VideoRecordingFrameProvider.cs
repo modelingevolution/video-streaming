@@ -6,9 +6,13 @@ using System.Text.Json;
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
+
 public class VideoRecordingFrameProvider
 {
-
+    public Task<Memory<byte>> GetFrame(in FrameId frame)
+    {
+        return GetFrame(_locator.GetPath(frame.Recording).DataPath, frame.FrameNumber);
+    }
     public async Task<Memory<byte>> GetFrame(string? fileName, ulong frame)
     {
         var frames = this[fileName];
@@ -76,11 +80,12 @@ public class VideoRecordingFrameProvider
     private readonly ConcurrentDictionary<string, BlockingCollection<FileStream>> _fileStreamPool = new();
     private readonly ConcurrentDictionary<string, FramesJson> _index = new();
     private readonly string _videoStorage;
+    private readonly IVideoRecodingLocator _locator;
 
-    public VideoRecordingFrameProvider(string datasetDirectory)
+    public VideoRecordingFrameProvider(string datasetDirectory, IVideoRecodingLocator locator)
     {
         _videoStorage = datasetDirectory;
-
+        _locator = locator;
     }
     public FramesJson this[string fileName]
     {

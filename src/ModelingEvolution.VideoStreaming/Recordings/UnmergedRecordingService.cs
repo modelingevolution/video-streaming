@@ -144,7 +144,7 @@ public class UnmergedRecordingService : IPartialYuvFrameHandler, IDisposable, IU
     public record StopResult(VideoRecordingIdentifier Id, ulong FrameCount, TimeSpan Duration, string Folder);
     public async Task<StopResult> Stop()
     {
-        var duration = DateTime.Now.Subtract(this._currentRecording.CreatedTime);
+        var duration = DateTimeOffset.Now.Subtract(this._currentRecording.CreatedTime);
         
         ShouldRun = false;
         _cts.Cancel();
