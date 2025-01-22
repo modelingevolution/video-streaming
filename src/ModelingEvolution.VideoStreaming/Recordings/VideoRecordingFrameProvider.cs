@@ -11,11 +11,11 @@ public class VideoRecordingFrameProvider
 {
     public Task<Memory<byte>> GetFrame(in FrameId frame)
     {
-        return GetFrame(_locator.GetPath(frame.Recording).DataPath, frame.FrameNumber);
+        return GetFrame(_locator.GetPath(frame.Recording).Directory, frame.FrameNumber);
     }
-    public async Task<Memory<byte>> GetFrame(string? fileName, ulong frame)
+    public async Task<Memory<byte>> GetFrame(string? recordingPath, ulong frame)
     {
-        var frames = this[fileName];
+        var frames = this[recordingPath];
         if (frames == null)
             return Memory<byte>.Empty;
 
@@ -24,7 +24,7 @@ public class VideoRecordingFrameProvider
             return Memory<byte>.Empty;
 
         var buffer = new byte[frameIndex.Size];
-        var fileStreams = GetStreams(fileName);
+        var fileStreams = GetStreams(recordingPath);
         var fileStream = fileStreams.Take();
 
         fileStream.Seek((long)frameIndex.Start, SeekOrigin.Begin);
@@ -94,9 +94,9 @@ public class VideoRecordingFrameProvider
 
             return _index.GetOrAdd(fileName, x =>
             {
-                var fullFile = Path.Combine(_videoStorage, x);
-                if (!Directory.Exists(fullFile)) return new FramesJson();
-                var jsonPath = Path.Combine(fullFile, "index.json");
+                
+                if (!Directory.Exists(x)) return new FramesJson();
+                var jsonPath = Path.Combine(x, "index.json");
                 var doc = JsonSerializer.Deserialize<FramesJson>(File.ReadAllText(jsonPath));
                 return doc;
             });
