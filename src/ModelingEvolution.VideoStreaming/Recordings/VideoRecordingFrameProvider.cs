@@ -80,9 +80,9 @@ public class VideoRecordingFrameProvider
     private readonly ConcurrentDictionary<string, BlockingCollection<FileStream>> _fileStreamPool = new();
     private readonly ConcurrentDictionary<string, FramesJson> _index = new();
     private readonly string _videoStorage;
-    private readonly IVideoRecodingLocator _locator;
+    private readonly IVideoRecordingLocator _locator;
 
-    public VideoRecordingFrameProvider(string datasetDirectory, IVideoRecodingLocator locator)
+    public VideoRecordingFrameProvider(string datasetDirectory, IVideoRecordingLocator locator)
     {
         _videoStorage = datasetDirectory;
         _locator = locator;
