@@ -33,7 +33,7 @@ public class ModelFactory(ILoggerFactory loggerFactory)
         var options = new YoloPredictorOptions();
         var model = File.ReadAllBytes(segYoloModelFile);
         var session = options.CreateSession(model);
-        var metadata = new YoloMetadata(session);
+        var metadata = new YoloModelMetadata(session);
         onnxConfiguration = new YoloOnnxConfiguration();
         var bbParser = new RawBoundingBoxParser(metadata, onnxConfiguration, new NonMaxSuppressionService());
         segParser = new SegmentationParser(metadata, bbParser);

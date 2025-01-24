@@ -2,11 +2,11 @@
 
 namespace ModelingEvolution.VideoStreaming.Yolo;
 
-public class YoloPoseMetadata : YoloMetadata
+public class YoloModelPoseMetadata : YoloModelMetadata
 {
     public KeypointShape KeypointShape { get; }
 
-    internal YoloPoseMetadata(InferenceSession session) : base(session)
+    internal YoloModelPoseMetadata(InferenceSession session) : base(session)
     {
         var metadata = session.ModelMetadata.CustomMetadataMap;
 

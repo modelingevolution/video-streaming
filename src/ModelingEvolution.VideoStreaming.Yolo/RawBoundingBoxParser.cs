@@ -3,7 +3,7 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 
 namespace ModelingEvolution.VideoStreaming.Yolo;
 
-internal class RawBoundingBoxParser(YoloMetadata metadata,
+internal class RawBoundingBoxParser(YoloModelMetadata modelMetadata,
     YoloOnnxConfiguration onnxConfiguration,
     INonMaxSuppressionService nonMaxSuppression) : IRawBoundingBoxParser
 {
@@ -11,7 +11,7 @@ internal class RawBoundingBoxParser(YoloMetadata metadata,
     {
         var stride1 = tensor.Strides[1];
         var boxesCount = tensor.Dimensions[2];
-        var namesCount = metadata.Names.Length;
+        var namesCount = modelMetadata.Names.Length;
 
         var boxes = MemoryPool<T>.Shared.Rent(boxesCount);
         var boxesIndex = 0;
@@ -96,7 +96,7 @@ internal class RawBoundingBoxParser(YoloMetadata metadata,
 
     public T[] Parse<T>(DenseTensor<float> tensor) where T : IRawBoundingBox<T>
     {
-        if (metadata.Architecture == YoloArchitecture.YoloV10)
+        if (modelMetadata.Architecture == YoloArchitecture.YoloV10)
         {
             return ParseYoloV10<T>(tensor);
         }

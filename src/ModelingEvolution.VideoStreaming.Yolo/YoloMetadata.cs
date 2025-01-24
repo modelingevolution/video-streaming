@@ -3,7 +3,7 @@ using Microsoft.ML.OnnxRuntime;
 
 namespace ModelingEvolution.VideoStreaming.Yolo;
 
-public class YoloMetadata
+public class YoloModelMetadata
 {
     public string Author { get; }
 
@@ -21,7 +21,7 @@ public class YoloMetadata
 
     public YoloArchitecture Architecture { get; }
 
-    internal YoloMetadata(InferenceSession session)
+    internal YoloModelMetadata(InferenceSession session)
     {
         var metadata = session.ModelMetadata.CustomMetadataMap;
 
@@ -49,16 +49,16 @@ public class YoloMetadata
         Names = ParseNames(metadata["names"]);
     }
 
-    public static YoloMetadata Parse(InferenceSession session)
+    public static YoloModelMetadata Parse(InferenceSession session)
     {
         try
         {
             if (session.ModelMetadata.CustomMetadataMap["task"] == "pose")
             {
-                return new YoloPoseMetadata(session);
+                return new YoloModelPoseMetadata(session);
             }
 
-            return new YoloMetadata(session);
+            return new YoloModelMetadata(session);
         }
         catch (Exception inner)
         {

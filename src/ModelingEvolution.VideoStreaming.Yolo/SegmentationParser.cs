@@ -6,7 +6,7 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 
 namespace ModelingEvolution.VideoStreaming.Yolo;
 
-internal unsafe class SegmentationParser(YoloMetadata metadata, 
+internal unsafe class SegmentationParser(YoloModelMetadata modelMetadata, 
     IRawBoundingBoxParser rawBoundingBoxParser) 
     : IParser<Segmentation>
 {
@@ -17,23 +17,23 @@ internal unsafe class SegmentationParser(YoloMetadata metadata,
         var output1 = output.Output1 ?? throw new Exception();
 
         var boxes = rawBoundingBoxParser.Parse<RawBoundingBox>(output0);
-        var maskChannelCount = output0.Dimensions[1] - 4 - metadata.Names.Length;
+        var maskChannelCount = output0.Dimensions[1] - 4 - modelMetadata.Names.Length;
 
         var result = new Segmentation[boxes.Length];
 
         for (var index = 0; index < boxes.Length; index++)
         {
             var box = boxes[index];
-            var bounds = box.Bounds.TransformBy(metadata.ImageSize, interestRegion);
+            var bounds = box.Bounds.TransformBy(modelMetadata.ImageSize, interestRegion);
 
-            using var maskWeights = CollectMaskWeights(output0, box.Index, maskChannelCount, metadata.Names.Length + 4);
+            using var maskWeights = CollectMaskWeights(output0, box.Index, maskChannelCount, modelMetadata.Names.Length + 4);
 
             var mask = ProcessMask(output1, maskWeights.Memory.Span);
 
             result[index] = new Segmentation
             {
                 Mask = mask,
-                Name = metadata.Names[box.NameIndex],
+                Name = modelMetadata.Names[box.NameIndex],
                 Bounds = bounds,
                 Confidence = box.Confidence,
                 Roi = interestRegion,
