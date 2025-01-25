@@ -164,4 +164,9 @@ public class FpsWatch
     }
 
     public override string ToString() => Value.ToString();
+
+    public void Restart()
+    {
+        _sw.Restart();
+    }
 }
