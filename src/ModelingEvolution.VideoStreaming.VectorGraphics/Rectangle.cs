@@ -1,4 +1,6 @@
-﻿using ProtoBuf;
+﻿using System.Drawing;
+using ModelingEvolution.Drawing;
+using ProtoBuf;
 
 namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 
@@ -22,7 +24,32 @@ public readonly struct Rectangle
         Width = width;
         Height = height;
     }
-
+    public static Rectangle operator +(in Rectangle a,in Size<float> b)
+    {
+        return new Rectangle(a.X, a.Y, (ushort)(a.Width + b.Width), (ushort)(a.Height + b.Height));
+    }
+    public static Rectangle operator -(in Rectangle a,in Size<float> b)
+    {
+        return new Rectangle(
+            a.X,
+            a.Y,
+            (ushort)Math.Max(0, a.Width - b.Width),
+            (ushort)Math.Max(0, a.Height - b.Height)
+        );
+    }
+    public static Rectangle operator +(in Rectangle a, in Size b)
+    {
+        return new Rectangle(a.X, a.Y, (ushort)(a.Width + b.Width), (ushort)(a.Height + b.Height));
+    }
+    public static Rectangle operator -(in Rectangle a, in Size b)
+    {
+        return new Rectangle(
+            a.X,
+            a.Y,
+            (ushort)Math.Max(0, a.Width - b.Width),
+            (ushort)Math.Max(0, a.Height - b.Height)
+        );
+    }
     [ProtoMember(1)]
     public ushort X { get; init; }
     
@@ -35,4 +62,8 @@ public readonly struct Rectangle
     [ProtoMember(4)]
     public ushort Height { get; init; }
 
+    public override string ToString()
+    {
+        return $"[{X} {Y} {Width} {Height}]";
+    }
 }
