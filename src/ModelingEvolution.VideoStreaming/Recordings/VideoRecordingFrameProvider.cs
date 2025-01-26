@@ -3,13 +3,14 @@ using Microsoft.Extensions.Configuration;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Text.Json;
-
+using ModelingEvolution.Drawing;
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
 
 public class VideoRecordingFrameProvider
 {
-    public Task<Memory<byte>> GetFrame(in FrameId frame)
+
+    public virtual Task<Memory<byte>> GetFrame(in FrameId frame)
     {
         return GetFrame(_locator.GetPath(frame.Recording).Directory, frame.FrameNumber);
     }
@@ -82,6 +83,10 @@ public class VideoRecordingFrameProvider
     private readonly string _videoStorage;
     private readonly IVideoRecordingLocator _locator;
 
+    public VideoRecordingFrameProvider()
+    {
+
+    }
     public VideoRecordingFrameProvider(string datasetDirectory, IVideoRecordingLocator locator)
     {
         _videoStorage = datasetDirectory;
@@ -94,7 +99,7 @@ public class VideoRecordingFrameProvider
 
             return _index.GetOrAdd(fileName, x =>
             {
-                
+
                 if (!Directory.Exists(x)) return new FramesJson();
                 var jsonPath = Path.Combine(x, "index.json");
                 var doc = JsonSerializer.Deserialize<FramesJson>(File.ReadAllText(jsonPath));
