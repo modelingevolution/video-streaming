@@ -1,26 +1,11 @@
 ﻿using System.Drawing;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using Emgu.CV.Util;
 using ProtoBuf;
 
 [assembly: InternalsVisibleTo("TestProject1")]
 namespace ModelingEvolution.VideoStreaming.VectorGraphics;
 
-public static class Extensions
-{
-    public static List<VectorU16> ToVectorList(this VectorOfPoint p)
-    {
-        var points = new List<VectorU16>(p.Size);
-
-        for (int i = 0; i < p.Size; i++)
-        {
-            points.Add(new  VectorU16((ushort)p[i].X, (ushort)p[i].Y));
-        }
-
-        return points;
-    }
-}
 [ProtoContract]
 public readonly record struct VectorU16
 {
@@ -34,6 +19,12 @@ public readonly record struct VectorU16
         var x = (float)vector.X;
         var y = (float)vector.Y;
         return new Drawing.Point<float>(x, y);
+    }
+    public static explicit operator VectorU16(ModelingEvolution.Drawing.Point<float> vector)
+    {
+        ushort x = (ushort)vector.X;
+        ushort y = (ushort)vector.Y;
+        return new VectorU16(x, y);
     }
     public static explicit operator ModelingEvolution.Drawing.Vector<float>(VectorU16 vector)
     {

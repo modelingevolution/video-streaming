@@ -9,13 +9,15 @@ namespace ModelingEvolution.VideoStreaming.Yolo;
 
 public interface ISegmentation : IDisposable
 {
-    Mat Mask { get;  }
+    Mat? Mask { get;  }
     
     PolygonGraphics? Polygon { get; }
     SegmentationClass Name { get; init; }
     float Confidence { get;  }
     Rectangle Bounds { get;  }
 }
+
+
 
 public class Segmentation : Detection, IYoloPrediction<Segmentation>, ISegmentation
 {

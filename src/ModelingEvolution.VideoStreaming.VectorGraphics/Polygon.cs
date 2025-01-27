@@ -38,7 +38,13 @@ public record PolygonGraphics : IDisposable
         var ratio = new Size<float>(1f / ImageSize.Width, 1f / ImageSize.Height);
         return polygonF * ratio;
     }
-    
+    public Polygon<float> NormalizedPolygon(Size<float> dest)
+    {
+        var polygonF = Polygon.ToPolygonF();
+        var ratio = new Size<float>(1f / ImageSize.Width, 1f / ImageSize.Height) * dest;
+        return polygonF * ratio;
+    }
+
     public PolygonGraphics(ManagedArray<VectorU16> points, in Size size)
     {
         Debug.Assert(points.Count > 2);
@@ -68,7 +74,10 @@ public record class Polygon : IRenderItem, IDisposable
     {
         
     }
-
+    public static implicit operator Polygon(Polygon<float> polygon)
+    {
+        return new Polygon(polygon.Points.Select(p => (VectorU16)p).ToArray());
+    }
     public static Polygon From(IEnumerable<VectorU16> points)
     {
         if (points is VectorU16[] u16s)

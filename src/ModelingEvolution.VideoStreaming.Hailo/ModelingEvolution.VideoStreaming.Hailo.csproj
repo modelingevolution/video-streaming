@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.38.28" />
+    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.45.33" />
     <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.116.1" />
     
   </ItemGroup>
