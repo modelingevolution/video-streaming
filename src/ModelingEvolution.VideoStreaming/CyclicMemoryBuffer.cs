@@ -6,7 +6,7 @@ using Emgu.CV;
 using Emgu.CV.Util;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Shape;
-using Tmds.Linux;
+
 using System.Drawing;
 using ModelingEvolution.VideoStreaming.Nal;
 using System;

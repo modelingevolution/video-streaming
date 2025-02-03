@@ -24,9 +24,8 @@
     <PackageReference Include="Microsoft.Extensions.Primitives" Version="9.0.1" />
     <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.47.33" />
     <PackageReference Include="System.IO.Pipelines" Version="9.0.1" />
-    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.81.127" />
-    <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
-    <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
+    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.83.127" />
+    <PackageReference Include="MicroPlumberd.Services" Version="1.0.83.127" />
     <PackageReference Include="xFFmpeg.NET" Version="7.2.0" />
     <PackageReference Include="Zeroconf" Version="3.6.11" />
   </ItemGroup>

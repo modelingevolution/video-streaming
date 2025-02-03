@@ -4,7 +4,7 @@ using Emgu.CV;
 using ModelingEvolution.VideoStreaming.Buffers;
 using System.Diagnostics;
 using System.Drawing;
-using Tmds.Linux;
+
 using ModelingEvolution.VideoStreaming.LibJpegTurbo;
 
 namespace ModelingEvolution.VideoStreaming;

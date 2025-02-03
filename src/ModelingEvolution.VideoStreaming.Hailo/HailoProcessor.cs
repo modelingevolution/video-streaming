@@ -6,7 +6,6 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
-using Makaretu.Dns;
 using ModelingEvolution.Drawing;
 using ModelingEvolution.VideoStreaming.Buffers;
 using ModelingEvolution.VideoStreaming.VectorGraphics;

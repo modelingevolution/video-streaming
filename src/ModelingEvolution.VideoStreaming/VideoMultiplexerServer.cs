@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using EventPi.Abstractions;
-using Makaretu.Dns;
+
 using MicroPlumberd;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;

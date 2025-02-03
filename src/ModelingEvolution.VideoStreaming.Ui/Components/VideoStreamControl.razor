@@ -32,7 +32,7 @@
     bool success;
     string[] errors = { };
 
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
 
     private async Task OnConnect()
     {
