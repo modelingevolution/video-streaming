@@ -9,7 +9,7 @@ public class ServerConfig
     public List<Uri> Sources { get; set; }
 
     [JsonIgnore]
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } 
     [JsonIgnore]
     public long Version { get; set; } = -1;
 
