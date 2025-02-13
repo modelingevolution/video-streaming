@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.100.134" />
-    <PackageReference Include="MicroPlumberd" Version="1.0.100.134" />
+    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.101.135" />
+    <PackageReference Include="MicroPlumberd" Version="1.0.101.135" />
   </ItemGroup>
 
   <ItemGroup>
