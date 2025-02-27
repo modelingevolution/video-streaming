@@ -17,13 +17,13 @@ using ModelingEvolution.VideoStreaming.Recordings;
 
 namespace ModelingEvolution.VideoStreaming.Ui.Components
 {
-    class DatasetRecordingVm : IViewFor<DatasetRecording>, IEquatable<DatasetRecordingVm>, IDisposable
+    class RecordingVm : IViewFor<Recordings.Recording>, IEquatable<RecordingVm>, IDisposable
     {
         private readonly ICommandBus _bus;
         private readonly DatasetExplorerVm _parent;
         private string _name;
 
-        public DatasetRecordingVm(DatasetRecording source, ICommandBus bus, DatasetExplorerVm parent)
+        public RecordingVm(Recordings.Recording source, ICommandBus bus, DatasetExplorerVm parent)
         {
             _bus = bus;
             _parent = parent;
@@ -38,12 +38,12 @@ namespace ModelingEvolution.VideoStreaming.Ui.Components
             _parent.RaiseChange();
         }
 
-        public DatasetRecording Source { get; }
+        public Recordings.Recording Source { get; }
         public string InspectUrl => $"/inspect/{Id}";
         public string UploadUrl => $"/upload-dataset/{Id}";
         public async Task Delete()
         {
-            await _bus.SendAsync(Source.Id, new DeleteDatasetRecording());
+            await _bus.SendAsync(Source.Id, new DeleteRecording());
             //File.Delete(DirectoryFullPath);
         }
         public Guid Id => Source.Id;
@@ -54,11 +54,11 @@ namespace ModelingEvolution.VideoStreaming.Ui.Components
             {
                 if (_name == value) return;
                 _name = value;
-                _bus.SendAsync(Source.Id, new RenameDatasetRecording() { Name = value });
+                _bus.SendAsync(Source.Id, new RenameRecording() { Name = value });
             }
         }
 
-        public bool Equals(DatasetRecordingVm? other)
+        public bool Equals(RecordingVm? other)
         {
             if (other is null) return false;
             if (ReferenceEquals(this, other)) return true;

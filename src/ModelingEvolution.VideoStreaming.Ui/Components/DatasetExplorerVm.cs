@@ -9,18 +9,18 @@ namespace ModelingEvolution.VideoStreaming.Ui.Components;
 
 internal class DatasetExplorerVm :INotifyPropertyChanged, IDisposable
 {
-    private readonly DatasetRecordingsModel _model;
-    private readonly ObservableCollectionView<DatasetRecordingVm, DatasetRecording> _items; 
-    public DatasetExplorerVm(DatasetRecordingsModel model, ICommandBus bus)
+    private readonly RecordingsModel _model;
+    private readonly ObservableCollectionView<RecordingVm, Recordings.Recording> _items; 
+    public DatasetExplorerVm(RecordingsModel model, ICommandBus bus)
     {
         _model = model;
-        _items = new ObservableCollectionView<DatasetRecordingVm, DatasetRecording>(x => new(x,bus,this), _model.Items);
+        _items = new ObservableCollectionView<RecordingVm, Recordings.Recording>(x => new(x,bus,this), _model.Items);
         _items.CollectionChanged += OnCollectionChanged;
     }
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RaiseChange();
 
-    public IReadOnlyList<DatasetRecordingVm> Items => _items;
+    public IReadOnlyList<RecordingVm> Items => _items;
 
         
     public event PropertyChangedEventHandler? PropertyChanged;

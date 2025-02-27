@@ -76,7 +76,7 @@ public partial class RecordingsModel
         }
     }
 
-    public Recording? GetById(Guid id) => _byId.TryGetValue(id, out var r) ? r : null;
+    public Recordings.Recording? GetById(Guid id) => _byId.TryGetValue(id, out var r) ? r : null;
     private async Task Given(Metadata m, RecordingRenamed ev)
     {
         _lastExecution = DateTime.Now;

@@ -17,7 +17,7 @@
             <IconButton_v7 Style="padding:24px"
                            Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large"
                            Disabled="@(Address == null)"
-                           OnClick="ToggleDatasetRecording"
+                           OnClick="ToggleRecording"
                            IconStyle="@_vm.Style()" />
 
 
@@ -59,16 +59,16 @@
     }
 
 
-    private async Task ToggleDatasetRecording()
+    private async Task ToggleRecording()
     {
         if (!Address.HasValue) return;
 
         try
         {
             if (!_vm.IsRecording)
-                await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StartDatasetRecording());
+                await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StartRecording());
             else
-                await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StopDatasetRecording());
+                await _bus.SendAsync((VideoRecordingDevice)Address.Value, new StopRecording());
         }
         catch (Exception ex)
         {
@@ -77,7 +77,7 @@
 
     }
 
-    private async Task ToggleRecording()
+    private async Task ToggleRecordingOld()
     {
         if (!Address.HasValue) return;
 

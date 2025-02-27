@@ -10,13 +10,13 @@ using ModelingEvolution.VideoStreaming.Recordings;
 
 namespace ModelingEvolution.VideoStreaming.Ui.Pages
 {
-    internal class UploadDatasetVm(ICommandBus bus, DatasetRecordingsModel model, VideoImgFrameProvider imgProvider, NavigationManager nm)
+    internal class UploadDatasetVm(ICommandBus bus, RecordingsModel model, VideoImgFrameProvider imgProvider, NavigationManager nm)
     {
-        private DatasetRecording? _dataset;
+        private Recordings.Recording? _dataset;
         private FramesJson _frames;
         public string Error { get; private set; }
-        public PublishDatasetRecording Command { get; private set; } = new PublishDatasetRecording();
-        public DatasetRecording Data => _dataset;
+        public PublishRecording Command { get; private set; } = new PublishRecording();
+        public Recordings.Recording Data => _dataset;
         public int FrameCount
         {
             get => Command.CalculateSet(_frames.Keys).Count();
@@ -32,7 +32,7 @@ namespace ModelingEvolution.VideoStreaming.Ui.Pages
 
         private void OnCreateNewCommand(FramesJson frames)
         {
-            Command = new PublishDatasetRecording()
+            Command = new PublishRecording()
             {
                 StartFrame = frames.Count > 0 ? frames.Keys.First() : 0,
                 EndFrame = frames.Count > 0 ? frames.Keys.Last() : ulong.MaxValue,
