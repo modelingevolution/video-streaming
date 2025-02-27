@@ -11,23 +11,23 @@ namespace ModelingEvolution.VideoStreaming.Recordings;
 
 
     [EventHandler]
-public partial class DatasetRecordingsModel
+public partial class RecordingsModel
 {
-    private readonly ObservableCollection<DatasetRecording> _index = new();
-    private readonly ConcurrentDictionary<Guid, DatasetRecording> _byId = new();
+    private readonly ObservableCollection<Recording> _index = new();
+    private readonly ConcurrentDictionary<Guid, Recording> _byId = new();
     
-    public IList<DatasetRecording> Items => _index;
+    public IList<Recording> Items => _index;
     
     private DateTime _lastExecution;
     
-    private async Task Given(Metadata m, DatasetRecordingStopped ev)
+    private async Task Given(Metadata m, RecordingStopped ev)
     {
         _lastExecution = DateTime.Now;
         
         var id = m.StreamId<VideoRecordingIdentifier>();
         if (!_byId.ContainsKey(id))
         {
-            var item = new DatasetRecording(id, Path.Combine(_config.VideoStorageDir(_env.WwwRoot), ev.Folder), ev.Duration, ev.FrameCount);
+            var item = new Recording(id, Path.Combine(_config.VideoStorageDir(_env.WwwRoot), ev.Folder), ev.Duration, ev.FrameCount);
             _index.Add(item);
             _byId.TryAdd(id, item);
         }
@@ -39,7 +39,7 @@ public partial class DatasetRecordingsModel
     private readonly ICommandBus _cmdBus;
     private readonly IEnvironment _eh;
 
-    public DatasetRecordingsModel(IConfiguration config, IWebHostingEnv env, ICommandBus cmdBus, IEnvironment eh)
+    public RecordingsModel(IConfiguration config, IWebHostingEnv env, ICommandBus cmdBus, IEnvironment eh)
     {
         _config = config;
         _env = env;
@@ -62,29 +62,29 @@ public partial class DatasetRecordingsModel
         
         _catchup = true;
         var id = new VideoRecordingDevice() { CameraNumber=int.MaxValue, HostName = _eh.HostName};
-        _ = _cmdBus.SendAsync(id, new FindMissingDatasetRecordings());
+        _ = _cmdBus.SendAsync(id, new FindMissingRecordings());
     }
-    private async Task Given(Metadata m, DatasetRecordingFound ev)
+    private async Task Given(Metadata m, RecordingFound ev)
     {
         _lastExecution = DateTime.Now;
         var id = m.StreamId<VideoRecordingIdentifier>();
         if (!_byId.ContainsKey(id))
         {
-            var item = new DatasetRecording(id, Path.Combine(_config.VideoStorageDir(_env.WwwRoot), ev.Folder), ev.Duration, ev.FrameCount);
+            var item = new Recording(id, Path.Combine(_config.VideoStorageDir(_env.WwwRoot), ev.Folder), ev.Duration, ev.FrameCount);
             _index.Add(item);
             _byId.TryAdd(id, item);
         }
     }
 
-    public DatasetRecording? GetById(Guid id) => _byId.TryGetValue(id, out var r) ? r : null;
-    private async Task Given(Metadata m, DatasetRecordingRenamed ev)
+    public Recording? GetById(Guid id) => _byId.TryGetValue(id, out var r) ? r : null;
+    private async Task Given(Metadata m, RecordingRenamed ev)
     {
         _lastExecution = DateTime.Now;
         var id = m.StreamId<VideoRecordingIdentifier>();
         if (_byId.TryGetValue(id, out var r)) 
             r.Name = ev.Name;
     }
-    private async Task Given(Metadata m, DatasetRecordingDeleted ev)
+    private async Task Given(Metadata m, RecordingDeleted ev)
     {
         _lastExecution = DateTime.Now;
         var id = m.StreamId<VideoRecordingIdentifier>();
@@ -92,13 +92,13 @@ public partial class DatasetRecordingsModel
             _index.Remove(r);
     }
 
-    private async Task Given(Metadata m, DatasetRecordingPublished ev)
+    private async Task Given(Metadata m, RecordingPublished ev)
     {
         _lastExecution = DateTime.Now;
         var id = m.StreamId<VideoRecordingIdentifier>();
         if (_byId.TryGetValue(id, out var r))
         {
-            if (ev.Successfuly)
+            if (ev.Successfully)
             {
                 r.PublishState = PublishState.Success;
                 r.PublishError = null;

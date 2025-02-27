@@ -2,8 +2,8 @@
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
-[OutputStream("Dataset")]
-public class DeleteDatasetRecording
+[OutputStream(StreamNames.Recording)]
+public class DeleteRecording
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 }

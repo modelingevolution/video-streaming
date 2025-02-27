@@ -3,8 +3,8 @@ using MicroPlumberd;
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
-[OutputStream("Dataset")]
-public class PublishDatasetRecording
+[OutputStream(StreamNames.Recording)]
+public class PublishRecording
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public int ProjectId { get; set; }

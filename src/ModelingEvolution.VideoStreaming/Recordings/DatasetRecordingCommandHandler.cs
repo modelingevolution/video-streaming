@@ -11,12 +11,12 @@ namespace ModelingEvolution.VideoStreaming.Recordings;
 
 
 [CommandHandler]
-public partial class DatasetRecordingCommandHandler(IUnmergedRecordingManager manager, IPlumber plumber, IConfiguration config,
+public partial class RecordingCommandHandler(IUnmergedRecordingManager manager, IPlumber plumber, IConfiguration config,
 IWebHostingEnv env, IEnvironment host,
-ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, VideoImgFrameProvider frameProvider, ICVatClient cvat)
+ILogger<RecordingCommandHandler> logger, RecordingsModel model, VideoImgFrameProvider frameProvider, ICVatClient cvat)
 {
 
-    public async Task Handle(VideoRecordingDevice dev, FindMissingDatasetRecordings cmd)
+    public async Task Handle(VideoRecordingDevice dev, FindMissingRecordings cmd)
     {
         var directories = Directory.GetDirectories(config.VideoStorageDir(env.WwwRoot));
         foreach (var directory in directories)
@@ -46,7 +46,7 @@ ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, Vi
                 VideoRecordingIdentifier vri =
                     new VideoRecordingIdentifier(host.HostName, int.MaxValue, firstFrame.Created);
 
-                var ev = new DatasetRecordingFound()
+                var ev = new RecordingFound()
                 {
                     Duration = duration,
                     Folder = folder,
@@ -60,7 +60,7 @@ ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, Vi
             }
         }
     }
-    public async Task Handle(VideoRecordingDevice dev, StartDatasetRecording cmd)
+    public async Task Handle(VideoRecordingDevice dev, StartRecording cmd)
     {
         try
         {
@@ -68,7 +68,7 @@ ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, Vi
             if (srv != null)
             {
                 var id = await srv.Start();
-                var ev = new DatasetRecordingStarted();
+                var ev = new RecordingStarted();
 
                 await plumber.AppendEvent(ev, id);
             }
@@ -76,15 +76,15 @@ ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, Vi
         }
         catch (Exception ex)
         {
-            var ev = new DatasetRecordingStarted() { Error = ex.Message, Failed = true };
+            var ev = new RecordingStarted() { Error = ex.Message, Failed = true };
             await plumber.AppendEvent(ev, dev);
         }
     }
-    public async Task Handle(VideoRecordingIdentifier dev, RenameDatasetRecording cmd)
+    public async Task Handle(VideoRecordingIdentifier dev, RenameRecording cmd)
     {
-        await plumber.AppendEvent(new DatasetRecordingRenamed() { Name = cmd.Name }, dev);
+        await plumber.AppendEvent(new RecordingRenamed() { Name = cmd.Name }, dev);
     }
-    public async Task Handle(VideoRecordingIdentifier dev, DeleteDatasetRecording cmd)
+    public async Task Handle(VideoRecordingIdentifier dev, DeleteRecording cmd)
     {
         try
         {
@@ -93,15 +93,15 @@ ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, Vi
             frameProvider.Close(Path.GetFileName(i.DirectoryFullPath));
             var dir = i.DirectoryFullPath;
             Directory.Delete(dir, true);
-            await plumber.AppendEvent(new DatasetRecordingDeleted() { Successfuly = true }, dev);
+            await plumber.AppendEvent(new RecordingDeleted() { Successfuly = true }, dev);
         }
         catch (Exception ex)
         {
-            await plumber.AppendEvent(new DatasetRecordingDeleted() { Successfuly = false, Error = ex.Message }, dev);
+            await plumber.AppendEvent(new RecordingDeleted() { Successfuly = false, Error = ex.Message }, dev);
         }
 
     }
-    public async Task Handle(VideoRecordingIdentifier dev, PublishDatasetRecording cmd)
+    public async Task Handle(VideoRecordingIdentifier dev, PublishRecording cmd)
     {
         var set = model.GetById(dev);
         var doc = frameProvider[set.DirectoryName];
@@ -113,22 +113,22 @@ ILogger<DatasetRecordingCommandHandler> logger, DatasetRecordingsModel model, Vi
             var id = await cvat.CreateTask(cmd.Name ?? set.Name, cmd.Subset, cmd.ProjectId);
             await cvat.AttachTaskData(id.Id, 80, true, urls);
 
-            await plumber.AppendEvent(new DatasetRecordingPublished() { Successfuly = true, TaskId = id.Id }, dev);
+            await plumber.AppendEvent(new RecordingPublished() { Successfully = true,  }, dev);
         }
         catch (Exception ex)
         {
-            await plumber.AppendEvent(new DatasetRecordingPublished() { Successfuly = false, Error = ex.Message }, dev);
+            await plumber.AppendEvent(new RecordingPublished() { Successfully = false, Error = ex.Message }, dev);
         }
 
 
     }
-    public async Task Handle(VideoRecordingDevice dev, StopDatasetRecording cmd)
+    public async Task Handle(VideoRecordingDevice dev, StopRecording cmd)
     {
         var srv = manager.Get(dev);
         if (srv != null)
         {
             var r = await srv.Stop();
-            var ev = new DatasetRecordingStopped() { Duration = r.Duration, Folder = r.Folder, FrameCount = r.FrameCount };
+            var ev = new RecordingStopped() { Duration = r.Duration, Folder = r.Folder, FrameCount = r.FrameCount };
             await plumber.AppendEvent(ev, r.Id);
         }
         else

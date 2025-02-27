@@ -2,8 +2,8 @@
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
-[OutputStream("Dataset")]
-public class StopDatasetRecording
+[OutputStream(StreamNames.Recording)]
+public class StopRecording
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 

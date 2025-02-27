@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
-public record DatasetRecording : INotifyPropertyChanged
+public record Recording : INotifyPropertyChanged
 {
     private string _name;
     private Bytes? _size;
@@ -12,7 +12,7 @@ public record DatasetRecording : INotifyPropertyChanged
     private DateTime? _publishedDate;
     private string _publishError;
 
-    public DatasetRecording(VideoRecordingIdentifier id, string folder, TimeSpan duration, ulong frameCount)
+    public Recording(VideoRecordingIdentifier id, string folder, TimeSpan duration, ulong frameCount)
     {
         Id = id;
         DirectoryFullPath = folder;

@@ -38,11 +38,11 @@ public partial class VideoRecordingDeviceModel
 
     public State this[VideoRecordingDevice dev] => _index.GetOrAdd(dev, x => new());
     private readonly ConcurrentDictionary<VideoRecordingDevice, State> _index = new();
-    private async Task Given(Metadata m, DatasetRecordingStarted ev)
+    private async Task Given(Metadata m, RecordingStarted ev)
     {
         this[m.StreamId<VideoRecordingIdentifier>()].IsRecording = true;
     }
-    private async Task Given(Metadata m, DatasetRecordingStopped ev)
+    private async Task Given(Metadata m, RecordingStopped ev)
     {
         this[m.StreamId<VideoRecordingIdentifier>()].IsRecording = false;
     }

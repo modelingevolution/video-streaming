@@ -3,13 +3,13 @@
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
 [OutputStream("Datasets")]
-public class StartDatasetRecording 
+public class StartRecording 
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
 }
 [OutputStream("Datasets")]
-public class FindMissingDatasetRecordings
+public class FindMissingRecordings
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 

@@ -51,14 +51,14 @@ namespace ModelingEvolution.VideoStreaming
                     sp.GetRequiredService<ILoggerFactory>(),
                     sp);
             });
-            services.AddSingleton<DatasetRecordingsModel>();
-            services.AddEventHandler<DatasetRecordingsModel>();
+            services.AddSingleton<RecordingsModel>();
+            services.AddEventHandler<RecordingsModel>();
            
             services.AddSingleton<VideoRecordingDeviceModel>();
             services.AddEventHandler<VideoRecordingDeviceModel>(start: FromRelativeStreamPosition.End);
 
-            services.AddSingleton<DatasetRecordingCommandHandler>();
-            services.AddCommandHandler<DatasetRecordingCommandHandler>();
+            services.AddSingleton<RecordingCommandHandler>();
+            services.AddCommandHandler<RecordingCommandHandler>();
             return services;
         }
     }

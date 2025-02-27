@@ -2,8 +2,8 @@
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
-[OutputStream("Dataset")]
-public class DatasetRecordingStopped
+[OutputStream(StreamNames.Recording)]
+public class RecordingStopped
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public ulong FrameCount { get; set; }
@@ -12,8 +12,8 @@ public class DatasetRecordingStopped
     
 }
 
-[OutputStream("Dataset")]
-public class DatasetRecordingFound
+[OutputStream(StreamNames.Recording)]
+public class RecordingFound
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public ulong FrameCount { get; set; }
