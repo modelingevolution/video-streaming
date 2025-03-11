@@ -79,10 +79,11 @@ public  sealed class MjpegDecoder
 
     public static bool IsJpeg(Memory<byte> frame)
     {
-        if (frame.Span[0] == 0xFF || frame.Span[1] == 0xD8)
+        var sp = frame.Span;
+        if (sp[0] == 0xFF || sp[1] == 0xD8)
         {
             var last = frame.Length - 2;
-            if (frame.Span[last] == 0xFF && frame.Span[last + 1] == 0xD9)
+            if (sp[last] == 0xFF && sp[last + 1] == 0xD9)
                 return true;
         }
 
