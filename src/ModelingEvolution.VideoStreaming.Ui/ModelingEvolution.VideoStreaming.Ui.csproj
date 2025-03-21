@@ -19,7 +19,7 @@
     <PackageReference Include="ModelingEvolution.Observable.Blazor" Version="0.0.5.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.1" />
     <PackageReference Include="MudBlazor" Version="8.2.0" />
-    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.111.147" />
+    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.0.114.150" />
     <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.116.1" />

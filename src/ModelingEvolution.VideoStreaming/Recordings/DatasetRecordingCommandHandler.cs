@@ -11,7 +11,7 @@ namespace ModelingEvolution.VideoStreaming.Recordings;
 
 
 [CommandHandler]
-public partial class RecordingCommandHandler(IUnmergedRecordingManager manager, IPlumber plumber, IConfiguration config,
+public partial class RecordingCommandHandler(IUnmergedRecordingManager manager, IPlumberInstance plumber, IConfiguration config,
 IWebHostingEnv env, IEnvironment host,
 ILogger<RecordingCommandHandler> logger, RecordingsModel model, VideoImgFrameProvider frameProvider, ICVatClient cvat)
 {

@@ -33,7 +33,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
     private readonly IServiceProvider _serviceProvider;
     private readonly TcpListener _listener;
     private readonly ServerConfigProvider _configProvider;
-    private readonly IPlumber _plumber;
+    private readonly IPlumberInstance _plumber;
     
     private readonly VideoStreamEventSink _sink;
     private readonly IEnvironment _env;
@@ -65,7 +65,7 @@ public class VideoStreamingServer : INotifyPropertyChanged
     private readonly ILogger<VideoStreamingServer> _logger;
     public ServerConfigProvider ServerConfigProvider => _configProvider;
     public VideoStreamingServer(string host, int port, ILogger<VideoStreamingServer> logger,
-        IPlumber plumber, bool isSingleVideo, 
+        IPlumberInstance plumber, bool isSingleVideo, 
         VideoStreamEventSink sink,
         IEnvironment env,
         IConfiguration config,

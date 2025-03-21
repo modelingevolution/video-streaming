@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace ModelingEvolution.VideoStreaming;
 
 
-public class ServerConfigProvider(IConfiguration conf, IPlumber plumber, IEnvironment env, ILogger<ServerConfigProvider> logger)
+public class ServerConfigProvider(IConfiguration conf, IPlumberInstance plumber, IEnvironment env, ILogger<ServerConfigProvider> logger)
 {
     private ServerConfig? _config;
 

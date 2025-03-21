@@ -43,7 +43,7 @@ namespace ModelingEvolution.VideoStreaming
                     streamingBindUrl.Host,
                     streamingBindUrl.Port,
                     sp.GetRequiredService<ILogger<VideoStreamingServer>>(),
-                    sp.GetRequiredService<IPlumber>(),
+                    sp.GetRequiredService<IPlumberInstance>(),
                     configuration.IsSingleVideoStreaming(),
                     sp.GetRequiredService<VideoStreamEventSink>(),
                     sp.GetRequiredService<IEnvironment>(),
