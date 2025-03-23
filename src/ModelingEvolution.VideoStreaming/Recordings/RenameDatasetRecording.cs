@@ -1,4 +1,5 @@
-﻿using MicroPlumberd;
+﻿using System.ComponentModel.DataAnnotations;
+using MicroPlumberd;
 
 namespace ModelingEvolution.VideoStreaming.Recordings;
 
@@ -6,5 +7,7 @@ namespace ModelingEvolution.VideoStreaming.Recordings;
 public class RenameRecording
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    
+    [Required, MinLength(1)]
     public string Name { get; set; }
 }
