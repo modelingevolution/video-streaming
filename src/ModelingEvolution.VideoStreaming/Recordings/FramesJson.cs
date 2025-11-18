@@ -1,5 +1,8 @@
-﻿namespace ModelingEvolution.VideoStreaming.Recordings;
+﻿using System.Text.Json.Serialization;
 
+namespace ModelingEvolution.VideoStreaming.Recordings;
+
+// Frame-Number (Sequence) : FrameIndex
 public class FramesJson : SortedList<ulong, FrameIndex>
 {
     public ulong GetNextKey(ulong key)
@@ -24,4 +27,18 @@ public class FramesJson : SortedList<ulong, FrameIndex>
 
         return prvKey;
     }
+}
+
+public class RecodingJson
+{
+    public string Caps { get; set; }
+    // Space for other constant metadata, like camera model, versions etc.
+    public Dictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
+    public FramesJson Index { get; set; }
+    
+}
+public record FrameIndex(ulong Start, ulong Size, long TimeStamp)
+{
+    [JsonIgnore]
+    public DateTime Created => DateTime.FromBinary(TimeStamp);
 }

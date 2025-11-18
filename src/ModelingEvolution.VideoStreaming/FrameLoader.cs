@@ -12,7 +12,7 @@ public static class FrameLoader
     {
         // Load Mat from Memory<byte>, using EmguOpenCv
         using var mat = new Mat();
-        CvInvoke.Imdecode(data, ImreadModes.Color, mat);
+        CvInvoke.Imdecode(data, ImreadModes.AnyColor, mat);
 
         var dst = new Mat();
 

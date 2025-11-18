@@ -1,15 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.53.35" />
-    <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.116.1" />
+    <PackageReference Include="ModelingEvolution.Drawing" Version="*" />
+    <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.119.1" />
     
   </ItemGroup>
 
@@ -27,10 +27,10 @@
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <!-- Linux and macOS -->
-    <Exec Command="cp ../HailoProcessor/build/aarch64/libxHailoProcessor.so ./" Condition=" '$(OS)' != 'Windows_NT' " />
+    <Exec Command="cp $(MSBuildProjectDirectory)/../HailoProcessor/build/aarch64/libxHailoProcessor.so $(MSBuildProjectDirectory)/" Condition=" '$(OS)' != 'Windows_NT' " />
 
     <!-- Windows -->
-    <Exec Command="copy ..\HailoProcessor\build\aarch64\libxHailoProcessor.so .\" Condition=" '$(OS)' == 'Windows_NT' " />
+    <Exec Command="copy &quot;$(MSBuildProjectDirectory)\..\HailoProcessor\build\aarch64\libxHailoProcessor.so&quot; &quot;$(MSBuildProjectDirectory)\&quot;" Condition=" '$(OS)' == 'Windows_NT' " />
   </Target>
 
 </Project>
