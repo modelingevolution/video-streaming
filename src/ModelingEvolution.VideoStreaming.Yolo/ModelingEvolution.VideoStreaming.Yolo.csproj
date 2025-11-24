@@ -8,6 +8,7 @@
     <IsAotCompatible>true</IsAotCompatible>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>preview</LangVersion>
+    <PackageId>ModelingEvolution.VideoStreaming.Yolo</PackageId>
   </PropertyGroup>
 
   <ItemGroup>

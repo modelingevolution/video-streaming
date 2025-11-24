@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PackageId>ModelingEvolution.VideoStreaming</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,8 +32,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\EventPi\src\EventPi.Abstractions\EventPi.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\EventPi\src\EventPi.SharedMemory\EventPi.SharedMemory.csproj" />
+    <PackageReference Include="ModelingEvolution.EventPi.Abstractions" Version="1.0.11.43" />
+    <PackageReference Include="ModelingEvolution.EventPi.SharedMemory" Version="1.0.11.43" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Buffers\ModelingEvolution.VideoStreaming.Buffers.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.CVat\ModelingEvolution.VideoStreaming.CVat.csproj" />
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming.Events\ModelingEvolution.VideoStreaming.Events.csproj" />
