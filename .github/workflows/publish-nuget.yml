@@ -56,6 +56,7 @@ jobs:
         dotnet build src/ModelingEvolution.VideoStreaming.VectorGraphics/ModelingEvolution.VideoStreaming.VectorGraphics.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
         dotnet build src/ModelingEvolution.VideoStreaming.Hailo/ModelingEvolution.VideoStreaming.Hailo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
         dotnet build src/ModelingEvolution.VideoStreaming.Yolo/ModelingEvolution.VideoStreaming.Yolo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.Ui/ModelingEvolution.VideoStreaming.Ui.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: Pack ModelingEvolution.VideoStreaming.Buffers
       run: |
