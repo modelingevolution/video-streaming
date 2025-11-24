@@ -103,7 +103,7 @@ namespace ModelingEvolution.VideoStreaming
         void Stop();
     }
 
-    public class VideoStreamEventSink(IPlumber plumberd, IEnvironment e)
+    public class VideoStreamEventSink(IPlumberInstance plumberd, IEnvironment e)
     {
         public async Task OnStreamingStarted(VideoAddress va)
         {

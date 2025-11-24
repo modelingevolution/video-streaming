@@ -24,7 +24,7 @@ public record RecordingPublished
     public bool Successfully { get; init; }
     public string Error { get; init; }
     public string Name { get; init; }
-    public int Frames { get; init; }
+    public ulong Frames { get; init; }
     
     public TimeSpan Duration { get; init; }
     public DateTimeOffset RecordingStarted { get; set; }

@@ -11,7 +11,16 @@ namespace ModelingEvolution.VideoStreaming.Recordings;
 
 
 [CommandHandler]
-public partial class RecordingCommandHandler(IUnmergedRecordingManager manager, IPlumber plumber, IConfiguration config,
+public partial class RenameRecordingCommandHandler(IPlumberInstance plumber)
+{
+    public async Task Handle(VideoRecordingIdentifier dev, RenameRecording cmd)
+    {
+        await plumber.AppendEvent(new RecordingRenamed() { Name = cmd.Name }, dev);
+    }
+}
+
+[CommandHandler]
+public partial class RecordingCommandHandler(IUnmergedRecordingManager manager, IPlumberInstance plumber, IConfiguration config,
 IWebHostingEnv env, IEnvironment host,
 ILogger<RecordingCommandHandler> logger, RecordingsModel model, VideoImgFrameProvider frameProvider, ICVatClient cvat)
 {
@@ -80,10 +89,7 @@ ILogger<RecordingCommandHandler> logger, RecordingsModel model, VideoImgFramePro
             await plumber.AppendEvent(ev, dev);
         }
     }
-    public async Task Handle(VideoRecordingIdentifier dev, RenameRecording cmd)
-    {
-        await plumber.AppendEvent(new RecordingRenamed() { Name = cmd.Name }, dev);
-    }
+   
     public async Task Handle(VideoRecordingIdentifier dev, DeleteRecording cmd)
     {
         try

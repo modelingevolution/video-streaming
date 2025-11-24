@@ -9,9 +9,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.1" />
     <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
-    <PackageReference Include="protobuf-net" Version="3.2.46" />
-    <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.116.1" />
-    <PackageReference Include="ModelingEvolution.Drawing" Version="1.0.53.35" />
+    <PackageReference Include="protobuf-net" Version="3.2.52" />
+    <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.119.1" />
+    <PackageReference Include="ModelingEvolution.Drawing" Version="*" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ModelingEvolution.VideoStreaming\ModelingEvolution.VideoStreaming.csproj" />
