@@ -46,20 +46,16 @@ jobs:
 
     - name: Restore and build all packages
       run: |
-        # Build in dependency order
+        # Build library packages only in dependency order
         dotnet build src/ModelingEvolution.VideoStreaming.Buffers/ModelingEvolution.VideoStreaming.Buffers.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
         dotnet build src/ModelingEvolution.VideoStreaming.CVat/ModelingEvolution.VideoStreaming.CVat.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
         dotnet build src/ModelingEvolution.VideoStreaming.Events/ModelingEvolution.VideoStreaming.Events.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
         dotnet build src/ModelingEvolution.VideoStreaming.LibJpegTurbo/ModelingEvolution.VideoStreaming.LibJpegTurbo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
         dotnet build src/ModelingEvolution.VideoStreaming.Sdk/ModelingEvolution.VideoStreaming.Sdk.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
-        dotnet build src/ModelingEvolution.VideoStreaming.Ui/ModelingEvolution.VideoStreaming.Ui.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
         dotnet build src/ModelingEvolution.VideoStreaming/ModelingEvolution.VideoStreaming.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
-        dotnet build src/ModelingEvolution.VideoStreaming.Yolo/ModelingEvolution.VideoStreaming.Yolo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
-        dotnet build src/ModelingEvolution.VideoStreaming.Hailo/ModelingEvolution.VideoStreaming.Hailo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
         dotnet build src/ModelingEvolution.VideoStreaming.VectorGraphics/ModelingEvolution.VideoStreaming.VectorGraphics.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
-        dotnet build src/ModelingEvolution.VideoStreaming.Mp4ToMjpeg/ModelingEvolution.VideoStreaming.Mp4ToMjpeg.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
-        dotnet build src/ModelingEvolution.VideoStreaming.Mp4ToYuv420/ModelingEvolution.VideoStreaming.Mp4ToYuv420.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
-        dotnet build src/ModelingEvolution.VideoStreaming.OpenVidCam/ModelingEvolution.VideoStreaming.OpenVidCam.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.Hailo/ModelingEvolution.VideoStreaming.Hailo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.Yolo/ModelingEvolution.VideoStreaming.Yolo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: Pack ModelingEvolution.VideoStreaming.Buffers
       run: |
@@ -154,36 +150,6 @@ jobs:
     - name: Pack ModelingEvolution.VideoStreaming.VectorGraphics
       run: |
         dotnet pack src/ModelingEvolution.VideoStreaming.VectorGraphics/ModelingEvolution.VideoStreaming.VectorGraphics.csproj \
-          --configuration ${{ env.CONFIGURATION }} \
-          --no-build \
-          --output ./artifacts \
-          /p:PackageVersion=${{ steps.get_version.outputs.VERSION }} \
-          /p:IncludeSymbols=true \
-          /p:SymbolPackageFormat=snupkg
-
-    - name: Pack ModelingEvolution.VideoStreaming.Mp4ToMjpeg
-      run: |
-        dotnet pack src/ModelingEvolution.VideoStreaming.Mp4ToMjpeg/ModelingEvolution.VideoStreaming.Mp4ToMjpeg.csproj \
-          --configuration ${{ env.CONFIGURATION }} \
-          --no-build \
-          --output ./artifacts \
-          /p:PackageVersion=${{ steps.get_version.outputs.VERSION }} \
-          /p:IncludeSymbols=true \
-          /p:SymbolPackageFormat=snupkg
-
-    - name: Pack ModelingEvolution.VideoStreaming.Mp4ToYuv420
-      run: |
-        dotnet pack src/ModelingEvolution.VideoStreaming.Mp4ToYuv420/ModelingEvolution.VideoStreaming.Mp4ToYuv420.csproj \
-          --configuration ${{ env.CONFIGURATION }} \
-          --no-build \
-          --output ./artifacts \
-          /p:PackageVersion=${{ steps.get_version.outputs.VERSION }} \
-          /p:IncludeSymbols=true \
-          /p:SymbolPackageFormat=snupkg
-
-    - name: Pack ModelingEvolution.VideoStreaming.OpenVidCam
-      run: |
-        dotnet pack src/ModelingEvolution.VideoStreaming.OpenVidCam/ModelingEvolution.VideoStreaming.OpenVidCam.csproj \
           --configuration ${{ env.CONFIGURATION }} \
           --no-build \
           --output ./artifacts \
