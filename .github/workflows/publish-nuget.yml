@@ -44,11 +44,17 @@ jobs:
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "Publishing version: $VERSION"
 
-    - name: Restore solution
-      run: dotnet restore src/ModelingEvolution.VideoStreaming.sln
-
-    - name: Build solution
-      run: dotnet build src/ModelingEvolution.VideoStreaming.sln --configuration ${{ env.CONFIGURATION }} --no-restore /p:Version=${{ steps.get_version.outputs.VERSION }}
+    - name: Restore and build packages
+      run: |
+        # Build only the projects we're publishing, avoiding Player/Simulator that need MAUI workloads
+        dotnet build src/ModelingEvolution.VideoStreaming.Buffers/ModelingEvolution.VideoStreaming.Buffers.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.CVat/ModelingEvolution.VideoStreaming.CVat.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.Events/ModelingEvolution.VideoStreaming.Events.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.LibJpegTurbo/ModelingEvolution.VideoStreaming.LibJpegTurbo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming/ModelingEvolution.VideoStreaming.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.Hailo/ModelingEvolution.VideoStreaming.Hailo.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.Sdk/ModelingEvolution.VideoStreaming.Sdk.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
+        dotnet build src/ModelingEvolution.VideoStreaming.VectorGraphics/ModelingEvolution.VideoStreaming.VectorGraphics.csproj --configuration ${{ env.CONFIGURATION }} /p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: Pack ModelingEvolution.VideoStreaming.Buffers
       run: |
