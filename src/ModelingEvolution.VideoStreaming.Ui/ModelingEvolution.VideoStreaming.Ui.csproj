@@ -1,4 +1,5 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
@@ -15,11 +16,11 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.1" />
     <PackageReference Include="ModelingEvolution.Controls.Blazor.AnchorPanelControl" Version="0.0.10.17" />
     <PackageReference Include="ModelingEvolution.Controls.Blazor.HistogramControl" Version="0.0.10.17" />
-    <PackageReference Include="ModelingEvolution.Observable" Version="0.0.9.0" />
-    <PackageReference Include="ModelingEvolution.Observable.Blazor" Version="0.0.9.0" />
+    <PackageReference Include="ModelingEvolution.Observable" Version="0.0.10" />
+    <PackageReference Include="ModelingEvolution.Observable.Blazor" Version="0.0.10" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
     <PackageReference Include="MudBlazor" Version="8.14.0" />
-    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.1.8.0" />
+    <PackageReference Include="MicroPlumberd.SourceGenerators" Version="1.2.0.0" />
     <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.119.1" />

@@ -1,4 +1,5 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelingEvolution.Drawing" Version="1.4.3.58" />
+    <PackageReference Include="ModelingEvolution.Drawing" Version="1.9.1.68" />
     <PackageReference Include="SkiaSharp.Views.Blazor" Version="3.119.1" />
   </ItemGroup>
 
